@@ -1,6 +1,6 @@
-# Kronel — A Minimal Vercel-like Deployment Platform
+# Kr0n — A Minimal Vercel-like Deployment Platform
 
-Kronel is a self-hosted platform that automates building and deploying applications directly from a GitHub repository.
+Kr0n is a self-hosted platform that automates building and deploying applications directly from a GitHub repository.
 
 It enables a simple workflow: code → build → live URL.
 
@@ -8,7 +8,7 @@ It enables a simple workflow: code → build → live URL.
 
 ## Overview
 
-Kronel implements a basic CI/CD pipeline:
+Kr0n implements a basic CI/CD pipeline:
 
 Webhook → API → Build Worker → Deployment → Reverse Proxy → URL
 
@@ -71,7 +71,7 @@ Using Docker:
 ### Subdomains
 
 Each deployment is mapped to:
-<project>.kronel.app
+<project>.Kr0n.app
 
 ### Reverse Proxy
 
@@ -100,7 +100,7 @@ Handles:
 - Node.js (API and workers)  
 - Docker (build isolation)  
 - Reverse proxy (Nginx/Traefik)  
-- Wildcard domain (`*.kronel.app`)  
+- Wildcard domain (`*.Kr0n.app`)  
 
 Optional:
 - Redis (queue)  
@@ -119,7 +119,7 @@ Optional:
 
 ## Scope
 
-Kronel is a simplified system designed for learning purposes. It does not include production-grade scaling, security, or distributed infrastructure.
+Kr0n is a simplified system designed for learning purposes. It does not include production-grade scaling, security, or distributed infrastructure.
 
 ---
 
