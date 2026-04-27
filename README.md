@@ -1,6 +1,6 @@
 # Kr0n — A Minimal Vercel-like Deployment Platform
 
-Kr0n is a self-hosted platform that automates building and deploying applications directly from a GitHub repository.
+Kr0n is a platform that automates building and deploying applications directly from a GitHub repository.
 
 It enables a simple workflow: code → build → live URL.
 
