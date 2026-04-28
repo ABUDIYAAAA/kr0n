@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
+import Sidebar from "../page";
 
 export default function ProjectsPage() {
   const [q, setQ] = useState("");
@@ -52,39 +53,8 @@ export default function ProjectsPage() {
 
   return (
     <div className="flex bg-[#0d0e0f] text-white min-h-screen">
-      {/* SIDEBAR */}
-      <aside className="w-64 border-r border-white/10 bg-black/60 backdrop-blur-xl p-6 flex flex-col">
-        <div className="flex items-center gap-3 mb-6">
-          <div className="w-10 h-10 border border-white/20 bg-white/5 rounded-sm" />
-          <div>
-            <div className="text-sm font-bold">arpittripathi</div>
-            <div className="text-[10px] text-white/40 uppercase">Hobby</div>
-          </div>
-        </div>
-
-        <nav className="space-y-2 text-sm">
-          <div className="text-white font-bold bg-white/5 px-4 py-2 border-l-2 border-white">
-            Projects
-          </div>
-          <div className="text-white/40 px-4 py-2 hover:text-white">
-            Deployments
-          </div>
-          <div className="text-white/40 px-4 py-2 hover:text-white">Logs</div>
-          <div className="text-white/40 px-4 py-2 hover:text-white">
-            Analytics
-          </div>
-
-          <div className="mt-6 text-white/20 text-xs uppercase px-4">
-            Config
-          </div>
-          <div className="text-white/40 px-4 py-2 hover:text-white">
-            Env Variables
-          </div>
-          <div className="text-white/40 px-4 py-2 hover:text-white">
-            Settings
-          </div>
-        </nav>
-      </aside>
+      {/* ✅ SIDEBAR COMPONENT */}
+      <Sidebar />
 
       {/* MAIN */}
       <main className="flex-1">
