@@ -1,0 +1,257 @@
+basePath: /
+definitions:
+  auth.ErrorResponse:
+    properties:
+      error:
+        example: error message
+        type: string
+    type: object
+  auth.LoginResponse:
+    properties:
+      session:
+        $ref: '#/definitions/auth.SessionResponse'
+      user:
+        $ref: '#/definitions/auth.UserResponse'
+    type: object
+  auth.MessageResponse:
+    properties:
+      message:
+        example: success message
+        type: string
+    type: object
+  auth.SessionListResponse:
+    properties:
+      sessions:
+        items:
+          $ref: '#/definitions/auth.SessionResponse'
+        type: array
+    type: object
+  auth.SessionResponse:
+    properties:
+      created_at:
+        type: string
+      expires_at:
+        type: string
+      id:
+        type: string
+      ip_address:
+        type: string
+      updated_at:
+        type: string
+      user_agent:
+        type: string
+      user_id:
+        type: string
+    type: object
+  auth.UserResponse:
+    properties:
+      avatar_url:
+        type: string
+      created_at:
+        type: string
+      email:
+        type: string
+      email_verified:
+        type: boolean
+      id:
+        type: string
+      name:
+        type: string
+    type: object
+  health.DBCheckResponse:
+    properties:
+      error:
+        example: 'dial tcp 127.0.0.1:5432: connect: connection refused'
+        type: string
+      status:
+        example: db ok
+        type: string
+    type: object
+  health.HealthResponse:
+    properties:
+      status:
+        example: ok
+        type: string
+    type: object
+info:
+  contact: {}
+  description: Auth API for kr0n service.
+  title: Auth API
+  version: "1.0"
+paths:
+  /auth/google:
+    get:
+      description: Redirects the user to Google's OAuth consent screen.
+      responses:
+        "307":
+          description: Temporary Redirect
+      summary: Initiate Google OAuth
+      tags:
+      - auth
+  /auth/google/callback:
+    get:
+      description: Validates OAuth state and code, creates/logs in the user, and sets
+        a session cookie.
+      parameters:
+      - description: OAuth code
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: OAuth state
+        in: query
+        name: state
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.LoginResponse'
+        "400":
+          description: Missing code or state
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "401":
+          description: Invalid state
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "500":
+          description: Internal error
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Google OAuth callback
+      tags:
+      - auth
+  /auth/logout:
+    post:
+      description: Invalidates the current session token and clears the session cookie.
+      responses:
+        "200":
+          description: Logged out
+          schema:
+            $ref: '#/definitions/auth.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Logout
+      tags:
+      - auth
+  /auth/me:
+    get:
+      description: Returns the profile of the currently logged-in user and their session
+        details.
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.LoginResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Get current user
+      tags:
+      - auth
+  /auth/sessions:
+    delete:
+      description: Terminates all active sessions for the authenticated user and clears
+        the current session cookie.
+      responses:
+        "200":
+          description: All sessions revoked
+          schema:
+            $ref: '#/definitions/auth.MessageResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Revoke all sessions
+      tags:
+      - auth
+    get:
+      description: Returns a list of all active sessions for the authenticated user.
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.SessionListResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: List active sessions
+      tags:
+      - auth
+  /auth/sessions/{id}:
+    delete:
+      description: Terminates a specific session by its ID. Users can only revoke
+        their own sessions.
+      parameters:
+      - description: Session ID
+        in: path
+        name: id
+        required: true
+        type: string
+      responses:
+        "200":
+          description: Session revoked
+          schema:
+            $ref: '#/definitions/auth.MessageResponse'
+        "400":
+          description: Invalid ID
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "404":
+          description: Session not found
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Revoke session
+      tags:
+      - auth
+  /db-check:
+    get:
+      description: Pings the database and returns connectivity status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/health.DBCheckResponse'
+        "500":
+          description: Internal Server Error
+          schema:
+            $ref: '#/definitions/health.DBCheckResponse'
+      summary: Database connectivity check
+      tags:
+      - health
+  /health:
+    get:
+      description: Returns API health status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/health.HealthResponse'
+      summary: Health check
+      tags:
+      - health
+swagger: "2.0"
