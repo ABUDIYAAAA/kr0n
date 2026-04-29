@@ -1,5 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
+import { Link2, Hammer, Rocket, Globe } from "lucide-react";
 
 export default function Home() {
   return (
@@ -79,21 +80,27 @@ export default function Home() {
           {/* FEATURES */}
           <div className="grid grid-cols-1 md:grid-cols-4 gap-8 mt-32 border-t border-white/5 pt-16">
             {[
-              "Connect Repository",
-              "Build & Install",
-              "Deploy to Edge",
-              "Live URL Ready",
-            ].map((title, i) => (
-              <div
-                key={i}
-                className="h-64 p-6 border border-white/10 bg-white/5 flex flex-col justify-between relative overflow-hidden">
-                <div className="text-xs text-white/20 font-mono">
-                  SLOT_0{i + 1}
+              { title: "Connect Repository", icon: Link2 },
+              { title: "Build & Install", icon: Hammer },
+              { title: "Deploy to Edge", icon: Rocket },
+              { title: "Live URL Ready", icon: Globe },
+            ].map((item, i) => {
+              const Icon = item.icon;
+
+              return (
+                <div
+                  key={item.title}
+                  className="h-64 p-6 border border-white/10 bg-white/5 flex flex-col justify-between relative overflow-hidden">
+                  <div className="flex items-center justify-end">
+                    <div className="w-10 h-10 bg-white text-black flex items-center justify-center clipped-btn-reverse">
+                      <Icon size={18} className="text-black/80" />
+                    </div>
+                  </div>
+                  <div className="text-xl font-bold">{item.title}</div>
+                  <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-white/5 blur-3xl rounded-full" />
                 </div>
-                <div className="text-xl font-bold">{title}</div>
-                <div className="absolute -bottom-8 -right-8 w-32 h-32 bg-white/5 blur-3xl rounded-full" />
-              </div>
-            ))}
+              );
+            })}
           </div>
         </section>
 

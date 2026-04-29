@@ -1,11 +1,11 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import Sidebar from "../../sidebar/page";
 import { useSearchParams } from "next/navigation";
 import { ChevronDown, X } from "lucide-react";
 
-export default function AnalyticsDashboard() {
+function AnalyticsDashboard() {
   const searchParams = useSearchParams();
   const selectedParam = searchParams.get("project");
 
@@ -132,13 +132,15 @@ export default function AnalyticsDashboard() {
                 {/* OUTER BORDER (CLIPPED) */}
                 <div className="clipped bg-white/10 p-[1px]">
                   {/* INNER CARD */}
-                  <div className="clipped bg-[#1a1b1c] p-6 hover:bg-[#202223] transition">
-                    <p className="text-[10px] text-white/40 uppercase mb-4">
+                  <div className="clipped bg-white p-6 hover:bg-zinc-100 transition">
+                    <p className="text-[10px] text-black/50 uppercase mb-4">
                       {m.label}
                     </p>
 
                     <div className="flex gap-3 items-baseline">
-                      <span className="text-2xl font-bold">{m.value}</span>
+                      <span className="text-2xl font-bold text-black">
+                        {m.value}
+                      </span>
                       <span className={`text-xs ${m.color}`}>{m.change}</span>
                     </div>
                   </div>
@@ -182,5 +184,13 @@ export default function AnalyticsDashboard() {
         </main>
       </div>
     </div>
+  );
+}
+
+export default function Page() {
+  return (
+    <Suspense fallback={null}>
+      <AnalyticsDashboard />
+    </Suspense>
   );
 }
