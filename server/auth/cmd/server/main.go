@@ -54,9 +54,20 @@ func main() {
 		Scopes:       strings.Fields(cfg.GoogleOAuthScopes),
 	}
 
+	githubCfg := auth.GitHubOAuthConfig{
+		ClientID:     cfg.GitHubOAuthClientID,
+		ClientSecret: cfg.GitHubOAuthClientSecret,
+		RedirectURL:  cfg.GitHubOAuthRedirectURL,
+		Scopes:       strings.Fields(cfg.GitHubOAuthScopes),
+	}
+
 	authRepo := auth.NewRepository(pool)
-	authSvc := auth.NewService(authRepo, cfg.AuthSessionTTL)
-	authHandler := auth.NewHandler(authSvc, cookieCfg, googleCfg)
+	authSvc := auth.NewService(authRepo, auth.ServiceConfig{
+		SessionTTL:           cfg.AuthSessionTTL,
+		EmailVerificationTTL: cfg.AuthEmailVerificationTTL,
+		EmailSender:          auth.NoopEmailSender{},
+	})
+	authHandler := auth.NewHandler(authSvc, cookieCfg, googleCfg, githubCfg)
 	authMiddleware := auth.AuthMiddleware(authSvc, cookieCfg)
 
 	auth.RegisterRoutesWithHandler(r, authHandler, authMiddleware)

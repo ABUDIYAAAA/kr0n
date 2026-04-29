@@ -42,6 +42,15 @@ type OAuthAccount struct {
 	User User `json:"-"`
 }
 
+type OAuthTokens struct {
+	AccessToken  string
+	RefreshToken *string
+	IDToken      *string
+	TokenType    string
+	Scope        *string
+	TokenExpiry  *time.Time
+}
+
 type Session struct {
 	Base
 
@@ -63,4 +72,23 @@ type UserSettings struct {
 	UpdatedAt time.Time `json:"updated_at"`
 
 	User User `json:"-"`
+}
+
+type UserPassword struct {
+	UserID uuid.UUID `json:"user_id"`
+	Hash   string    `json:"-"`
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+}
+
+type EmailVerificationToken struct {
+	ID        uuid.UUID  `json:"id"`
+	UserID    uuid.UUID  `json:"user_id"`
+	TokenHash string     `json:"-"`
+	ExpiresAt time.Time  `json:"expires_at"`
+	UsedAt    *time.Time `json:"used_at,omitempty"`
+
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
 }

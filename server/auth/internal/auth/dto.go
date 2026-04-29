@@ -15,9 +15,38 @@ type UserResponse struct {
 	CreatedAt     time.Time `json:"created_at"`
 }
 
+type ProviderStatus struct {
+	Configured bool     `json:"configured"`
+	Scopes     []string `json:"scopes,omitempty"`
+}
+
+type ProvidersResponse struct {
+	Providers map[string]ProviderStatus `json:"providers"`
+}
+
+type SignupRequest struct {
+	Email    string  `json:"email" binding:"required,email"`
+	Password string  `json:"password" binding:"required"`
+	Name     *string `json:"name,omitempty"`
+}
+
+type LoginRequest struct {
+	Email    string `json:"email" binding:"required,email"`
+	Password string `json:"password" binding:"required"`
+}
+
+type VerifyEmailRequest struct {
+	Token string `json:"token" binding:"required"`
+}
+
+type ResendVerificationRequest struct {
+	Email string `json:"email" binding:"required,email"`
+}
+
 type OAuthCallbackRequest struct {
 	ProviderUserID string `json:"provider_user_id" binding:"required"`
 	Email          string `json:"email" binding:"required,email"`
+	EmailVerified  bool   `json:"email_verified"`
 	Name           string `json:"name,omitempty"`
 	AvatarURL      string `json:"avatar_url,omitempty"`
 }

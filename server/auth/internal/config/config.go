@@ -10,40 +10,52 @@ import (
 )
 
 type Config struct {
-	DatabaseURL             string
-	Port                    string
-	AuthSessionTTL          time.Duration
-	AuthCookieName          string
-	AuthCookieDomain        string
-	AuthCookieSecure        bool
-	AuthCookieSameSite      string
-	GoogleOAuthClientID     string
-	GoogleOAuthClientSecret string
-	GoogleOAuthRedirectURL  string
-	GoogleOAuthScopes       string
-	MaxConns                int32
-	MinConns                int32
-	MaxConnLifetime         time.Duration
-	MaxConnIdleTime         time.Duration
-	HealthCheckPeriod       time.Duration
-	ConnectTimeout          time.Duration
+	DatabaseURL              string
+	Port                     string
+	AuthSessionTTL           time.Duration
+	AuthEmailVerificationTTL time.Duration
+	AuthCookieName           string
+	AuthCookieDomain         string
+	AuthCookieSecure         bool
+	AuthCookieSameSite       string
+	GoogleOAuthClientID      string
+	GoogleOAuthClientSecret  string
+	GoogleOAuthRedirectURL   string
+	GoogleOAuthScopes        string
+	GitHubOAuthClientID      string
+	GitHubOAuthClientSecret  string
+	GitHubOAuthRedirectURL   string
+	GitHubOAuthScopes        string
+	MaxConns                 int32
+	MinConns                 int32
+	MaxConnLifetime          time.Duration
+	MaxConnIdleTime          time.Duration
+	HealthCheckPeriod        time.Duration
+	ConnectTimeout           time.Duration
 }
+
+const defaultGitHubScopes = "repo read:org read:user user:email admin:repo_hook"
 
 func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		DatabaseURL:             getString("DATABASE_URL", ""),
-		Port:                    getString("PORT", "8080"),
-		AuthSessionTTL:          getDuration("AUTH_SESSION_TTL", 30*24*time.Hour),
-		AuthCookieName:          getString("AUTH_COOKIE_NAME", "forms_session"),
-		AuthCookieDomain:        getString("AUTH_COOKIE_DOMAIN", ""),
-		AuthCookieSecure:        getBool("AUTH_COOKIE_SECURE", true),
-		AuthCookieSameSite:      getString("AUTH_COOKIE_SAMESITE", "Lax"),
-		GoogleOAuthClientID:     getString("GOOGLE_OAUTH_CLIENT_ID", ""),
-		GoogleOAuthClientSecret: getString("GOOGLE_OAUTH_CLIENT_SECRET", ""),
-		GoogleOAuthRedirectURL:  getString("GOOGLE_OAUTH_REDIRECT_URL", ""),
-		GoogleOAuthScopes:       getString("GOOGLE_OAUTH_SCOPES", "openid email profile"),
+		DatabaseURL:              getString("DATABASE_URL", ""),
+		Port:                     getString("PORT", "8080"),
+		AuthSessionTTL:           getDuration("AUTH_SESSION_TTL", 30*24*time.Hour),
+		AuthEmailVerificationTTL: getDuration("AUTH_EMAIL_VERIFICATION_TTL", 24*time.Hour),
+		AuthCookieName:           getString("AUTH_COOKIE_NAME", "forms_session"),
+		AuthCookieDomain:         getString("AUTH_COOKIE_DOMAIN", ""),
+		AuthCookieSecure:         getBool("AUTH_COOKIE_SECURE", true),
+		AuthCookieSameSite:       getString("AUTH_COOKIE_SAMESITE", "Lax"),
+		GoogleOAuthClientID:      getString("GOOGLE_OAUTH_CLIENT_ID", ""),
+		GoogleOAuthClientSecret:  getString("GOOGLE_OAUTH_CLIENT_SECRET", ""),
+		GoogleOAuthRedirectURL:   getString("GOOGLE_OAUTH_REDIRECT_URL", ""),
+		GoogleOAuthScopes:        getString("GOOGLE_OAUTH_SCOPES", "openid email profile"),
+		GitHubOAuthClientID:      getString("GITHUB_OAUTH_CLIENT_ID", ""),
+		GitHubOAuthClientSecret:  getString("GITHUB_OAUTH_CLIENT_SECRET", ""),
+		GitHubOAuthRedirectURL:   getString("GITHUB_OAUTH_REDIRECT_URL", ""),
+		GitHubOAuthScopes:        getString("GITHUB_OAUTH_SCOPES", defaultGitHubScopes),
 
 		MaxConns: getInt32("MAX_CONNS", 20),
 		MinConns: getInt32("MIN_CONNS", 5),
