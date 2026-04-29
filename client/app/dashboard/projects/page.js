@@ -101,30 +101,31 @@ export default function ProjectsPage() {
                   className="
                     group
                     clipped
-                    border border-white/10
-                    bg-[#ebebeb]
-                    text-black
-                    hover:bg-[#c2c0c0]
+                    border border-white/30
+                    bg-black/60
+                    text-white
+                    backdrop-blur-sm
+                    hover:bg-black/70
                     transition-all
                   ">
                   <div className="p-6">
                     <div className="flex justify-between mb-6">
-                      <div className="w-10 h-10 bg-black/10 border border-black/10 flex items-center justify-center">
-                        <span className="text-xs text-black">□</span>
+                      <div className="w-10 h-10 bg-white/5 border border-white/15 flex items-center justify-center">
+                        <span className="text-xs text-white">□</span>
                       </div>
 
-                      <div className="flex items-center gap-2 text-xs uppercase text-black/70">
+                      <div className="flex items-center gap-2 text-xs uppercase text-white/70">
                         <div className={`w-2 h-2 ${p.color}`} />
                         {p.status}
                       </div>
                     </div>
 
                     <h3 className="text-lg font-bold mb-1">{p.name}</h3>
-                    <p className="text-sm text-black/50 font-mono">{p.repo}</p>
+                    <p className="text-sm text-white/50 font-mono">{p.repo}</p>
 
-                    <div className="flex justify-between mt-6 pt-4 border-t border-black/10 text-xs text-black/40">
+                    <div className="flex justify-between mt-6 pt-4 border-t border-white/10 text-xs text-white/40">
                       <span>Updated recently</span>
-                      <span className="group-hover:text-black">→</span>
+                      <span className="group-hover:text-white">→</span>
                     </div>
                   </div>
                 </div>

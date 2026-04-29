@@ -91,6 +91,7 @@ export default function Home() {
                 <div
                   key={item.title}
                   className="h-64 p-6 border border-white/10 bg-white/5 flex flex-col justify-between relative overflow-hidden">
+                  
                   <div className="flex items-center justify-end">
                     <div className="w-10 h-10 bg-white text-black flex items-center justify-center clipped-btn-reverse">
                       <Icon size={18} className="text-black/80" />
@@ -215,26 +216,80 @@ export default function Home() {
       </main>
 
       {/* FOOTER */}
-      <footer className="border-t border-white/10 bg-black">
-        <div className="max-w-7xl mx-auto px-12 py-16 flex flex-col md:flex-row justify-between gap-8">
-          <div>
-            <span
-              className="text-xl font-black text-white
-  [-webkit-text-stroke:0.6px_rgba(255,255,255,0.25)]
-  [text-shadow:0_0_3px_rgba(255,255,255,0.18)]">
-              KRON
-            </span>
-            <p className="text-xs text-zinc-600 mt-4 font-mono uppercase">
-              © 2024 KRON SYSTEMS
-            </p>
+      {/* FOOTER */}
+      {/* FOOTER */}
+      <footer className="border-t border-white/10 bg-[#0d0e0f]">
+        <div className="max-w-7xl mx-auto px-12 py-16 grid grid-cols-2 md:grid-cols-4 gap-12 text-[11px] font-mono uppercase tracking-widest">
+          {/* PRODUCT */}
+          <div className="space-y-4">
+            <div className="text-white/80 text-xs">Product</div>
+            <div className="flex flex-col gap-3 text-white/40">
+              <Link href="/dashboard/projects" className="hover:text-white">
+                Projects
+              </Link>
+              <Link href="/dashboard/deployments" className="hover:text-white">
+                Deployments
+              </Link>
+              <Link href="/dashboard/logs" className="hover:text-white">
+                Logs
+              </Link>
+              <Link href="/dashboard/analytics" className="hover:text-white">
+                Analytics
+              </Link>
+            </div>
           </div>
 
-          <div className="flex flex-wrap gap-8 text-xs uppercase text-zinc-600">
-            <a className="hover:text-white">STATUS</a>
-            <a className="hover:text-white">PRIVACY</a>
-            <a className="hover:text-white">TERMS</a>
-            <a className="hover:text-white">SECURITY</a>
-            <a className="hover:text-white">GITHUB</a>
+          {/* PLATFORM */}
+          <div className="space-y-4">
+            <div className="text-white/80 text-xs">Platform</div>
+            <div className="flex flex-col gap-3 text-white/40">
+              <a className="hover:text-white">Edge Network</a>
+              <a className="hover:text-white">Build System</a>
+              <a className="hover:text-white">Observability</a>
+              <a className="hover:text-white">Environment</a>
+            </div>
+          </div>
+
+          {/* RESOURCES */}
+          <div className="space-y-4">
+            <div className="text-white/80 text-xs">Resources</div>
+            <div className="flex flex-col gap-3 text-white/40">
+              <a className="hover:text-white">Docs</a>
+              <a className="hover:text-white">API Reference</a>
+              <a className="hover:text-white">Guides</a>
+              <a className="hover:text-white">Support</a>
+            </div>
+          </div>
+
+          {/* COMPANY */}
+          <div className="space-y-4">
+            <div className="text-white/80 text-xs">System</div>
+            <div className="flex flex-col gap-3 text-white/40">
+              <a className="hover:text-white">Status</a>
+              <a className="hover:text-white">Security</a>
+              <a className="hover:text-white">Privacy</a>
+              <a className="hover:text-white">GitHub</a>
+            </div>
+          </div>
+        </div>
+
+        {/* BOTTOM BAR */}
+        <div className="border-t border-white/10 px-12 py-6 flex flex-col md:flex-row justify-between items-center text-[10px] font-mono uppercase tracking-widest text-white/30">
+          {/* LEFT */}
+          <div className="flex flex-col md:flex-row items-center gap-2 md:gap-4">
+            <span
+              className="text-white
+        [-webkit-text-stroke:0.5px_rgba(255,255,255,0.2)]
+        [text-shadow:0_0_2px_rgba(255,255,255,0.1)]">
+              KRON
+            </span>
+
+            <span>v2.4.0 — stable</span>
+          </div>
+
+          {/* RIGHT */}
+          <div className="flex gap-6 mt-3 md:mt-0">
+            <span>© 2024 KRON SYSTEMS</span>
           </div>
         </div>
       </footer>
