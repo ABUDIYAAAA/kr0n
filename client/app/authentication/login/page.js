@@ -20,7 +20,7 @@ export default function Login() {
             {/* SOCIAL BUTTONS */}
             <div className="space-y-3">
               {/* GOOGLE */}
-              <button className="w-full flex items-center justify-center gap-3 py-3 border border-white/20 hover:bg-white hover:text-black transition-none active:translate-x-[1px] active:translate-y-[1px]">
+              <button className="w-full flex items-center justify-center gap-3 py-3 border border-white/20 hover:bg-white hover:text-black transition-none active:translate-x-[1px] active:translate-y-[1px] hover:cursor-pointer">
                 <img
                   src="https://www.svgrepo.com/show/475656/google-color.svg"
                   className="w-5 h-5"
@@ -32,7 +32,7 @@ export default function Login() {
               </button>
 
               {/* GITHUB */}
-              <button className="w-full flex items-center justify-center gap-3 py-3 border border-white/20">
+              <button className="w-full flex items-center justify-center gap-3 py-3 border border-white/20 hover:cursor-pointer">
                 <img
                   src="https://www.svgrepo.com/show/512317/github-142.svg"
                   className="w-5 h-5 invert"
@@ -84,7 +84,7 @@ export default function Login() {
               {/* LOGIN BUTTON */}
               <button
                 type="submit"
-                className="w-full bg-white text-black py-4 text-[14px] font-black uppercase tracking-[0.2em] clipped-btn active:translate-x-[1px] active:translate-y-[1px]">
+                className="w-full bg-white text-black py-4 text-[14px] font-black uppercase tracking-[0.2em] clipped-btn active:translate-x-[1px] active:translate-y-[1px] hover:cursor-pointer">
                 LOGIN
               </button>
             </form>
@@ -99,7 +99,6 @@ export default function Login() {
           </div>
 
           {/* SECURITY */}
-        
         </div>
       </main>
 

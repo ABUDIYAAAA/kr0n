@@ -121,7 +121,7 @@ export default function NewProjectPage() {
                         </div>
                       </div>
 
-                      <button className="clipped-button bg-white text-black px-6 py-2 font-bold text-sm hover:bg-neutral-200 active:scale-[0.98] transition-all">
+                      <button className="clipped-button bg-white text-black px-6 py-2 font-bold text-sm hover:bg-neutral-200 active:scale-[0.98] transition-all cursor-pointer">
                         Import
                       </button>
                     </div>
