@@ -1,7 +1,8 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import Sidebar from "../page";
+import Link from "next/link";
+import Sidebar from "../../sidebar/page";
 
 export default function ProjectsPage() {
   const [q, setQ] = useState("");
@@ -62,9 +63,11 @@ export default function ProjectsPage() {
         <div className="flex justify-between items-center px-8 py-4 border-b border-white/10 bg-black/40 backdrop-blur">
           <h1 className="text-xl font-bold uppercase">All Projects</h1>
 
-          <button className="bg-white text-black px-6 py-2 text-xs font-bold clipped">
+          <Link
+            href="/dashboard/projects/importrepo"
+            className="bg-white text-black px-6 py-2 text-xs font-bold clipped">
             Add New
-          </button>
+          </Link>
         </div>
 
         {/* CONTENT */}
@@ -82,7 +85,7 @@ export default function ProjectsPage() {
                   className="w-full bg-[#0a0a0a] border border-white/12 px-6 py-5 text-sm outline-none placeholder:text-white/20 focus:border-white/30"
                 />
 
-                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] tracking-widest text-white/80 border border-white/10 px-2 py-1">
+                <div className="absolute right-4 top-1/2 -translate-y-1/2 text-[10px] tracking-widest text-white/80 border border-white/10 px-2 py-1 ">
                   CTRL + K
                 </div>
 
@@ -99,9 +102,9 @@ export default function ProjectsPage() {
                     group
                     clipped
                     border border-white/10
-                    bg-[#afaeae]
+                    bg-[#ebebeb]
                     text-black
-                    hover:bg-[#eaeaea]
+                    hover:bg-[#c2c0c0]
                     transition-all
                   ">
                   <div className="p-6">
