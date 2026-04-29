@@ -26,6 +26,10 @@ type Config struct {
 	GitHubOAuthClientSecret  string
 	GitHubOAuthRedirectURL   string
 	GitHubOAuthScopes        string
+	GitHubWebHookSecret      string
+	GitHubAppID              string
+	GitHubAppPrivateKeyPath  string
+	GitHubAppRedirectURL     string
 	MaxConns                 int32
 	MinConns                 int32
 	MaxConnLifetime          time.Duration
@@ -44,7 +48,7 @@ func Load() (*Config, error) {
 		Port:                     getString("PORT", "8080"),
 		AuthSessionTTL:           getDuration("AUTH_SESSION_TTL", 30*24*time.Hour),
 		AuthEmailVerificationTTL: getDuration("AUTH_EMAIL_VERIFICATION_TTL", 24*time.Hour),
-		AuthCookieName:           getString("AUTH_COOKIE_NAME", "forms_session"),
+		AuthCookieName:           getString("AUTH_COOKIE_NAME", "kr0n_session"),
 		AuthCookieDomain:         getString("AUTH_COOKIE_DOMAIN", ""),
 		AuthCookieSecure:         getBool("AUTH_COOKIE_SECURE", true),
 		AuthCookieSameSite:       getString("AUTH_COOKIE_SAMESITE", "Lax"),
@@ -56,6 +60,10 @@ func Load() (*Config, error) {
 		GitHubOAuthClientSecret:  getString("GITHUB_OAUTH_CLIENT_SECRET", ""),
 		GitHubOAuthRedirectURL:   getString("GITHUB_OAUTH_REDIRECT_URL", ""),
 		GitHubOAuthScopes:        getString("GITHUB_OAUTH_SCOPES", defaultGitHubScopes),
+		GitHubWebHookSecret:      getString("GITHUB_WEBHOOK_SECRET", ""),
+		GitHubAppID:              getString("GITHUB_APP_ID", ""),
+		GitHubAppPrivateKeyPath:  getString("GITHUB_APP_PRIVATE_KEY_PATH", ""),
+		GitHubAppRedirectURL:     getString("GITHUB_APP_REDIRECT_URL", ""),
 
 		MaxConns: getInt32("MAX_CONNS", 20),
 		MinConns: getInt32("MIN_CONNS", 5),

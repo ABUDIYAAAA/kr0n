@@ -330,6 +330,22 @@ func (s *Service) createSession(ctx context.Context, userID uuid.UUID, ua, ip st
 	return savedSession, token, nil
 }
 
+func (s *Service) RefreshSession(ctx context.Context, sessionID, userID uuid.UUID) (*Session, string, error) {
+	token, err := generateToken()
+	if err != nil {
+		return nil, "", err
+	}
+
+	tokenHash := hashToken(token)
+	expiresAt := time.Now().UTC().Add(s.sessionTTL)
+	updated, err := s.repo.RefreshSession(ctx, sessionID, userID, tokenHash, expiresAt)
+	if err != nil {
+		return nil, "", err
+	}
+
+	return updated, token, nil
+}
+
 func (s *Service) AuthenticateToken(ctx context.Context, rawToken string) (*User, *Session, error) {
 	token := strings.TrimSpace(rawToken)
 	if token == "" {
@@ -432,4 +448,46 @@ func validatePassword(password string) error {
 	}
 
 	return nil
+}
+
+func (s *Service) SaveGitHubInstallation(ctx context.Context, userID uuid.UUID, appID int64, installationID int64, repositoryName, branch string) (*GitHubInstallation, error) {
+	if userID == uuid.Nil || installationID == 0 || strings.TrimSpace(repositoryName) == "" {
+		return nil, ErrInvalidInput
+	}
+
+	branch = strings.TrimSpace(branch)
+	if branch == "" {
+		branch = "main"
+	}
+
+	install := &GitHubInstallation{
+		UserID:         userID,
+		AppID:          appID,
+		InstallationID: installationID,
+		RepositoryName: repositoryName,
+		Branch:         branch,
+	}
+
+	return s.repo.SaveGitHubInstallation(ctx, install)
+}
+
+func (s *Service) GetGitHubInstallationsByUserID(ctx context.Context, userID uuid.UUID) ([]GitHubInstallation, error) {
+	if userID == uuid.Nil {
+		return nil, ErrInvalidInput
+	}
+	return s.repo.GetGitHubInstallationsByUserID(ctx, userID)
+}
+
+func (s *Service) GetGitHubInstallationByInstallationID(ctx context.Context, installationID int64) (*GitHubInstallation, error) {
+	if installationID == 0 {
+		return nil, ErrInvalidInput
+	}
+	return s.repo.GetGitHubInstallationByInstallationID(ctx, installationID)
+}
+
+func (s *Service) DeleteGitHubInstallationByInstallationID(ctx context.Context, installationID int64) error {
+	if installationID == 0 {
+		return ErrInvalidInput
+	}
+	return s.repo.DeleteGitHubInstallationByInstallationID(ctx, installationID)
 }

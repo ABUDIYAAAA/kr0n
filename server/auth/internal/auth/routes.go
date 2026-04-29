@@ -14,6 +14,7 @@ type ModuleConfig struct {
 	SessionCookie        CookieConfig
 	GoogleOAuth          GoogleOAuthConfig
 	GitHubOAuth          GitHubOAuthConfig
+	GitHubWebhookSecret  string
 }
 
 func RegisterRoutes(r *gin.Engine, db *pgxpool.Pool, cfg ModuleConfig) {
@@ -24,17 +25,7 @@ func RegisterRoutes(r *gin.Engine, db *pgxpool.Pool, cfg ModuleConfig) {
 		EmailSender:          cfg.EmailSender,
 	})
 
-	if cfg.SessionCookie.Name == "" {
-		cfg.SessionCookie.Name = "forms_session"
-	}
-	if cfg.SessionCookie.Path == "" {
-		cfg.SessionCookie.Path = "/"
-	}
-	if !cfg.SessionCookie.HTTPOnly {
-		cfg.SessionCookie.HTTPOnly = true
-	}
-
-	h := NewHandler(svc, cfg.SessionCookie, cfg.GoogleOAuth, cfg.GitHubOAuth)
+	h := NewHandler(svc, cfg.SessionCookie, cfg.GoogleOAuth, cfg.GitHubOAuth, cfg.GitHubWebhookSecret)
 	authMiddleware := AuthMiddleware(svc, cfg.SessionCookie)
 
 	RegisterRoutesWithHandler(r, h, authMiddleware)
@@ -61,12 +52,24 @@ func RegisterRoutesWithHandler(r *gin.Engine, h *Handler, authMiddleware gin.Han
 			protected.GET("/github/connect", h.GitHubConnect)
 
 			protected.GET("/me", h.Me)
+			protected.POST("/refresh", h.Refresh)
 			protected.POST("/logout", h.Logout)
 
 			// Session management
 			protected.GET("/sessions", h.ListSessions)
 			protected.DELETE("/sessions", h.RevokeAllSessions)
 			protected.DELETE("/sessions/:id", h.RevokeSession)
+
+			// GitHub App management
+			protected.GET("/github/install", h.GitHubInstall)
+			protected.GET("/github/app/callback", h.GitHubAppCallback)
+			protected.GET("/github/installations", h.GitHubInstallations)
 		}
+	}
+
+	// Webhook routes (public, no auth)
+	webhooks := r.Group("/webhooks")
+	{
+		webhooks.POST("/github", h.WebhookGitHub)
 	}
 }

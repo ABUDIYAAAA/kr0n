@@ -58,17 +58,11 @@ type Handler struct {
 	githubStateCookieCfg CookieConfig
 	googleCfg            GoogleOAuthConfig
 	githubCfg            GitHubOAuthConfig
+	webhookSecret        string
 	httpClient           *http.Client
 }
 
-func NewHandler(svc *Service, sessionCookieCfg CookieConfig, googleCfg GoogleOAuthConfig, githubCfg GitHubOAuthConfig) *Handler {
-	if sessionCookieCfg.Path == "" {
-		sessionCookieCfg.Path = "/"
-	}
-
-	if sessionCookieCfg.Name == "" {
-		sessionCookieCfg.Name = "forms_session"
-	}
+func NewHandler(svc *Service, sessionCookieCfg CookieConfig, googleCfg GoogleOAuthConfig, githubCfg GitHubOAuthConfig, webhookSecret string) *Handler {
 
 	if len(googleCfg.Scopes) == 0 {
 		googleCfg.Scopes = strings.Fields(defaultGoogleScopes)
@@ -102,6 +96,7 @@ func NewHandler(svc *Service, sessionCookieCfg CookieConfig, googleCfg GoogleOAu
 		githubStateCookieCfg: githubStateCookieCfg,
 		googleCfg:            googleCfg,
 		githubCfg:            githubCfg,
+		webhookSecret:        webhookSecret,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -633,6 +628,45 @@ func (h *Handler) Me(c *gin.Context) {
 	})
 }
 
+// Refresh rotates the session token and extends its expiration.
+// @Summary Refresh session
+// @Description Rotates the current session token and extends its expiration time.
+// @Tags auth
+// @Security ApiKeyAuth
+// @Success 200 {object} LoginResponse
+// @Failure 401 {object} ErrorResponse "Unauthorized"
+// @Router /auth/refresh [post]
+func (h *Handler) Refresh(c *gin.Context) {
+	user, ok := CurrentUser(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	session, ok := CurrentSession(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	refreshed, token, err := h.svc.RefreshSession(c.Request.Context(), session.ID, user.ID)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			clearCookie(c, h.sessionCookieCfg)
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+			return
+		}
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	setSessionCookie(c, h.sessionCookieCfg, token, refreshed.ExpiresAt)
+	c.JSON(http.StatusOK, LoginResponse{
+		User:    mapUserResponse(user),
+		Session: mapSessionResponse(refreshed),
+	})
+}
+
 // Logout terminates the current session.
 // @Summary Logout
 // @Description Invalidates the current session token and clears the session cookie.
@@ -749,6 +783,233 @@ func (h *Handler) RevokeAllSessions(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "all sessions revoked"})
 }
 
+// GitHubInstall initiates the GitHub App installation flow.
+// @Summary Initiate GitHub App installation
+// @Description Returns the GitHub App installation URL for the user to authorize.
+// @Tags github-app
+// @Security ApiKeyAuth
+// @Success 200 {object} map[string]string
+// @Failure 401 {object} ErrorResponse "Unauthorized"
+// @Router /auth/github/install [get]
+func (h *Handler) GitHubInstall(c *gin.Context) {
+	user, ok := CurrentUser(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	if h.githubCfg.ClientID == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "github app is not configured"})
+		return
+	}
+
+	installURL := coreutils.FormatGitHubAppInstallURL(h.githubCfg.ClientID)
+	c.JSON(http.StatusOK, gin.H{
+		"install_url": installURL,
+		"user_id":     user.ID,
+	})
+}
+
+// GitHubAppCallback handles the GitHub App installation callback.
+// @Summary GitHub App installation callback
+// @Description Saves the GitHub App installation metadata after user authorizes.
+// @Tags github-app
+// @Security ApiKeyAuth
+// @Param installation_id query string true "GitHub installation ID"
+// @Param repository_name query string false "Repository name"
+// @Param branch query string false "Branch name"
+// @Success 200 {object} map[string]interface{}
+// @Failure 400 {object} ErrorResponse "Missing installation_id"
+// @Failure 401 {object} ErrorResponse "Unauthorized"
+// @Router /auth/github/app/callback [get]
+func (h *Handler) GitHubAppCallback(c *gin.Context) {
+	user, ok := CurrentUser(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	installationIDStr := strings.TrimSpace(c.Query("installation_id"))
+	if installationIDStr == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing installation_id"})
+		return
+	}
+
+	installationID, err := strconv.ParseInt(installationIDStr, 10, 64)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid installation_id format"})
+		return
+	}
+
+	repositoryName := strings.TrimSpace(c.Query("repository_name"))
+	if repositoryName == "" {
+		repositoryName = "unknown"
+	}
+
+	branch := strings.TrimSpace(c.Query("branch"))
+	if branch == "" {
+		branch = "main"
+	}
+
+	appID, err := strconv.ParseInt(h.githubCfg.ClientID, 10, 64)
+	if err != nil {
+		appID = 0 // App ID as string fallback
+	}
+
+	install, err := h.svc.SaveGitHubInstallation(c.Request.Context(), user.ID, appID, installationID, repositoryName, branch)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"message":         "github app installed",
+		"installation_id": install.InstallationID,
+		"repository_name": install.RepositoryName,
+		"branch":          install.Branch,
+	})
+}
+
+// GitHubInstallations returns all GitHub App installations for the current user.
+// @Summary List GitHub App installations
+// @Description Returns all GitHub App installations linked to the current user.
+// @Tags github-app
+// @Security ApiKeyAuth
+// @Success 200 {object} map[string]interface{}
+// @Failure 401 {object} ErrorResponse "Unauthorized"
+// @Router /auth/github/installations [get]
+func (h *Handler) GitHubInstallations(c *gin.Context) {
+	user, ok := CurrentUser(c)
+	if !ok {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
+		return
+	}
+
+	installations, err := h.svc.GetGitHubInstallationsByUserID(c.Request.Context(), user.ID)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"installations": installations,
+	})
+}
+
+// WebhookGitHub receives GitHub webhook events.
+// @Summary GitHub webhook receiver
+// @Description Receives and processes GitHub webhook events (push, installation).
+// @Tags webhooks
+// @Accept json
+// @Param X-Hub-Signature-256 header string true "HMAC signature"
+// @Param X-GitHub-Event header string true "Event type"
+// @Success 200 {object} MessageResponse
+// @Failure 400 {object} ErrorResponse "Invalid signature or event"
+// @Router /webhooks/github [post]
+func (h *Handler) WebhookGitHub(c *gin.Context) {
+	signature := c.GetHeader("X-Hub-Signature-256")
+	if signature == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing signature"})
+		return
+	}
+
+	eventType := c.GetHeader("X-GitHub-Event")
+	if eventType == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "missing event type"})
+		return
+	}
+
+	body, err := c.GetRawData()
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
+		return
+	}
+
+	// Validate webhook signature
+	if !coreutils.ValidateGitHubWebhookSignature(body, signature, h.webhookSecret) {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid signature"})
+		return
+	}
+
+	eventType = coreutils.ExtractGitHubEventType(eventType)
+
+	switch eventType {
+	case "push":
+		h.handleGitHubPush(c, body)
+	case "installation":
+		h.handleGitHubInstallation(c, body)
+	default:
+		// Ignore other events silently, return 200
+		c.JSON(http.StatusOK, gin.H{"message": "event received"})
+	}
+}
+
+func (h *Handler) handleGitHubPush(c *gin.Context, payload []byte) {
+	var event GitHubPushEvent
+	if err := json.Unmarshal(payload, &event); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid push event payload"})
+		return
+	}
+
+	// Parse branch from ref
+	branch := coreutils.ParseGitHubRefToBranch(event.Ref)
+
+	// Get installation metadata
+	install, err := h.svc.GetGitHubInstallationByInstallationID(c.Request.Context(), event.Installation.ID)
+	if err != nil {
+		// Installation not found; silently return 200 (webhook sent before installation saved)
+		c.JSON(http.StatusOK, gin.H{"message": "event received"})
+		return
+	}
+
+	// Verify branch matches installation config
+	if install.Branch != "" && install.Branch != branch {
+		c.JSON(http.StatusOK, gin.H{"message": "event received (branch mismatch)"})
+		return
+	}
+
+	// TODO: Queue deployment job or trigger pipeline
+	// For now, just log and return 200
+	c.JSON(http.StatusOK, gin.H{
+		"message":         "push event processed",
+		"installation_id": install.InstallationID,
+		"repository":      event.Repository.FullName,
+		"branch":          branch,
+		"after":           event.After,
+	})
+}
+
+func (h *Handler) handleGitHubInstallation(c *gin.Context, payload []byte) {
+	type InstallationEvent struct {
+		Action       string `json:"action"`
+		Installation struct {
+			ID int64 `json:"id"`
+		} `json:"installation"`
+	}
+
+	var event InstallationEvent
+	if err := json.Unmarshal(payload, &event); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid installation event payload"})
+		return
+	}
+
+	// Handle uninstall action by removing installation record
+	if event.Action == "deleted" {
+		if err := h.svc.DeleteGitHubInstallationByInstallationID(c.Request.Context(), event.Installation.ID); err != nil {
+			// If not found, treat as success; otherwise log error and return 500
+			if errors.Is(err, ErrNotFound) {
+				c.JSON(http.StatusOK, gin.H{"message": "installation deleted (not found)"})
+				return
+			}
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+			return
+		}
+		c.JSON(http.StatusOK, gin.H{"message": "installation deleted"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "installation event received"})
+}
 func (h *Handler) googleConfigured() bool {
 	return strings.TrimSpace(h.googleCfg.ClientID) != "" &&
 		strings.TrimSpace(h.googleCfg.ClientSecret) != "" &&

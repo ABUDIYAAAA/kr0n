@@ -308,6 +308,27 @@ func (r *Repository) UpsertSessionByIP(ctx context.Context, s *Session) (*Sessio
 	return &out, nil
 }
 
+func (r *Repository) RefreshSession(ctx context.Context, sessionID, userID uuid.UUID, tokenHash string, expiresAt time.Time) (*Session, error) {
+	query := `
+	UPDATE sessions
+	SET token_hash = $1,
+		expires_at = $2,
+		updated_at = now()
+	WHERE id = $3 AND user_id = $4
+	RETURNING id, user_id, user_agent, ip_address, expires_at, created_at, updated_at
+	`
+	var out Session
+	err := r.db.QueryRow(ctx, query, tokenHash, expiresAt, sessionID, userID).
+		Scan(&out.ID, &out.UserID, &out.UserAgent, &out.IPAddress, &out.ExpiresAt, &out.CreatedAt, &out.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &out, nil
+}
+
 func (r *Repository) GetSessionAndUserByTokenHash(ctx context.Context, tokenHash string) (*Session, *User, error) {
 	query := `
 	SELECT
@@ -407,4 +428,98 @@ func (r *Repository) DeleteAllSessionsByUserID(ctx context.Context, userID uuid.
 	query := `DELETE FROM sessions WHERE user_id = $1`
 	_, err := r.db.Exec(ctx, query, userID)
 	return err
+}
+
+func (r *Repository) SaveGitHubInstallation(ctx context.Context, install *GitHubInstallation) (*GitHubInstallation, error) {
+	query := `
+	INSERT INTO github_installations (user_id, app_id, installation_id, repository_name, branch)
+	VALUES ($1, $2, $3, $4, $5)
+	ON CONFLICT (user_id, installation_id, repository_name)
+	DO UPDATE SET
+		branch = EXCLUDED.branch,
+		updated_at = now()
+	RETURNING id, user_id, app_id, installation_id, repository_name, branch, created_at, updated_at
+	`
+	var out GitHubInstallation
+	err := r.db.QueryRow(ctx, query, install.UserID, install.AppID, install.InstallationID, install.RepositoryName, install.Branch).
+		Scan(&out.ID, &out.UserID, &out.AppID, &out.InstallationID, &out.RepositoryName, &out.Branch, &out.CreatedAt, &out.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+	return &out, nil
+}
+
+func (r *Repository) GetGitHubInstallationByUserAndInstallation(ctx context.Context, userID uuid.UUID, installationID int64) (*GitHubInstallation, error) {
+	query := `
+	SELECT id, user_id, app_id, installation_id, repository_name, branch, created_at, updated_at
+	FROM github_installations
+	WHERE user_id = $1 AND installation_id = $2
+	`
+	var install GitHubInstallation
+	err := r.db.QueryRow(ctx, query, userID, installationID).
+		Scan(&install.ID, &install.UserID, &install.AppID, &install.InstallationID, &install.RepositoryName, &install.Branch, &install.CreatedAt, &install.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &install, nil
+}
+
+func (r *Repository) GetGitHubInstallationsByUserID(ctx context.Context, userID uuid.UUID) ([]GitHubInstallation, error) {
+	query := `
+	SELECT id, user_id, app_id, installation_id, repository_name, branch, created_at, updated_at
+	FROM github_installations
+	WHERE user_id = $1
+	ORDER BY created_at DESC
+	`
+	rows, err := r.db.Query(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var installations []GitHubInstallation
+	for rows.Next() {
+		var install GitHubInstallation
+		err := rows.Scan(&install.ID, &install.UserID, &install.AppID, &install.InstallationID, &install.RepositoryName, &install.Branch, &install.CreatedAt, &install.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		installations = append(installations, install)
+	}
+
+	return installations, rows.Err()
+}
+
+func (r *Repository) GetGitHubInstallationByInstallationID(ctx context.Context, installationID int64) (*GitHubInstallation, error) {
+	query := `
+	SELECT id, user_id, app_id, installation_id, repository_name, branch, created_at, updated_at
+	FROM github_installations
+	WHERE installation_id = $1
+	LIMIT 1
+	`
+	var install GitHubInstallation
+	err := r.db.QueryRow(ctx, query, installationID).
+		Scan(&install.ID, &install.UserID, &install.AppID, &install.InstallationID, &install.RepositoryName, &install.Branch, &install.CreatedAt, &install.UpdatedAt)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, ErrNotFound
+		}
+		return nil, err
+	}
+	return &install, nil
+}
+
+func (r *Repository) DeleteGitHubInstallationByInstallationID(ctx context.Context, installationID int64) error {
+	query := `DELETE FROM github_installations WHERE installation_id = $1`
+	res, err := r.db.Exec(ctx, query, installationID)
+	if err != nil {
+		return err
+	}
+	if res.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
 }

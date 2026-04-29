@@ -6,6 +6,16 @@ definitions:
         example: error message
         type: string
     type: object
+  auth.LoginRequest:
+    properties:
+      email:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
   auth.LoginResponse:
     properties:
       session:
@@ -18,6 +28,29 @@ definitions:
       message:
         example: success message
         type: string
+    type: object
+  auth.ProviderStatus:
+    properties:
+      configured:
+        type: boolean
+      scopes:
+        items:
+          type: string
+        type: array
+    type: object
+  auth.ProvidersResponse:
+    properties:
+      providers:
+        additionalProperties:
+          $ref: '#/definitions/auth.ProviderStatus'
+        type: object
+    type: object
+  auth.ResendVerificationRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
     type: object
   auth.SessionListResponse:
     properties:
@@ -43,6 +76,18 @@ definitions:
       user_id:
         type: string
     type: object
+  auth.SignupRequest:
+    properties:
+      email:
+        type: string
+      name:
+        type: string
+      password:
+        type: string
+    required:
+    - email
+    - password
+    type: object
   auth.UserResponse:
     properties:
       avatar_url:
@@ -57,6 +102,13 @@ definitions:
         type: string
       name:
         type: string
+    type: object
+  auth.VerifyEmailRequest:
+    properties:
+      token:
+        type: string
+    required:
+    - token
     type: object
   health.DBCheckResponse:
     properties:
@@ -79,6 +131,110 @@ info:
   title: Auth API
   version: "1.0"
 paths:
+  /auth/email/verification:
+    post:
+      consumes:
+      - application/json
+      description: Sends a verification email if the account exists and is unverified.
+      parameters:
+      - description: Resend payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/auth.ResendVerificationRequest'
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/auth.MessageResponse'
+      summary: Resend verification email
+      tags:
+      - auth
+  /auth/email/verify:
+    post:
+      consumes:
+      - application/json
+      description: Marks the user email as verified using the provided token.
+      parameters:
+      - description: Verification payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/auth.VerifyEmailRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.MessageResponse'
+        "400":
+          description: Invalid token
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Verify email
+      tags:
+      - auth
+  /auth/github:
+    get:
+      description: Redirects the user to GitHub's OAuth consent screen.
+      responses:
+        "307":
+          description: Temporary Redirect
+      summary: Initiate GitHub OAuth
+      tags:
+      - auth
+  /auth/github/callback:
+    get:
+      description: Validates OAuth state and code, creates/logs in the user, and sets
+        a session cookie.
+      parameters:
+      - description: OAuth code
+        in: query
+        name: code
+        required: true
+        type: string
+      - description: OAuth state
+        in: query
+        name: state
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.LoginResponse'
+        "400":
+          description: Missing code or state
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "401":
+          description: Invalid state
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "500":
+          description: Internal error
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: GitHub OAuth callback
+      tags:
+      - auth
+  /auth/github/connect:
+    get:
+      description: Redirects the user to GitHub's OAuth consent screen to connect
+        a provider.
+      responses:
+        "307":
+          description: Temporary Redirect
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Connect GitHub account
+      tags:
+      - auth
   /auth/google:
     get:
       description: Redirects the user to Google's OAuth consent screen.
@@ -123,6 +279,50 @@ paths:
       summary: Google OAuth callback
       tags:
       - auth
+  /auth/google/connect:
+    get:
+      description: Redirects the user to Google's OAuth consent screen to connect
+        a provider.
+      responses:
+        "307":
+          description: Temporary Redirect
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Connect Google account
+      tags:
+      - auth
+  /auth/login:
+    post:
+      consumes:
+      - application/json
+      description: Logs in using email and password and sets the session cookie.
+      parameters:
+      - description: Login payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/auth.LoginRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.LoginResponse'
+        "401":
+          description: Invalid credentials
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "403":
+          description: Email not verified
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Login with password
+      tags:
+      - auth
   /auth/logout:
     post:
       description: Invalidates the current session token and clears the session cookie.
@@ -156,6 +356,34 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Get current user
+      tags:
+      - auth
+  /auth/providers:
+    get:
+      description: Returns which auth providers are configured on the server.
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.ProvidersResponse'
+      summary: List configured providers
+      tags:
+      - auth
+  /auth/refresh:
+    post:
+      description: Rotates the current session token and extends its expiration time.
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.LoginResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Refresh session
       tags:
       - auth
   /auth/sessions:
@@ -222,6 +450,34 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Revoke session
+      tags:
+      - auth
+  /auth/signup:
+    post:
+      consumes:
+      - application/json
+      description: Creates a user with email and password and triggers email verification.
+      parameters:
+      - description: Signup payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/auth.SignupRequest'
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/auth.MessageResponse'
+        "400":
+          description: Invalid input
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+        "409":
+          description: Email already in use
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Create account
       tags:
       - auth
   /db-check:

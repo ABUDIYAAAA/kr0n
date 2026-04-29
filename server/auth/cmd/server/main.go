@@ -38,7 +38,7 @@ func main() {
 		SameSite: auth.ParseSameSite(cfg.AuthCookieSameSite),
 	}
 	if cookieCfg.Name == "" {
-		cookieCfg.Name = "forms_session"
+		cookieCfg.Name = "kr0n_session"
 	}
 	if cookieCfg.Path == "" {
 		cookieCfg.Path = "/"
@@ -61,16 +61,17 @@ func main() {
 		Scopes:       strings.Fields(cfg.GitHubOAuthScopes),
 	}
 
-	authRepo := auth.NewRepository(pool)
-	authSvc := auth.NewService(authRepo, auth.ServiceConfig{
+	authModuleCfg := auth.ModuleConfig{
 		SessionTTL:           cfg.AuthSessionTTL,
 		EmailVerificationTTL: cfg.AuthEmailVerificationTTL,
 		EmailSender:          auth.NoopEmailSender{},
-	})
-	authHandler := auth.NewHandler(authSvc, cookieCfg, googleCfg, githubCfg)
-	authMiddleware := auth.AuthMiddleware(authSvc, cookieCfg)
+		SessionCookie:        cookieCfg,
+		GoogleOAuth:          googleCfg,
+		GitHubOAuth:          githubCfg,
+		GitHubWebhookSecret:  cfg.GitHubWebHookSecret,
+	}
 
-	auth.RegisterRoutesWithHandler(r, authHandler, authMiddleware)
+	auth.RegisterRoutes(r, pool, authModuleCfg)
 
 	log.Printf("Server starting on port %s", cfg.Port)
 	if err := r.Run(":" + cfg.Port); err != nil {

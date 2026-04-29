@@ -92,3 +92,32 @@ type EmailVerificationToken struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 }
+
+type GitHubInstallation struct {
+	Base
+
+	UserID         uuid.UUID `json:"user_id"`
+	AppID          int64     `json:"app_id"`
+	InstallationID int64     `json:"installation_id"`
+	RepositoryName string    `json:"repository_name"`
+	Branch         string    `json:"branch"`
+
+	User User `json:"-"`
+}
+
+type GitHubPushEvent struct {
+	Ref        string `json:"ref"`
+	Before     string `json:"before"`
+	After      string `json:"after"`
+	Repository struct {
+		ID       int64  `json:"id"`
+		Name     string `json:"name"`
+		FullName string `json:"full_name"`
+	} `json:"repository"`
+	Installation struct {
+		ID int64 `json:"id"`
+	} `json:"installation"`
+	Sender struct {
+		Login string `json:"login"`
+	} `json:"sender"`
+}

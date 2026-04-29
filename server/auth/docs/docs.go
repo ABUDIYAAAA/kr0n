@@ -16,6 +16,164 @@ const docTemplate = `{
     "host": "{{.Host}}",
     "basePath": "{{.BasePath}}",
     "paths": {
+        "/auth/email/verification": {
+            "post": {
+                "description": "Sends a verification email if the account exists and is unverified.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Resend verification email",
+                "parameters": [
+                    {
+                        "description": "Resend payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.ResendVerificationRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "202": {
+                        "description": "Accepted",
+                        "schema": {
+                            "$ref": "#/definitions/auth.MessageResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/email/verify": {
+            "post": {
+                "description": "Marks the user email as verified using the provided token.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Verify email",
+                "parameters": [
+                    {
+                        "description": "Verification payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.VerifyEmailRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid token",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/github": {
+            "get": {
+                "description": "Redirects the user to GitHub's OAuth consent screen.",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Initiate GitHub OAuth",
+                "responses": {
+                    "307": {
+                        "description": "Temporary Redirect"
+                    }
+                }
+            }
+        },
+        "/auth/github/callback": {
+            "get": {
+                "description": "Validates OAuth state and code, creates/logs in the user, and sets a session cookie.",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "GitHub OAuth callback",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "OAuth code",
+                        "name": "code",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "OAuth state",
+                        "name": "state",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth.LoginResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Missing code or state",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid state",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal error",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/github/connect": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Redirects the user to GitHub's OAuth consent screen to connect a provider.",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Connect GitHub account",
+                "responses": {
+                    "307": {
+                        "description": "Temporary Redirect"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/google": {
             "get": {
                 "description": "Redirects the user to Google's OAuth consent screen.",
@@ -81,6 +239,74 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/google/connect": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Redirects the user to Google's OAuth consent screen to connect a provider.",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Connect Google account",
+                "responses": {
+                    "307": {
+                        "description": "Temporary Redirect"
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/login": {
+            "post": {
+                "description": "Logs in using email and password and sets the session cookie.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Login with password",
+                "parameters": [
+                    {
+                        "description": "Login payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.LoginRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth.LoginResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Invalid credentials",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "403": {
+                        "description": "Email not verified",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/auth/logout": {
             "post": {
                 "security": [
@@ -121,6 +347,51 @@ const docTemplate = `{
                     "auth"
                 ],
                 "summary": "Get current user",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth.LoginResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/providers": {
+            "get": {
+                "description": "Returns which auth providers are configured on the server.",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "List configured providers",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ProvidersResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/refresh": {
+            "post": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Rotates the current session token and extends its expiration time.",
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Refresh session",
                 "responses": {
                     "200": {
                         "description": "OK",
@@ -240,6 +511,49 @@ const docTemplate = `{
                 }
             }
         },
+        "/auth/signup": {
+            "post": {
+                "description": "Creates a user with email and password and triggers email verification.",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "auth"
+                ],
+                "summary": "Create account",
+                "parameters": [
+                    {
+                        "description": "Signup payload",
+                        "name": "payload",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/auth.SignupRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/auth.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid input",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "409": {
+                        "description": "Email already in use",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
         "/db-check": {
             "get": {
                 "description": "Pings the database and returns connectivity status",
@@ -297,6 +611,21 @@ const docTemplate = `{
                 }
             }
         },
+        "auth.LoginRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
         "auth.LoginResponse": {
             "type": "object",
             "properties": {
@@ -314,6 +643,42 @@ const docTemplate = `{
                 "message": {
                     "type": "string",
                     "example": "success message"
+                }
+            }
+        },
+        "auth.ProviderStatus": {
+            "type": "object",
+            "properties": {
+                "configured": {
+                    "type": "boolean"
+                },
+                "scopes": {
+                    "type": "array",
+                    "items": {
+                        "type": "string"
+                    }
+                }
+            }
+        },
+        "auth.ProvidersResponse": {
+            "type": "object",
+            "properties": {
+                "providers": {
+                    "type": "object",
+                    "additionalProperties": {
+                        "$ref": "#/definitions/auth.ProviderStatus"
+                    }
+                }
+            }
+        },
+        "auth.ResendVerificationRequest": {
+            "type": "object",
+            "required": [
+                "email"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
                 }
             }
         },
@@ -354,6 +719,24 @@ const docTemplate = `{
                 }
             }
         },
+        "auth.SignupRequest": {
+            "type": "object",
+            "required": [
+                "email",
+                "password"
+            ],
+            "properties": {
+                "email": {
+                    "type": "string"
+                },
+                "name": {
+                    "type": "string"
+                },
+                "password": {
+                    "type": "string"
+                }
+            }
+        },
         "auth.UserResponse": {
             "type": "object",
             "properties": {
@@ -373,6 +756,17 @@ const docTemplate = `{
                     "type": "string"
                 },
                 "name": {
+                    "type": "string"
+                }
+            }
+        },
+        "auth.VerifyEmailRequest": {
+            "type": "object",
+            "required": [
+                "token"
+            ],
+            "properties": {
+                "token": {
                     "type": "string"
                 }
             }
