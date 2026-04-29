@@ -1,4 +1,5 @@
 import Image from "next/image";
+import Link from "next/link";
 
 export default function Home() {
   return (
@@ -28,13 +29,17 @@ export default function Home() {
           </div>
 
           <div className="flex gap-4 items-center">
-            <button className="text-xs font-bold uppercase text-white/50 hover:text-white px-4 py-2">
+            <Link
+              href="/authentication/login"
+              className="text-xs font-bold uppercase text-white/50 hover:text-white px-4 py-2">
               LOGIN
-            </button>
+            </Link>
 
-            <button className="bg-white text-black text-xs font-bold px-6 py-2 clipped-btn-reverse hover:bg-zinc-200">
+            <Link
+              href="/authentication/signup"
+              className="bg-white text-black text-xs font-bold px-6 py-2 clipped-btn-reverse hover:bg-zinc-200">
               SIGN UP
-            </button>
+            </Link>
           </div>
         </nav>
       </header>
@@ -206,7 +211,12 @@ export default function Home() {
       <footer className="border-t border-white/10 bg-black">
         <div className="max-w-7xl mx-auto px-12 py-16 flex flex-col md:flex-row justify-between gap-8">
           <div>
-            <span className="text-xl font-black text-white">KRON</span>
+            <span
+              className="text-xl font-black text-white
+  [-webkit-text-stroke:0.6px_rgba(255,255,255,0.25)]
+  [text-shadow:0_0_3px_rgba(255,255,255,0.18)]">
+              KRON
+            </span>
             <p className="text-xs text-zinc-600 mt-4 font-mono uppercase">
               © 2024 KRON SYSTEMS
             </p>

@@ -32,10 +32,10 @@ export default function Login() {
               </button>
 
               {/* GITHUB */}
-              <button className="w-full flex items-center justify-center gap-3 py-3 border border-white/20 hover:cursor-pointer">
+              <button className="group w-full flex items-center justify-center gap-3 border border-white/20 py-3 hover:bg-white hover:text-black transition-none">
                 <img
                   src="https://www.svgrepo.com/show/512317/github-142.svg"
-                  className="w-5 h-5 invert"
+                  className="w-5 h-5 invert group-hover:invert-0"
                 />
 
                 <span className="text-[12px] font-semibold uppercase tracking-widest">

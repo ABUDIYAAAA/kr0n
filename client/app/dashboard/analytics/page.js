@@ -145,7 +145,9 @@ export default function AnalyticsPage() {
                     key={project}
                     onClick={() => {
                       setSelected(project);
-                      router.push(`/dashboard/analytics/${project}`);
+                      router.push(
+                        `/dashboard/analytics/projectanalysis?project=${encodeURIComponent(project)}`,
+                      );
                     }}
                     className={`w-full flex items-center gap-4 px-6 py-4 text-left ${
                       selected === project

@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 export default function Signup() {
   return (
     <div className="bg-[#0d0e0f] text-[#e3e2e2] min-h-screen flex flex-col relative overflow-hidden">
@@ -20,9 +22,11 @@ export default function Signup() {
         </div>
 
         <div>
-          <a className="text-white text-xs uppercase tracking-widest border border-white/20 px-4 py-2 hover:bg-white hover:text-black">
+          <Link
+            href="/authentication/login"
+            className="text-white text-xs uppercase tracking-widest border border-white/20 px-4 py-2 hover:bg-white hover:text-black">
             LOGIN
-          </a>
+          </Link>
         </div>
       </header>
 
@@ -112,7 +116,9 @@ export default function Signup() {
             <div className="text-center pt-2">
               <p className="text-zinc-500 text-xs">
                 Already have an account?{" "}
-                <a className="text-white hover:underline">Login</a>
+                <Link href="/authentication/login" className="text-white hover:underline">
+                  Login
+                </Link>
               </p>
             </div>
           </div>
