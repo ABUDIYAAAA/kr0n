@@ -212,11 +212,13 @@ func (s *Service) SignupWithPassword(ctx context.Context, email, password string
 		return nil, err
 	}
 
-	_ = s.emailSender.SendVerificationEmail(ctx, VerificationEmailPayload{
+	if err := s.emailSender.SendVerificationEmail(ctx, VerificationEmailPayload{
 		Email: user.Email,
 		Name:  user.Name,
 		Token: verificationToken,
-	})
+	}); err != nil {
+		return nil, ErrEmailDispatchFailed
+	}
 
 	return user, nil
 }
@@ -281,11 +283,13 @@ func (s *Service) RequestEmailVerification(ctx context.Context, email string) er
 		return err
 	}
 
-	_ = s.emailSender.SendVerificationEmail(ctx, VerificationEmailPayload{
+	if err := s.emailSender.SendVerificationEmail(ctx, VerificationEmailPayload{
 		Email: user.Email,
 		Name:  user.Name,
 		Token: token,
-	})
+	}); err != nil {
+		return err
+	}
 
 	return nil
 }

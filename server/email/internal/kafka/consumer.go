@@ -77,9 +77,16 @@ func (c *Consumer) processMessage(ctx context.Context, payload []byte) error {
 		return err
 	}
 
+	if err := emailsvc.RejectReason(envelope); err != nil {
+		return err
+	}
+
 	var lastErr error
 	for attempt := 1; attempt <= c.retryLimit; attempt++ {
 		lastErr = c.handler.Handle(ctx, envelope)
+		if errors.Is(lastErr, emailsvc.ErrRejectedEvent) || errors.Is(lastErr, emailsvc.ErrInvalidEnvelope) {
+			return lastErr
+		}
 		if lastErr == nil {
 			return nil
 		}

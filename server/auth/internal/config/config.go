@@ -12,6 +12,9 @@ import (
 type Config struct {
 	DatabaseURL              string
 	Port                     string
+	EmailKafkaBroker         string
+	EmailKafkaTopic          string
+	AuthPublicURL            string
 	AuthSessionTTL           time.Duration
 	AuthEmailVerificationTTL time.Duration
 	AuthCookieName           string
@@ -46,6 +49,9 @@ func Load() (*Config, error) {
 	cfg := &Config{
 		DatabaseURL:              getString("DATABASE_URL", ""),
 		Port:                     getString("PORT", "8080"),
+		EmailKafkaBroker:         getString("EMAIL_KAFKA_BROKER", getString("KAFKA_BROKER", "localhost:9092")),
+		EmailKafkaTopic:          getString("EMAIL_KAFKA_TOPIC", getString("KAFKA_TOPIC", "emails.outbound")),
+		AuthPublicURL:            getString("AUTH_PUBLIC_URL", "http://localhost:8080"),
 		AuthSessionTTL:           getDuration("AUTH_SESSION_TTL", 30*24*time.Hour),
 		AuthEmailVerificationTTL: getDuration("AUTH_EMAIL_VERIFICATION_TTL", 24*time.Hour),
 		AuthCookieName:           getString("AUTH_COOKIE_NAME", "kr0n_session"),

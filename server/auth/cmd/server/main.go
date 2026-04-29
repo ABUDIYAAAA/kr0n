@@ -5,6 +5,7 @@ import (
 	"auth/internal/config"
 	"auth/internal/database"
 	"auth/internal/health"
+	"auth/internal/producer"
 	"log"
 	"strings"
 
@@ -37,15 +38,6 @@ func main() {
 		HTTPOnly: true,
 		SameSite: auth.ParseSameSite(cfg.AuthCookieSameSite),
 	}
-	if cookieCfg.Name == "" {
-		cookieCfg.Name = "kr0n_session"
-	}
-	if cookieCfg.Path == "" {
-		cookieCfg.Path = "/"
-	}
-	if !cookieCfg.HTTPOnly {
-		cookieCfg.HTTPOnly = true
-	}
 
 	googleCfg := auth.GoogleOAuthConfig{
 		ClientID:     cfg.GoogleOAuthClientID,
@@ -61,10 +53,18 @@ func main() {
 		Scopes:       strings.Fields(cfg.GitHubOAuthScopes),
 	}
 
+	emailProducer := producer.New(producer.Config{
+		Broker:    cfg.EmailKafkaBroker,
+		Topic:     cfg.EmailKafkaTopic,
+		PublicURL: cfg.AuthPublicURL,
+		AppName:   "kr0n-auth",
+	})
+	defer emailProducer.Close()
+
 	authModuleCfg := auth.ModuleConfig{
 		SessionTTL:           cfg.AuthSessionTTL,
 		EmailVerificationTTL: cfg.AuthEmailVerificationTTL,
-		EmailSender:          auth.NoopEmailSender{},
+		EmailSender:          emailProducer,
 		SessionCookie:        cookieCfg,
 		GoogleOAuth:          googleCfg,
 		GitHubOAuth:          githubCfg,

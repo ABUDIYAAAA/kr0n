@@ -45,6 +45,9 @@ func (h *Handler) Handle(ctx context.Context, envelope Envelope) error {
 	if err := validateEnvelope(envelope); err != nil {
 		return err
 	}
+	if err := RejectReason(envelope); err != nil {
+		return err
+	}
 
 	to := normalizeList(envelope.To)
 	cc := normalizeList(envelope.Cc)
