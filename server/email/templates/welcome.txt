@@ -1,0 +1,3 @@
+Welcome {{ .Name }},
+
+Your account is ready. You can now connect repositories and start receiving deployment notifications.
