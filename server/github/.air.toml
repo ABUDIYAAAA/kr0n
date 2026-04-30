@@ -11,7 +11,7 @@ tmp_dir = "tmp"
   cmd = "go build -o ./tmp/main ./cmd/server"
   delay = 1000
   entrypoint = ["./tmp/main"]
-  exclude_dir = ["assets", "tmp", "vendor", "testdata"]
+  exclude_dir = ["assets", "tmp", "vendor", "testdata", "docs"]
   exclude_file = []
   exclude_regex = ["_test.go"]
   exclude_unchanged = false
@@ -26,7 +26,7 @@ tmp_dir = "tmp"
   poll = false
   poll_interval = 0
   post_cmd = []
-  pre_cmd = []
+  pre_cmd = ["swag init -g cmd/server/main.go -o docs --parseInternal --generatedTime=false --quiet"]
   rerun = false
   rerun_delay = 500
   send_interrupt = false

@@ -515,16 +515,3 @@ func (s *Service) GetGitHubInstallationsByUserID(ctx context.Context, userID uui
 	return s.repo.GetGitHubInstallationsByUserID(ctx, userID)
 }
 
-func (s *Service) GetGitHubInstallationByInstallationID(ctx context.Context, installationID int64) (*GitHubInstallation, error) {
-	if installationID == 0 {
-		return nil, ErrInvalidInput
-	}
-	return s.repo.GetGitHubInstallationByInstallationID(ctx, installationID)
-}
-
-func (s *Service) DeleteGitHubInstallationByInstallationID(ctx context.Context, installationID int64) error {
-	if installationID == 0 {
-		return ErrInvalidInput
-	}
-	return s.repo.DeleteGitHubInstallationByInstallationID(ctx, installationID)
-}

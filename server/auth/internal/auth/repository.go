@@ -483,24 +483,6 @@ func (r *Repository) SaveGitHubInstallation(ctx context.Context, install *GitHub
 	return &out, nil
 }
 
-func (r *Repository) GetGitHubInstallationByUserAndInstallation(ctx context.Context, userID uuid.UUID, installationID int64) (*GitHubInstallation, error) {
-	query := `
-	SELECT id, user_id, app_id, installation_id, repository_name, branch, created_at, updated_at
-	FROM github_installations
-	WHERE user_id = $1 AND installation_id = $2
-	`
-	var install GitHubInstallation
-	err := r.db.QueryRow(ctx, query, userID, installationID).
-		Scan(&install.ID, &install.UserID, &install.AppID, &install.InstallationID, &install.RepositoryName, &install.Branch, &install.CreatedAt, &install.UpdatedAt)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrNotFound
-		}
-		return nil, err
-	}
-	return &install, nil
-}
-
 func (r *Repository) GetGitHubInstallationsByUserID(ctx context.Context, userID uuid.UUID) ([]GitHubInstallation, error) {
 	query := `
 	SELECT id, user_id, app_id, installation_id, repository_name, branch, created_at, updated_at
@@ -527,33 +509,3 @@ func (r *Repository) GetGitHubInstallationsByUserID(ctx context.Context, userID 
 	return installations, rows.Err()
 }
 
-func (r *Repository) GetGitHubInstallationByInstallationID(ctx context.Context, installationID int64) (*GitHubInstallation, error) {
-	query := `
-	SELECT id, user_id, app_id, installation_id, repository_name, branch, created_at, updated_at
-	FROM github_installations
-	WHERE installation_id = $1
-	LIMIT 1
-	`
-	var install GitHubInstallation
-	err := r.db.QueryRow(ctx, query, installationID).
-		Scan(&install.ID, &install.UserID, &install.AppID, &install.InstallationID, &install.RepositoryName, &install.Branch, &install.CreatedAt, &install.UpdatedAt)
-	if err != nil {
-		if errors.Is(err, pgx.ErrNoRows) {
-			return nil, ErrNotFound
-		}
-		return nil, err
-	}
-	return &install, nil
-}
-
-func (r *Repository) DeleteGitHubInstallationByInstallationID(ctx context.Context, installationID int64) error {
-	query := `DELETE FROM github_installations WHERE installation_id = $1`
-	res, err := r.db.Exec(ctx, query, installationID)
-	if err != nil {
-		return err
-	}
-	if res.RowsAffected() == 0 {
-		return ErrNotFound
-	}
-	return nil
-}

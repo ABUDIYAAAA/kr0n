@@ -592,48 +592,6 @@
                     }
                 }
             }
-        },
-        "/webhooks/github": {
-            "post": {
-                "description": "Receives and processes GitHub webhook events (push, installation).",
-                "consumes": [
-                    "application/json"
-                ],
-                "tags": [
-                    "webhooks"
-                ],
-                "summary": "GitHub webhook receiver",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "HMAC signature",
-                        "name": "X-Hub-Signature-256",
-                        "in": "header",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "Event type",
-                        "name": "X-GitHub-Event",
-                        "in": "header",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/auth.MessageResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Invalid signature or event",
-                        "schema": {
-                            "$ref": "#/definitions/auth.ErrorResponse"
-                        }
-                    }
-                }
-            }
         }
     },
     "definitions": {

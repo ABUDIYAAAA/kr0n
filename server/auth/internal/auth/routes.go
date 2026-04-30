@@ -14,7 +14,6 @@ type ModuleConfig struct {
 	SessionCookie        CookieConfig
 	GoogleOAuth          GoogleOAuthConfig
 	GitHubApp            GitHubAppConfig
-	GitHubWebhookSecret  string
 }
 
 
@@ -28,7 +27,7 @@ func RegisterRoutes(r *gin.Engine, db *pgxpool.Pool, cfg ModuleConfig) {
 		EmailSender:          cfg.EmailSender,
 	})
 
-	h := NewHandler(svc, cfg.SessionCookie, cfg.GoogleOAuth, cfg.GitHubApp, cfg.GitHubWebhookSecret)
+	h := NewHandler(svc, cfg.SessionCookie, cfg.GoogleOAuth, cfg.GitHubApp)
 
 	authMiddleware := AuthMiddleware(svc, cfg.SessionCookie)
 	optionalAuthMiddleware := OptionalAuthMiddleware(svc, cfg.SessionCookie)
@@ -69,9 +68,4 @@ func RegisterRoutesWithHandler(r *gin.Engine, h *Handler, authMiddleware gin.Han
 		}
 	}
 
-	// Webhook routes (public, no auth)
-	webhooks := r.Group("/webhooks")
-	{
-		webhooks.POST("/github", h.WebhookGitHub)
-	}
 }

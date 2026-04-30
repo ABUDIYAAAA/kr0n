@@ -71,7 +71,6 @@ func main() {
 		SessionCookie:        cookieCfg,
 		GoogleOAuth:          googleCfg,
 		GitHubApp:            githubAppCfg,
-		GitHubWebhookSecret:  cfg.GitHubWebHookSecret,
 	}
 
 	auth.RegisterRoutes(r, pool, authModuleCfg)

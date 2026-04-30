@@ -1,0 +1,409 @@
+basePath: /
+definitions:
+  ghub.ErrorResponse:
+    properties:
+      error:
+        example: error message
+        type: string
+    type: object
+  ghub.InstallationResponse:
+    properties:
+      account_login:
+        type: string
+      account_type:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      installation_id:
+        type: integer
+      suspended:
+        type: boolean
+    type: object
+  ghub.LinkRepoRequest:
+    properties:
+      auto_deploy:
+        type: boolean
+      branch:
+        type: string
+      project_id:
+        type: string
+    required:
+    - project_id
+    type: object
+  ghub.MessageResponse:
+    properties:
+      message:
+        example: success message
+        type: string
+    type: object
+  ghub.ProjectRepoLinkResponse:
+    properties:
+      auto_deploy:
+        type: boolean
+      branch:
+        type: string
+      created_at:
+        type: string
+      id:
+        type: string
+      project_id:
+        type: string
+      repository:
+        $ref: '#/definitions/ghub.RepositoryResponse'
+    type: object
+  ghub.RepoAccessResponse:
+    properties:
+      archive_url:
+        type: string
+      clone_url:
+        type: string
+      expires_at:
+        type: string
+      token:
+        type: string
+    type: object
+  ghub.RepositoryResponse:
+    properties:
+      created_at:
+        type: string
+      default_branch:
+        type: string
+      full_name:
+        type: string
+      github_repo_id:
+        type: integer
+      id:
+        type: string
+      installation_id:
+        type: integer
+      name:
+        type: string
+      owner:
+        type: string
+      private:
+        type: boolean
+    type: object
+  health.HealthResponse:
+    properties:
+      status:
+        example: ok
+        type: string
+    type: object
+  health.ReadyResponse:
+    properties:
+      database:
+        example: ok
+        type: string
+      environment:
+        example: production
+        type: string
+      kafka:
+        example: ok
+        type: string
+      smtp:
+        example: ok
+        type: string
+      status:
+        example: ready
+        type: string
+      template_dir:
+        example: templates
+        type: string
+    type: object
+info:
+  contact: {}
+  description: GitHub App webhook + repo management service for kr0n.
+  title: GitHub Integration API
+  version: "1.0"
+paths:
+  /api/installations:
+    get:
+      description: Returns all GitHub App installations tracked by this service
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/ghub.InstallationResponse'
+            type: array
+      summary: List all GitHub App installations
+      tags:
+      - installations
+  /api/installations/{installation_id}/repos:
+    get:
+      description: Returns all repositories associated with a GitHub App installation
+      parameters:
+      - description: GitHub Installation ID
+        in: path
+        name: installation_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/ghub.RepositoryResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ghub.ErrorResponse'
+      summary: List repositories for an installation
+      tags:
+      - repositories
+  /api/installations/{installation_id}/repos/sync:
+    post:
+      description: Fetches the latest repos from GitHub API and upserts them
+      parameters:
+      - description: GitHub Installation ID
+        in: path
+        name: installation_id
+        required: true
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/ghub.RepositoryResponse'
+            type: array
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ghub.ErrorResponse'
+      summary: Sync repositories from GitHub
+      tags:
+      - repositories
+  /api/links:
+    get:
+      description: Returns the repository link configuration for a given project ID
+      parameters:
+      - description: Project UUID
+        in: query
+        name: project_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ghub.ProjectRepoLinkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ghub.ErrorResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ghub.ErrorResponse'
+      summary: Get the repository link for a project
+      tags:
+      - project-links
+  /api/links/{id}:
+    delete:
+      description: Removes a specific project-repo link
+      parameters:
+      - description: Link UUID
+        in: path
+        name: id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ghub.MessageResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ghub.ErrorResponse'
+      summary: Delete a project-repo link by ID
+      tags:
+      - project-links
+  /api/repos:
+    get:
+      description: Returns all tracked repositories, optionally filtered by installation_id
+      parameters:
+      - description: Filter by installation ID
+        in: query
+        name: installation_id
+        type: integer
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/ghub.RepositoryResponse'
+            type: array
+      summary: List all repositories
+      tags:
+      - repositories
+  /api/repos/{repo_id}/archive:
+    get:
+      description: Returns a signed archive URL and token for build workers
+      parameters:
+      - description: Repository UUID
+        in: path
+        name: repo_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ghub.RepoAccessResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ghub.ErrorResponse'
+      summary: Get authenticated archive URL for a repository
+      tags:
+      - repo-access
+  /api/repos/{repo_id}/clone-url:
+    get:
+      description: Returns an authenticated clone URL and token for build workers
+      parameters:
+      - description: Repository UUID
+        in: path
+        name: repo_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ghub.RepoAccessResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ghub.ErrorResponse'
+      summary: Get authenticated clone URL for a repository
+      tags:
+      - repo-access
+  /api/repos/{repo_id}/link:
+    delete:
+      description: Removes the deployment binding for a repository
+      parameters:
+      - description: Repository UUID
+        in: path
+        name: repo_id
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ghub.MessageResponse'
+        "404":
+          description: Not Found
+          schema:
+            $ref: '#/definitions/ghub.ErrorResponse'
+      summary: Unlink a repository from its project
+      tags:
+      - project-links
+    post:
+      consumes:
+      - application/json
+      description: Binds a repository to a deployment project for auto-deploy
+      parameters:
+      - description: Repository UUID
+        in: path
+        name: repo_id
+        required: true
+        type: string
+      - description: Link configuration
+        in: body
+        name: body
+        required: true
+        schema:
+          $ref: '#/definitions/ghub.LinkRepoRequest'
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/ghub.ProjectRepoLinkResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ghub.ErrorResponse'
+        "409":
+          description: Conflict
+          schema:
+            $ref: '#/definitions/ghub.ErrorResponse'
+      summary: Link a repository to a project
+      tags:
+      - project-links
+  /health:
+    get:
+      description: Returns API health status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/health.HealthResponse'
+      summary: Health check
+      tags:
+      - health
+  /ready:
+    get:
+      description: Returns dependency readiness status
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/health.ReadyResponse'
+      summary: Readiness check
+      tags:
+      - health
+  /webhooks/github:
+    post:
+      consumes:
+      - application/json
+      description: Receives and processes webhook events from GitHub (push, installation,
+        etc.)
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/ghub.MessageResponse'
+        "400":
+          description: Bad Request
+          schema:
+            $ref: '#/definitions/ghub.ErrorResponse'
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/ghub.ErrorResponse'
+      summary: Handle GitHub webhook events
+      tags:
+      - webhooks
+swagger: "2.0"

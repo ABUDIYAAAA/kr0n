@@ -25,7 +25,6 @@ type Config struct {
 	GoogleOAuthClientSecret  string
 	GoogleOAuthRedirectURL   string
 	GoogleOAuthScopes        string
-	GitHubWebHookSecret      string
 	GitHubAppID              string
 	GitHubAppName            string
 	GitHubAppClientID        string
@@ -62,7 +61,6 @@ func Load() (*Config, error) {
 		GoogleOAuthClientSecret:  getString("GOOGLE_OAUTH_CLIENT_SECRET", ""),
 		GoogleOAuthRedirectURL:   getString("GOOGLE_OAUTH_REDIRECT_URL", ""),
 		GoogleOAuthScopes:        getString("GOOGLE_OAUTH_SCOPES", "openid email profile"),
-		GitHubWebHookSecret:      getString("GITHUB_WEBHOOK_SECRET", ""),
 		GitHubAppID:              getString("GITHUB_APP_ID", ""),
 		GitHubAppName:            getString("GITHUB_APP_NAME", ""),
 		GitHubAppClientID:        getString("GITHUB_APP_CLIENT_ID", ""),

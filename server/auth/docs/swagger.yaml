@@ -507,32 +507,4 @@ paths:
       summary: Health check
       tags:
       - health
-  /webhooks/github:
-    post:
-      consumes:
-      - application/json
-      description: Receives and processes GitHub webhook events (push, installation).
-      parameters:
-      - description: HMAC signature
-        in: header
-        name: X-Hub-Signature-256
-        required: true
-        type: string
-      - description: Event type
-        in: header
-        name: X-GitHub-Event
-        required: true
-        type: string
-      responses:
-        "200":
-          description: OK
-          schema:
-            $ref: '#/definitions/auth.MessageResponse'
-        "400":
-          description: Invalid signature or event
-          schema:
-            $ref: '#/definitions/auth.ErrorResponse'
-      summary: GitHub webhook receiver
-      tags:
-      - webhooks
 swagger: "2.0"

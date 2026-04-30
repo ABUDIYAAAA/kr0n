@@ -105,19 +105,3 @@ type GitHubInstallation struct {
 	User User `json:"-"`
 }
 
-type GitHubPushEvent struct {
-	Ref        string `json:"ref"`
-	Before     string `json:"before"`
-	After      string `json:"after"`
-	Repository struct {
-		ID       int64  `json:"id"`
-		Name     string `json:"name"`
-		FullName string `json:"full_name"`
-	} `json:"repository"`
-	Installation struct {
-		ID int64 `json:"id"`
-	} `json:"installation"`
-	Sender struct {
-		Login string `json:"login"`
-	} `json:"sender"`
-}

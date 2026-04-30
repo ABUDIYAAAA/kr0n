@@ -61,12 +61,11 @@ type Handler struct {
 	githubStateCookieCfg CookieConfig
 	googleCfg            GoogleOAuthConfig
 	githubAppCfg         GitHubAppConfig
-	webhookSecret        string
 	httpClient           *http.Client
 }
 
 
-func NewHandler(svc *Service, sessionCookieCfg CookieConfig, googleCfg GoogleOAuthConfig, githubAppCfg GitHubAppConfig, webhookSecret string) *Handler {
+func NewHandler(svc *Service, sessionCookieCfg CookieConfig, googleCfg GoogleOAuthConfig, githubAppCfg GitHubAppConfig) *Handler {
 
 	if len(googleCfg.Scopes) == 0 {
 		googleCfg.Scopes = strings.Fields(defaultGoogleScopes)
@@ -101,7 +100,6 @@ func NewHandler(svc *Service, sessionCookieCfg CookieConfig, googleCfg GoogleOAu
 		githubStateCookieCfg: githubStateCookieCfg,
 		googleCfg:            googleCfg,
 		githubAppCfg:         githubAppCfg,
-		webhookSecret:        webhookSecret,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
 		},
@@ -759,120 +757,6 @@ func (h *Handler) GitHubInstallations(c *gin.Context) {
 	})
 }
 
-// WebhookGitHub receives GitHub webhook events.
-// @Summary GitHub webhook receiver
-// @Description Receives and processes GitHub webhook events (push, installation).
-// @Tags webhooks
-// @Accept json
-// @Param X-Hub-Signature-256 header string true "HMAC signature"
-// @Param X-GitHub-Event header string true "Event type"
-// @Success 200 {object} MessageResponse
-// @Failure 400 {object} ErrorResponse "Invalid signature or event"
-// @Router /webhooks/github [post]
-func (h *Handler) WebhookGitHub(c *gin.Context) {
-	signature := c.GetHeader("X-Hub-Signature-256")
-	if signature == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing signature"})
-		return
-	}
-
-	eventType := c.GetHeader("X-GitHub-Event")
-	if eventType == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing event type"})
-		return
-	}
-
-	body, err := c.GetRawData()
-	if err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "failed to read body"})
-		return
-	}
-
-	// Validate webhook signature
-	if !coreutils.ValidateGitHubWebhookSignature(body, signature, h.webhookSecret) {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid signature"})
-		return
-	}
-
-	eventType = coreutils.ExtractGitHubEventType(eventType)
-
-	switch eventType {
-	case "push":
-		h.handleGitHubPush(c, body)
-	case "installation":
-		h.handleGitHubInstallation(c, body)
-	default:
-		// Ignore other events silently, return 200
-		c.JSON(http.StatusOK, gin.H{"message": "event received"})
-	}
-}
-
-func (h *Handler) handleGitHubPush(c *gin.Context, payload []byte) {
-	var event GitHubPushEvent
-	if err := json.Unmarshal(payload, &event); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid push event payload"})
-		return
-	}
-
-	// Parse branch from ref
-	branch := coreutils.ParseGitHubRefToBranch(event.Ref)
-
-	// Get installation metadata
-	install, err := h.svc.GetGitHubInstallationByInstallationID(c.Request.Context(), event.Installation.ID)
-	if err != nil {
-		// Installation not found; silently return 200 (webhook sent before installation saved)
-		c.JSON(http.StatusOK, gin.H{"message": "event received"})
-		return
-	}
-
-	// Verify branch matches installation config
-	if install.Branch != "" && install.Branch != branch {
-		c.JSON(http.StatusOK, gin.H{"message": "event received (branch mismatch)"})
-		return
-	}
-
-	// TODO: Queue deployment job or trigger pipeline
-	// For now, just log and return 200
-	c.JSON(http.StatusOK, gin.H{
-		"message":         "push event processed",
-		"installation_id": install.InstallationID,
-		"repository":      event.Repository.FullName,
-		"branch":          branch,
-		"after":           event.After,
-	})
-}
-
-func (h *Handler) handleGitHubInstallation(c *gin.Context, payload []byte) {
-	type InstallationEvent struct {
-		Action       string `json:"action"`
-		Installation struct {
-			ID int64 `json:"id"`
-		} `json:"installation"`
-	}
-
-	var event InstallationEvent
-	if err := json.Unmarshal(payload, &event); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid installation event payload"})
-		return
-	}
-
-	// Handle uninstall action by removing installation record
-	if event.Action == "deleted" {
-		if err := h.svc.DeleteGitHubInstallationByInstallationID(c.Request.Context(), event.Installation.ID); err != nil {
-			// If not found, treat as success; otherwise log error and return 500
-			if errors.Is(err, ErrNotFound) {
-				c.JSON(http.StatusOK, gin.H{"message": "installation deleted (not found)"})
-				return
-			}
-			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			return
-		}
-		c.JSON(http.StatusOK, gin.H{"message": "installation deleted"})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{"message": "installation event received"})
-}
 func (h *Handler) googleConfigured() bool {
 	return strings.TrimSpace(h.googleCfg.ClientID) != "" &&
 		strings.TrimSpace(h.googleCfg.ClientSecret) != "" &&
