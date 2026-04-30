@@ -422,6 +422,65 @@ func (h *Handler) RequestEmailVerification(c *gin.Context) {
 	c.JSON(http.StatusAccepted, gin.H{"message": "verification email sent"})
 }
 
+// ForgotPassword initiates a password reset flow.
+// @Summary Request password reset
+// @Description Sends a password reset email if the account exists and uses password auth.
+// @Tags auth
+// @Accept json
+// @Param payload body ForgotPasswordRequest true "Forgot password payload"
+// @Success 202 {object} MessageResponse
+// @Failure 400 {object} ErrorResponse "Invalid request"
+// @Router /auth/password/forgot [post]
+func (h *Handler) ForgotPassword(c *gin.Context) {
+	var req ForgotPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
+		return
+	}
+
+	if err := h.svc.RequestPasswordReset(c.Request.Context(), req.Email); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		return
+	}
+
+	c.JSON(http.StatusAccepted, gin.H{"message": "if an account exists, a reset email has been sent"})
+}
+
+// ResetPassword completes the password reset flow.
+// @Summary Reset password
+// @Description Validates the reset token and sets a new password. Invalidates all existing sessions.
+// @Tags auth
+// @Accept json
+// @Param payload body ResetPasswordRequest true "Reset password payload"
+// @Success 200 {object} MessageResponse
+// @Failure 400 {object} ErrorResponse "Invalid token or password"
+// @Router /auth/password/reset [post]
+func (h *Handler) ResetPassword(c *gin.Context) {
+	var req ResetPasswordRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "invalid request payload"})
+		return
+	}
+
+	if err := h.svc.ResetPassword(c.Request.Context(), req.Token, req.Password); err != nil {
+		switch {
+		case errors.Is(err, ErrInvalidResetToken):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid or expired reset token"})
+		case errors.Is(err, ErrPasswordTooShort):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "password must be at least 10 characters"})
+		case errors.Is(err, ErrPasswordTooLong):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "password must not exceed 128 characters"})
+		case errors.Is(err, ErrPasswordNeedsLettersAndNumbers):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "password must contain both letters and numbers"})
+		default:
+			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
+		}
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "password reset successfully"})
+}
+
 // GitHubLogin initiates the GitHub OAuth login flow.
 // @Summary Initiate GitHub OAuth
 // @Description Redirects the user to GitHub's OAuth consent screen.

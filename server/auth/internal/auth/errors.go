@@ -15,4 +15,6 @@ var (
 	ErrPasswordTooShort               = errors.New("password must be at least 10 characters")
 	ErrPasswordTooLong                = errors.New("password must not exceed 128 characters")
 	ErrPasswordNeedsLettersAndNumbers = errors.New("password must contain both letters and numbers")
+	ErrInvalidResetToken              = errors.New("invalid or expired reset token")
+	ErrNoPasswordAccount              = errors.New("account does not use password authentication")
 )

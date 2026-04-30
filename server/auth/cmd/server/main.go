@@ -67,6 +67,7 @@ func main() {
 	authModuleCfg := auth.ModuleConfig{
 		SessionTTL:           cfg.AuthSessionTTL,
 		EmailVerificationTTL: cfg.AuthEmailVerificationTTL,
+		PasswordResetTTL:     cfg.AuthPasswordResetTTL,
 		EmailSender:          emailProducer,
 		SessionCookie:        cookieCfg,
 		GoogleOAuth:          googleCfg,

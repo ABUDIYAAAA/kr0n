@@ -9,10 +9,11 @@ import (
 // --- Request DTOs ---
 
 // LinkRepoRequest binds a repository to a project for deployments.
+// ProjectID is optional — when omitted, a new project UUID is auto-generated.
 type LinkRepoRequest struct {
-	ProjectID  uuid.UUID `json:"project_id" binding:"required"`
-	Branch     string    `json:"branch"`
-	AutoDeploy *bool     `json:"auto_deploy"`
+	ProjectID  *uuid.UUID `json:"project_id,omitempty"`
+	Branch     string     `json:"branch"`
+	AutoDeploy *bool      `json:"auto_deploy"`
 }
 
 // --- Response DTOs ---

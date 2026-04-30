@@ -489,9 +489,6 @@ const docTemplate = `{
         },
         "ghub.LinkRepoRequest": {
             "type": "object",
-            "required": [
-                "project_id"
-            ],
             "properties": {
                 "auto_deploy": {
                     "type": "boolean"

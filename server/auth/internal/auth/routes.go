@@ -10,6 +10,7 @@ import (
 type ModuleConfig struct {
 	SessionTTL           time.Duration
 	EmailVerificationTTL time.Duration
+	PasswordResetTTL     time.Duration
 	EmailSender          EmailSender
 	SessionCookie        CookieConfig
 	GoogleOAuth          GoogleOAuthConfig
@@ -24,6 +25,7 @@ func RegisterRoutes(r *gin.Engine, db *pgxpool.Pool, cfg ModuleConfig) {
 	svc := NewService(repo, ServiceConfig{
 		SessionTTL:           cfg.SessionTTL,
 		EmailVerificationTTL: cfg.EmailVerificationTTL,
+		PasswordResetTTL:     cfg.PasswordResetTTL,
 		EmailSender:          cfg.EmailSender,
 	})
 
@@ -43,6 +45,9 @@ func RegisterRoutesWithHandler(r *gin.Engine, h *Handler, authMiddleware gin.Han
 		auth.POST("/login", h.Login)
 		auth.POST("/email/verify", h.VerifyEmail)
 		auth.POST("/email/verification", h.RequestEmailVerification)
+
+		auth.POST("/password/forgot", h.ForgotPassword)
+		auth.POST("/password/reset", h.ResetPassword)
 
 		auth.GET("/google", optionalAuthMiddleware, h.GoogleStart)
 		auth.GET("/google/callback", h.GoogleCallback)

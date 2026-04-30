@@ -464,6 +464,78 @@ func (r *Repository) DeleteAllSessionsByUserID(ctx context.Context, userID uuid.
 	return err
 }
 
+// --- Password Reset Tokens ---
+
+func (r *Repository) ReplacePasswordResetToken(ctx context.Context, userID uuid.UUID, tokenHash string, expiresAt time.Time) error {
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback(ctx)
+
+	if _, err := tx.Exec(ctx, `DELETE FROM password_reset_tokens WHERE user_id = $1`, userID); err != nil {
+		return err
+	}
+
+	if _, err := tx.Exec(ctx,
+		`INSERT INTO password_reset_tokens (user_id, token_hash, expires_at) VALUES ($1,$2,$3)`,
+		userID, tokenHash, expiresAt,
+	); err != nil {
+		return err
+	}
+
+	return tx.Commit(ctx)
+}
+
+func (r *Repository) ConsumePasswordResetToken(ctx context.Context, tokenHash string) (uuid.UUID, error) {
+	tx, err := r.db.BeginTx(ctx, pgx.TxOptions{})
+	if err != nil {
+		return uuid.Nil, err
+	}
+	defer tx.Rollback(ctx)
+
+	var tokenID uuid.UUID
+	var userID uuid.UUID
+	err = tx.QueryRow(ctx, `
+	SELECT id, user_id
+	FROM password_reset_tokens
+	WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()
+	FOR UPDATE
+	`, tokenHash).Scan(&tokenID, &userID)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return uuid.Nil, ErrNotFound
+		}
+		return uuid.Nil, err
+	}
+
+	if _, err := tx.Exec(ctx, `UPDATE password_reset_tokens SET used_at = now() WHERE id = $1`, tokenID); err != nil {
+		return uuid.Nil, err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return uuid.Nil, err
+	}
+
+	return userID, nil
+}
+
+func (r *Repository) UpdatePasswordHash(ctx context.Context, userID uuid.UUID, newHash string) error {
+	tag, err := r.db.Exec(ctx,
+		`UPDATE user_passwords SET password_hash = $1, updated_at = now() WHERE user_id = $2`,
+		newHash, userID,
+	)
+	if err != nil {
+		return err
+	}
+	if tag.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+	return nil
+}
+
+// --- GitHub Installations ---
+
 func (r *Repository) SaveGitHubInstallation(ctx context.Context, install *GitHubInstallation) (*GitHubInstallation, error) {
 	query := `
 	INSERT INTO github_installations (user_id, app_id, installation_id, repository_name, branch)

@@ -6,6 +6,13 @@ definitions:
         example: error message
         type: string
     type: object
+  auth.ForgotPasswordRequest:
+    properties:
+      email:
+        type: string
+    required:
+    - email
+    type: object
   auth.LoginRequest:
     properties:
       email:
@@ -51,6 +58,16 @@ definitions:
         type: string
     required:
     - email
+    type: object
+  auth.ResetPasswordRequest:
+    properties:
+      password:
+        type: string
+      token:
+        type: string
+    required:
+    - password
+    - token
     type: object
   auth.SessionListResponse:
     properties:
@@ -353,6 +370,56 @@ paths:
       security:
       - ApiKeyAuth: []
       summary: Get current user
+      tags:
+      - auth
+  /auth/password/forgot:
+    post:
+      consumes:
+      - application/json
+      description: Sends a password reset email if the account exists and uses password
+        auth.
+      parameters:
+      - description: Forgot password payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/auth.ForgotPasswordRequest'
+      responses:
+        "202":
+          description: Accepted
+          schema:
+            $ref: '#/definitions/auth.MessageResponse'
+        "400":
+          description: Invalid request
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Request password reset
+      tags:
+      - auth
+  /auth/password/reset:
+    post:
+      consumes:
+      - application/json
+      description: Validates the reset token and sets a new password. Invalidates
+        all existing sessions.
+      parameters:
+      - description: Reset password payload
+        in: body
+        name: payload
+        required: true
+        schema:
+          $ref: '#/definitions/auth.ResetPasswordRequest'
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.MessageResponse'
+        "400":
+          description: Invalid token or password
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: Reset password
       tags:
       - auth
   /auth/providers:

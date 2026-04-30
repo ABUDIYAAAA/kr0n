@@ -14,7 +14,10 @@ import (
 	kafkago "github.com/segmentio/kafka-go"
 )
 
-const defaultTemplateVerification = "verification"
+const (
+	defaultTemplateVerification  = "verification"
+	defaultTemplatePasswordReset = "password_reset"
+)
 
 type Config struct {
 	Broker    string
@@ -111,4 +114,50 @@ func (p *KafkaEmailSender) SendVerificationEmail(ctx context.Context, payload au
 		Time:  time.Now().UTC(),
 	})
 	return err
+}
+
+func (p *KafkaEmailSender) SendPasswordResetEmail(ctx context.Context, payload auth.PasswordResetEmailPayload) error {
+	if p == nil || p.writer == nil {
+		return fmt.Errorf("email producer is not initialized")
+	}
+	if strings.TrimSpace(payload.Email) == "" {
+		return auth.ErrInvalidInput
+	}
+	if strings.TrimSpace(payload.Token) == "" {
+		return auth.ErrInvalidInput
+	}
+
+	link := fmt.Sprintf("%s/auth/password/reset?token=%s", p.publicURL, url.QueryEscape(payload.Token))
+	name := "there"
+	if payload.Name != nil && strings.TrimSpace(*payload.Name) != "" {
+		name = strings.TrimSpace(*payload.Name)
+	}
+
+	envelope := Envelope{
+		MessageID: uuid.NewString(),
+		Kind:      "password_reset",
+		To:        []string{strings.TrimSpace(payload.Email)},
+		Subject:   "Reset your password",
+		Template:  defaultTemplatePasswordReset,
+		Data: map[string]any{
+			"Name": name,
+			"Link": link,
+		},
+		Metadata: map[string]string{
+			"source":  p.appName,
+			"event":   "password_reset",
+			"channel": "auth",
+		},
+	}
+
+	raw, err := json.Marshal(envelope)
+	if err != nil {
+		return err
+	}
+
+	return p.writer.WriteMessages(ctx, kafkago.Message{
+		Key:   []byte(envelope.MessageID),
+		Value: raw,
+		Time:  time.Now().UTC(),
+	})
 }

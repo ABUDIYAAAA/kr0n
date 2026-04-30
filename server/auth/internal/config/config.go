@@ -17,6 +17,7 @@ type Config struct {
 	AuthPublicURL            string
 	AuthSessionTTL           time.Duration
 	AuthEmailVerificationTTL time.Duration
+	AuthPasswordResetTTL     time.Duration
 	AuthCookieName           string
 	AuthCookieDomain         string
 	AuthCookieSecure         bool
@@ -53,6 +54,7 @@ func Load() (*Config, error) {
 		AuthPublicURL:            getString("AUTH_PUBLIC_URL", "http://localhost:8080"),
 		AuthSessionTTL:           getDuration("AUTH_SESSION_TTL", 30*24*time.Hour),
 		AuthEmailVerificationTTL: getDuration("AUTH_EMAIL_VERIFICATION_TTL", 24*time.Hour),
+		AuthPasswordResetTTL:     getDuration("AUTH_PASSWORD_RESET_TTL", 1*time.Hour),
 		AuthCookieName:           getString("AUTH_COOKIE_NAME", "kr0n_session"),
 		AuthCookieDomain:         getString("AUTH_COOKIE_DOMAIN", ""),
 		AuthCookieSecure:         getBool("AUTH_COOKIE_SECURE", true),

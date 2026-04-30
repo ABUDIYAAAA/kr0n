@@ -99,9 +99,14 @@ func (s *Service) SyncInstallationRepos(ctx context.Context, installationID int6
 // --- Project Linking ---
 
 func (s *Service) LinkRepoToProject(ctx context.Context, repoID uuid.UUID, req LinkRepoRequest) (*ProjectRepoLink, error) {
-	_, err := s.repo.GetRepoByID(ctx, repoID)
+	repo, err := s.repo.GetRepoByID(ctx, repoID)
 	if err != nil {
 		return nil, err
+	}
+
+	projectID := uuid.New()
+	if req.ProjectID != nil && *req.ProjectID != uuid.Nil {
+		projectID = *req.ProjectID
 	}
 
 	branch := strings.TrimSpace(req.Branch)
@@ -115,13 +120,33 @@ func (s *Service) LinkRepoToProject(ctx context.Context, repoID uuid.UUID, req L
 	}
 
 	link := &ProjectRepoLink{
-		ProjectID:  req.ProjectID,
+		ProjectID:  projectID,
 		RepoID:     repoID,
 		Branch:     branch,
 		AutoDeploy: autoDeploy,
 	}
 
-	return s.repo.CreateLink(ctx, link)
+	saved, err := s.repo.CreateLink(ctx, link)
+	if err != nil {
+		return nil, err
+	}
+
+	trigger := DeployTriggerEvent{
+		EventID:        uuid.NewString(),
+		EventType:      "project.linked",
+		ProjectID:      projectID.String(),
+		InstallationID: repo.InstallationID,
+		RepoID:         repoID.String(),
+		RepoFullName:   repo.FullName,
+		Branch:         branch,
+		Sender:         "system",
+		Timestamp:      time.Now().UTC().Format(time.RFC3339),
+	}
+	if err := s.publisher.PublishDeployTrigger(ctx, trigger); err != nil {
+		log.Printf("warn: failed to publish deploy trigger for new project %s: %v", projectID, err)
+	}
+
+	return saved, nil
 }
 
 func (s *Service) GetLinkByProjectID(ctx context.Context, projectID uuid.UUID) (*ProjectRepoLink, error) {

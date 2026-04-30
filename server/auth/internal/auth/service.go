@@ -22,6 +22,7 @@ type Service struct {
 	repo                 *Repository
 	sessionTTL           time.Duration
 	emailVerificationTTL time.Duration
+	passwordResetTTL     time.Duration
 	emailSender          EmailSender
 	githubAppCfg         GitHubAppConfig
 	httpClient           *http.Client
@@ -30,6 +31,7 @@ type Service struct {
 type ServiceConfig struct {
 	SessionTTL           time.Duration
 	EmailVerificationTTL time.Duration
+	PasswordResetTTL     time.Duration
 	EmailSender          EmailSender
 	GitHubAppCfg         GitHubAppConfig
 	HTTPClient           *http.Client
@@ -41,13 +43,24 @@ type VerificationEmailPayload struct {
 	Token string
 }
 
+type PasswordResetEmailPayload struct {
+	Email string
+	Name  *string
+	Token string
+}
+
 type EmailSender interface {
 	SendVerificationEmail(ctx context.Context, payload VerificationEmailPayload) error
+	SendPasswordResetEmail(ctx context.Context, payload PasswordResetEmailPayload) error
 }
 
 type NoopEmailSender struct{}
 
 func (NoopEmailSender) SendVerificationEmail(ctx context.Context, payload VerificationEmailPayload) error {
+	return nil
+}
+
+func (NoopEmailSender) SendPasswordResetEmail(ctx context.Context, payload PasswordResetEmailPayload) error {
 	return nil
 }
 
@@ -67,6 +80,11 @@ func NewService(repo *Repository, cfg ServiceConfig) *Service {
 		verificationTTL = 24 * time.Hour
 	}
 
+	resetTTL := cfg.PasswordResetTTL
+	if resetTTL <= 0 {
+		resetTTL = 1 * time.Hour
+	}
+
 	sender := cfg.EmailSender
 	if sender == nil {
 		sender = NoopEmailSender{}
@@ -76,6 +94,7 @@ func NewService(repo *Repository, cfg ServiceConfig) *Service {
 		repo:                 repo,
 		sessionTTL:           sessionTTL,
 		emailVerificationTTL: verificationTTL,
+		passwordResetTTL:     resetTTL,
 		emailSender:          sender,
 		githubAppCfg:         cfg.GitHubAppCfg,
 		httpClient:           cfg.HTTPClient,
@@ -314,6 +333,77 @@ func (s *Service) VerifyEmail(ctx context.Context, token string) error {
 		return err
 	}
 
+	return nil
+}
+
+func (s *Service) RequestPasswordReset(ctx context.Context, email string) error {
+	email = normalizeEmail(email)
+	if email == "" {
+		return nil
+	}
+
+	user, err := s.repo.GetUserByEmail(ctx, email)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return nil
+		}
+		return err
+	}
+
+	hasPassword, err := s.repo.UserHasPassword(ctx, user.ID)
+	if err != nil {
+		return err
+	}
+	if !hasPassword {
+		return nil
+	}
+
+	token, err := generateToken()
+	if err != nil {
+		return err
+	}
+
+	if err := s.repo.ReplacePasswordResetToken(ctx, user.ID, hashToken(token), time.Now().UTC().Add(s.passwordResetTTL)); err != nil {
+		return err
+	}
+
+	if err := s.emailSender.SendPasswordResetEmail(ctx, PasswordResetEmailPayload{
+		Email: user.Email,
+		Name:  user.Name,
+		Token: token,
+	}); err != nil {
+		return ErrEmailDispatchFailed
+	}
+
+	return nil
+}
+
+func (s *Service) ResetPassword(ctx context.Context, rawToken, newPassword string) error {
+	if strings.TrimSpace(rawToken) == "" {
+		return ErrInvalidResetToken
+	}
+	if err := validatePassword(newPassword); err != nil {
+		return err
+	}
+
+	userID, err := s.repo.ConsumePasswordResetToken(ctx, hashToken(rawToken))
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return ErrInvalidResetToken
+		}
+		return err
+	}
+
+	hash, err := bcrypt.GenerateFromPassword([]byte(newPassword), bcrypt.DefaultCost)
+	if err != nil {
+		return err
+	}
+
+	if err := s.repo.UpdatePasswordHash(ctx, userID, string(hash)); err != nil {
+		return err
+	}
+
+	_ = s.repo.DeleteAllSessionsByUserID(ctx, userID)
 	return nil
 }
 
