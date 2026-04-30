@@ -25,14 +25,14 @@ type Config struct {
 	GoogleOAuthClientSecret  string
 	GoogleOAuthRedirectURL   string
 	GoogleOAuthScopes        string
-	GitHubOAuthClientID      string
-	GitHubOAuthClientSecret  string
-	GitHubOAuthRedirectURL   string
-	GitHubOAuthScopes        string
 	GitHubWebHookSecret      string
 	GitHubAppID              string
+	GitHubAppName            string
+	GitHubAppClientID        string
+	GitHubAppClientSecret    string
 	GitHubAppPrivateKeyPath  string
 	GitHubAppRedirectURL     string
+	GitHubAppScopes          string
 	MaxConns                 int32
 	MinConns                 int32
 	MaxConnLifetime          time.Duration
@@ -62,14 +62,14 @@ func Load() (*Config, error) {
 		GoogleOAuthClientSecret:  getString("GOOGLE_OAUTH_CLIENT_SECRET", ""),
 		GoogleOAuthRedirectURL:   getString("GOOGLE_OAUTH_REDIRECT_URL", ""),
 		GoogleOAuthScopes:        getString("GOOGLE_OAUTH_SCOPES", "openid email profile"),
-		GitHubOAuthClientID:      getString("GITHUB_OAUTH_CLIENT_ID", ""),
-		GitHubOAuthClientSecret:  getString("GITHUB_OAUTH_CLIENT_SECRET", ""),
-		GitHubOAuthRedirectURL:   getString("GITHUB_OAUTH_REDIRECT_URL", ""),
-		GitHubOAuthScopes:        getString("GITHUB_OAUTH_SCOPES", defaultGitHubScopes),
 		GitHubWebHookSecret:      getString("GITHUB_WEBHOOK_SECRET", ""),
 		GitHubAppID:              getString("GITHUB_APP_ID", ""),
+		GitHubAppName:            getString("GITHUB_APP_NAME", ""),
+		GitHubAppClientID:        getString("GITHUB_APP_CLIENT_ID", ""),
+		GitHubAppClientSecret:    getString("GITHUB_APP_CLIENT_SECRET", ""),
 		GitHubAppPrivateKeyPath:  getString("GITHUB_APP_PRIVATE_KEY_PATH", ""),
 		GitHubAppRedirectURL:     getString("GITHUB_APP_REDIRECT_URL", ""),
+		GitHubAppScopes:          getString("GITHUB_APP_SCOPES", defaultGitHubScopes),
 
 		MaxConns: getInt32("MAX_CONNS", 20),
 		MinConns: getInt32("MIN_CONNS", 5),

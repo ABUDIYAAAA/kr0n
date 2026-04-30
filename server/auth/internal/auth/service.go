@@ -7,6 +7,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"net/http"
 	"strings"
 	"time"
 	"unicode"
@@ -22,12 +23,16 @@ type Service struct {
 	sessionTTL           time.Duration
 	emailVerificationTTL time.Duration
 	emailSender          EmailSender
+	githubAppCfg         GitHubAppConfig
+	httpClient           *http.Client
 }
 
 type ServiceConfig struct {
 	SessionTTL           time.Duration
 	EmailVerificationTTL time.Duration
 	EmailSender          EmailSender
+	GitHubAppCfg         GitHubAppConfig
+	HTTPClient           *http.Client
 }
 
 type VerificationEmailPayload struct {
@@ -72,6 +77,8 @@ func NewService(repo *Repository, cfg ServiceConfig) *Service {
 		sessionTTL:           sessionTTL,
 		emailVerificationTTL: verificationTTL,
 		emailSender:          sender,
+		githubAppCfg:         cfg.GitHubAppCfg,
+		httpClient:           cfg.HTTPClient,
 	}
 }
 
@@ -188,7 +195,7 @@ func (s *Service) HandleOAuthConnect(ctx context.Context, userID uuid.UUID, prov
 func (s *Service) SignupWithPassword(ctx context.Context, email, password string, name *string) (*User, error) {
 	email = normalizeEmail(email)
 	if email == "" {
-		return nil, ErrInvalidInput
+		return nil, ErrInvalidEmail
 	}
 	if err := validatePassword(password); err != nil {
 		return nil, err
@@ -404,6 +411,29 @@ func (s *Service) LogoutAllSessions(ctx context.Context, userID uuid.UUID) error
 	return s.repo.DeleteAllSessionsByUserID(ctx, userID)
 }
 
+func (s *Service) GetConnectedProviders(ctx context.Context, userID uuid.UUID) (map[string]bool, error) {
+	connected := map[string]bool{}
+
+	accounts, err := s.repo.ListOAuthAccountsByUserID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	for _, acc := range accounts {
+		connected[acc.Provider] = true
+	}
+
+	hasPassword, err := s.repo.UserHasPassword(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+	if hasPassword {
+		connected["password"] = true
+	}
+
+	return connected, nil
+}
+
+
 func mapSessionResponse(sess *Session) SessionResponse {
 	return SessionResponse{
 		ID:        sess.ID,
@@ -433,8 +463,11 @@ func normalizeEmail(email string) string {
 
 func validatePassword(password string) error {
 	password = strings.TrimSpace(password)
-	if len(password) < minPasswordLength || len(password) > maxPasswordLength {
-		return ErrInvalidInput
+	if len(password) < minPasswordLength {
+		return ErrPasswordTooShort
+	}
+	if len(password) > maxPasswordLength {
+		return ErrPasswordTooLong
 	}
 
 	var hasLetter bool
@@ -448,7 +481,7 @@ func validatePassword(password string) error {
 	}
 
 	if !hasLetter || !hasNumber {
-		return ErrInvalidInput
+		return ErrPasswordNeedsLettersAndNumbers
 	}
 
 	return nil

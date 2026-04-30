@@ -84,86 +84,112 @@ const docTemplate = `{
                 }
             }
         },
-        "/auth/github": {
-            "get": {
-                "description": "Redirects the user to GitHub's OAuth consent screen.",
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Initiate GitHub OAuth",
-                "responses": {
-                    "307": {
-                        "description": "Temporary Redirect"
-                    }
-                }
-            }
-        },
-        "/auth/github/callback": {
-            "get": {
-                "description": "Validates OAuth state and code, creates/logs in the user, and sets a session cookie.",
-                "tags": [
-                    "auth"
-                ],
-                "summary": "GitHub OAuth callback",
-                "parameters": [
-                    {
-                        "type": "string",
-                        "description": "OAuth code",
-                        "name": "code",
-                        "in": "query",
-                        "required": true
-                    },
-                    {
-                        "type": "string",
-                        "description": "OAuth state",
-                        "name": "state",
-                        "in": "query",
-                        "required": true
-                    }
-                ],
-                "responses": {
-                    "200": {
-                        "description": "OK",
-                        "schema": {
-                            "$ref": "#/definitions/auth.LoginResponse"
-                        }
-                    },
-                    "400": {
-                        "description": "Missing code or state",
-                        "schema": {
-                            "$ref": "#/definitions/auth.ErrorResponse"
-                        }
-                    },
-                    "401": {
-                        "description": "Invalid state",
-                        "schema": {
-                            "$ref": "#/definitions/auth.ErrorResponse"
-                        }
-                    },
-                    "500": {
-                        "description": "Internal error",
-                        "schema": {
-                            "$ref": "#/definitions/auth.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/github/connect": {
+        "/auth/github/app/callback": {
             "get": {
                 "security": [
                     {
                         "ApiKeyAuth": []
                     }
                 ],
-                "description": "Redirects the user to GitHub's OAuth consent screen to connect a provider.",
+                "description": "Saves the GitHub App installation metadata after user authorizes.",
                 "tags": [
-                    "auth"
+                    "github-app"
                 ],
-                "summary": "Connect GitHub account",
+                "summary": "GitHub App installation callback",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "GitHub installation ID",
+                        "name": "installation_id",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Repository name",
+                        "name": "repository_name",
+                        "in": "query"
+                    },
+                    {
+                        "type": "string",
+                        "description": "Branch name",
+                        "name": "branch",
+                        "in": "query"
+                    }
+                ],
                 "responses": {
-                    "307": {
-                        "description": "Temporary Redirect"
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
+                    },
+                    "400": {
+                        "description": "Missing installation_id",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/github/install": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns the GitHub App installation URL for the user to authorize.",
+                "tags": [
+                    "github-app"
+                ],
+                "summary": "Initiate GitHub App installation",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": {
+                                "type": "string"
+                            }
+                        }
+                    },
+                    "401": {
+                        "description": "Unauthorized",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/auth/github/installations": {
+            "get": {
+                "security": [
+                    {
+                        "ApiKeyAuth": []
+                    }
+                ],
+                "description": "Returns all GitHub App installations linked to the current user.",
+                "tags": [
+                    "github-app"
+                ],
+                "summary": "List GitHub App installations",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "object",
+                            "additionalProperties": true
+                        }
                     },
                     "401": {
                         "description": "Unauthorized",
@@ -232,31 +258,6 @@ const docTemplate = `{
                     },
                     "500": {
                         "description": "Internal error",
-                        "schema": {
-                            "$ref": "#/definitions/auth.ErrorResponse"
-                        }
-                    }
-                }
-            }
-        },
-        "/auth/google/connect": {
-            "get": {
-                "security": [
-                    {
-                        "ApiKeyAuth": []
-                    }
-                ],
-                "description": "Redirects the user to Google's OAuth consent screen to connect a provider.",
-                "tags": [
-                    "auth"
-                ],
-                "summary": "Connect Google account",
-                "responses": {
-                    "307": {
-                        "description": "Temporary Redirect"
-                    },
-                    "401": {
-                        "description": "Unauthorized",
                         "schema": {
                             "$ref": "#/definitions/auth.ErrorResponse"
                         }
@@ -599,6 +600,48 @@ const docTemplate = `{
                     }
                 }
             }
+        },
+        "/webhooks/github": {
+            "post": {
+                "description": "Receives and processes GitHub webhook events (push, installation).",
+                "consumes": [
+                    "application/json"
+                ],
+                "tags": [
+                    "webhooks"
+                ],
+                "summary": "GitHub webhook receiver",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "HMAC signature",
+                        "name": "X-Hub-Signature-256",
+                        "in": "header",
+                        "required": true
+                    },
+                    {
+                        "type": "string",
+                        "description": "Event type",
+                        "name": "X-GitHub-Event",
+                        "in": "header",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/auth.MessageResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Invalid signature or event",
+                        "schema": {
+                            "$ref": "#/definitions/auth.ErrorResponse"
+                        }
+                    }
+                }
+            }
         }
     },
     "definitions": {
@@ -649,7 +692,7 @@ const docTemplate = `{
         "auth.ProviderStatus": {
             "type": "object",
             "properties": {
-                "configured": {
+                "connected": {
                     "type": "boolean"
                 },
                 "scopes": {

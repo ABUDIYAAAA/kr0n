@@ -49,8 +49,8 @@ type DeliveryRecord struct {
 	Subject         string         `json:"subject"`
 	Status          DeliveryStatus `json:"status"`
 	AttemptCount    int            `json:"attempt_count"`
-	ProviderMessage string         `json:"provider_message_id,omitempty"`
-	LastError       string         `json:"last_error,omitempty"`
+	ProviderMessage *string        `json:"provider_message_id,omitempty"`
+	LastError       *string        `json:"last_error,omitempty"`
 	Payload         map[string]any `json:"payload,omitempty"`
 	CreatedAt       time.Time      `json:"created_at"`
 	UpdatedAt       time.Time      `json:"updated_at"`

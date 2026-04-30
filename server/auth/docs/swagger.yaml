@@ -31,7 +31,7 @@ definitions:
     type: object
   auth.ProviderStatus:
     properties:
-      configured:
+      connected:
         type: boolean
       scopes:
         items:
@@ -175,66 +175,79 @@ paths:
       summary: Verify email
       tags:
       - auth
-  /auth/github:
+  /auth/github/app/callback:
     get:
-      description: Redirects the user to GitHub's OAuth consent screen.
-      responses:
-        "307":
-          description: Temporary Redirect
-      summary: Initiate GitHub OAuth
-      tags:
-      - auth
-  /auth/github/callback:
-    get:
-      description: Validates OAuth state and code, creates/logs in the user, and sets
-        a session cookie.
+      description: Saves the GitHub App installation metadata after user authorizes.
       parameters:
-      - description: OAuth code
+      - description: GitHub installation ID
         in: query
-        name: code
+        name: installation_id
         required: true
         type: string
-      - description: OAuth state
+      - description: Repository name
         in: query
-        name: state
-        required: true
+        name: repository_name
+        type: string
+      - description: Branch name
+        in: query
+        name: branch
         type: string
       responses:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/auth.LoginResponse'
+            additionalProperties: true
+            type: object
         "400":
-          description: Missing code or state
+          description: Missing installation_id
           schema:
             $ref: '#/definitions/auth.ErrorResponse'
-        "401":
-          description: Invalid state
-          schema:
-            $ref: '#/definitions/auth.ErrorResponse'
-        "500":
-          description: Internal error
-          schema:
-            $ref: '#/definitions/auth.ErrorResponse'
-      summary: GitHub OAuth callback
-      tags:
-      - auth
-  /auth/github/connect:
-    get:
-      description: Redirects the user to GitHub's OAuth consent screen to connect
-        a provider.
-      responses:
-        "307":
-          description: Temporary Redirect
         "401":
           description: Unauthorized
           schema:
             $ref: '#/definitions/auth.ErrorResponse'
       security:
       - ApiKeyAuth: []
-      summary: Connect GitHub account
+      summary: GitHub App installation callback
       tags:
-      - auth
+      - github-app
+  /auth/github/install:
+    get:
+      description: Returns the GitHub App installation URL for the user to authorize.
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties:
+              type: string
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: Initiate GitHub App installation
+      tags:
+      - github-app
+  /auth/github/installations:
+    get:
+      description: Returns all GitHub App installations linked to the current user.
+      responses:
+        "200":
+          description: OK
+          schema:
+            additionalProperties: true
+            type: object
+        "401":
+          description: Unauthorized
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      security:
+      - ApiKeyAuth: []
+      summary: List GitHub App installations
+      tags:
+      - github-app
   /auth/google:
     get:
       description: Redirects the user to Google's OAuth consent screen.
@@ -277,22 +290,6 @@ paths:
           schema:
             $ref: '#/definitions/auth.ErrorResponse'
       summary: Google OAuth callback
-      tags:
-      - auth
-  /auth/google/connect:
-    get:
-      description: Redirects the user to Google's OAuth consent screen to connect
-        a provider.
-      responses:
-        "307":
-          description: Temporary Redirect
-        "401":
-          description: Unauthorized
-          schema:
-            $ref: '#/definitions/auth.ErrorResponse'
-      security:
-      - ApiKeyAuth: []
-      summary: Connect Google account
       tags:
       - auth
   /auth/login:
@@ -510,4 +507,32 @@ paths:
       summary: Health check
       tags:
       - health
+  /webhooks/github:
+    post:
+      consumes:
+      - application/json
+      description: Receives and processes GitHub webhook events (push, installation).
+      parameters:
+      - description: HMAC signature
+        in: header
+        name: X-Hub-Signature-256
+        required: true
+        type: string
+      - description: Event type
+        in: header
+        name: X-GitHub-Event
+        required: true
+        type: string
+      responses:
+        "200":
+          description: OK
+          schema:
+            $ref: '#/definitions/auth.MessageResponse'
+        "400":
+          description: Invalid signature or event
+          schema:
+            $ref: '#/definitions/auth.ErrorResponse'
+      summary: GitHub webhook receiver
+      tags:
+      - webhooks
 swagger: "2.0"

@@ -38,7 +38,9 @@ func main() {
 
 	renderer := emailsvc.NewRenderer(cfg.TemplateDir)
 	sender := smtpclient.NewClient(cfg)
+
 	if err := sender.Verify(); err != nil {
+
 		log.Panicf("SMTP verification failed: %v", err)
 	}
 	repo := emailsvc.NewPGRepository(db)

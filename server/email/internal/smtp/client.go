@@ -24,7 +24,12 @@ func NewClient(cfg *config.Config) *Client {
 	}
 
 	dialer := gomail.NewDialer(cfg.SmtpHost, port, cfg.SmtpUser, cfg.SmtpPass)
-	dialer.TLSConfig = &tls.Config{InsecureSkipVerify: cfg.SmtpInsecureSkipVerify}
+
+	dialer.TLSConfig = &tls.Config{
+		ServerName:         cfg.SmtpHost,
+		InsecureSkipVerify: cfg.SmtpInsecureSkipVerify,
+	}
+
 	if !cfg.SmtpTLSEnabled {
 		dialer.SSL = false
 	}

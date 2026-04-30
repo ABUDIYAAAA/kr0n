@@ -45,12 +45,15 @@ func main() {
 		RedirectURL:  cfg.GoogleOAuthRedirectURL,
 		Scopes:       strings.Fields(cfg.GoogleOAuthScopes),
 	}
-
-	githubCfg := auth.GitHubOAuthConfig{
-		ClientID:     cfg.GitHubOAuthClientID,
-		ClientSecret: cfg.GitHubOAuthClientSecret,
-		RedirectURL:  cfg.GitHubOAuthRedirectURL,
-		Scopes:       strings.Fields(cfg.GitHubOAuthScopes),
+	log.Println(cfg.GitHubAppClientID)
+	githubAppCfg := auth.GitHubAppConfig{
+		AppID:          cfg.GitHubAppID,
+		AppName:        cfg.GitHubAppName,
+		ClientID:       cfg.GitHubAppClientID,
+		ClientSecret:   cfg.GitHubAppClientSecret,
+		RedirectURL:    cfg.GitHubAppRedirectURL,
+		PrivateKeyPath: cfg.GitHubAppPrivateKeyPath,
+		Scopes:         strings.Fields(cfg.GitHubAppScopes),
 	}
 
 	emailProducer := producer.New(producer.Config{
@@ -67,7 +70,7 @@ func main() {
 		EmailSender:          emailProducer,
 		SessionCookie:        cookieCfg,
 		GoogleOAuth:          googleCfg,
-		GitHubOAuth:          githubCfg,
+		GitHubApp:            githubAppCfg,
 		GitHubWebhookSecret:  cfg.GitHubWebHookSecret,
 	}
 

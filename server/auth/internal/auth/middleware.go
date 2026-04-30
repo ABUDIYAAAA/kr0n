@@ -47,6 +47,33 @@ func AuthMiddleware(svc *Service, cookieCfg CookieConfig) gin.HandlerFunc {
 	}
 }
 
+func OptionalAuthMiddleware(svc *Service, cookieCfg CookieConfig) gin.HandlerFunc {
+	if cookieCfg.Path == "" {
+		cookieCfg.Path = "/"
+	}
+
+	return func(c *gin.Context) {
+		rawToken, err := c.Cookie(cookieCfg.Name)
+		if err != nil || strings.TrimSpace(rawToken) == "" {
+			c.Next()
+			return
+		}
+
+		user, session, err := svc.AuthenticateToken(c.Request.Context(), rawToken)
+		if err != nil {
+			clearCookie(c, cookieCfg)
+			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "invalid or expired session"})
+			return
+		}
+
+		c.Set(coreconstants.ContextUserKey, user)
+		c.Set(coreconstants.ContextSessionKey, session)
+		c.Set(coreconstants.ContextTokenKey, rawToken)
+		c.Next()
+	}
+}
+
+
 func CurrentUser(c *gin.Context) (*User, bool) {
 	val, exists := c.Get(coreconstants.ContextUserKey)
 	if !exists {

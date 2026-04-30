@@ -9,9 +9,11 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strconv"
 	"strings"
 	"time"
+
 
 	"github.com/google/uuid"
 
@@ -26,11 +28,8 @@ const (
 	googleUserInfoURL   = "https://openidconnect.googleapis.com/v1/userinfo"
 	defaultGoogleScopes = "openid email profile"
 
-	githubAuthURL       = "https://github.com/login/oauth/authorize"
-	githubTokenURL      = "https://github.com/login/oauth/access_token"
-	githubUserInfoURL   = "https://api.github.com/user"
-	githubUserEmailsURL = "https://api.github.com/user/emails"
 	defaultGitHubScopes = "repo read:org read:user user:email admin:repo_hook"
+
 
 	oauthStateLogin   = "login"
 	oauthStateConnect = "connect"
@@ -44,12 +43,16 @@ type GoogleOAuthConfig struct {
 	Scopes       []string
 }
 
-type GitHubOAuthConfig struct {
-	ClientID     string
-	ClientSecret string
-	RedirectURL  string
-	Scopes       []string
+type GitHubAppConfig struct {
+	AppID          string
+	AppName        string
+	ClientID       string
+	ClientSecret   string
+	RedirectURL    string
+	PrivateKeyPath string
+	Scopes         []string
 }
+
 
 type Handler struct {
 	svc                  *Service
@@ -57,19 +60,21 @@ type Handler struct {
 	googleStateCookieCfg CookieConfig
 	githubStateCookieCfg CookieConfig
 	googleCfg            GoogleOAuthConfig
-	githubCfg            GitHubOAuthConfig
+	githubAppCfg         GitHubAppConfig
 	webhookSecret        string
 	httpClient           *http.Client
 }
 
-func NewHandler(svc *Service, sessionCookieCfg CookieConfig, googleCfg GoogleOAuthConfig, githubCfg GitHubOAuthConfig, webhookSecret string) *Handler {
+
+func NewHandler(svc *Service, sessionCookieCfg CookieConfig, googleCfg GoogleOAuthConfig, githubAppCfg GitHubAppConfig, webhookSecret string) *Handler {
 
 	if len(googleCfg.Scopes) == 0 {
 		googleCfg.Scopes = strings.Fields(defaultGoogleScopes)
 	}
-	if len(githubCfg.Scopes) == 0 {
-		githubCfg.Scopes = strings.Fields(defaultGitHubScopes)
+	if len(githubAppCfg.Scopes) == 0 {
+		githubAppCfg.Scopes = strings.Fields(defaultGitHubScopes)
 	}
+
 
 	googleStateCookieCfg := CookieConfig{
 		Name:     "google_oauth_state",
@@ -83,7 +88,7 @@ func NewHandler(svc *Service, sessionCookieCfg CookieConfig, googleCfg GoogleOAu
 	githubStateCookieCfg := CookieConfig{
 		Name:     "github_oauth_state",
 		Domain:   sessionCookieCfg.Domain,
-		Path:     "/auth/github/callback",
+		Path:     "/auth/github",
 		Secure:   sessionCookieCfg.Secure,
 		HTTPOnly: true,
 		SameSite: sessionCookieCfg.SameSite,
@@ -95,7 +100,7 @@ func NewHandler(svc *Service, sessionCookieCfg CookieConfig, googleCfg GoogleOAu
 		googleStateCookieCfg: googleStateCookieCfg,
 		githubStateCookieCfg: githubStateCookieCfg,
 		googleCfg:            googleCfg,
-		githubCfg:            githubCfg,
+		githubAppCfg:         githubAppCfg,
 		webhookSecret:        webhookSecret,
 		httpClient: &http.Client{
 			Timeout: 10 * time.Second,
@@ -103,19 +108,25 @@ func NewHandler(svc *Service, sessionCookieCfg CookieConfig, googleCfg GoogleOAu
 	}
 }
 
+
 // GoogleLogin initiates the Google OAuth login flow.
 // @Summary Initiate Google OAuth
 // @Description Redirects the user to Google's OAuth consent screen.
 // @Tags auth
 // @Success 307
 // @Router /auth/google [get]
-func (h *Handler) GoogleLogin(c *gin.Context) {
+func (h *Handler) GoogleStart(c *gin.Context) {
 	if !h.googleConfigured() {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "google oauth is not configured"})
 		return
 	}
 
-	state, err := buildOAuthState(oauthStateLogin)
+	mode := oauthStateLogin
+	if _, ok := CurrentUser(c); ok {
+		mode = oauthStateConnect
+	}
+
+	state, err := buildOAuthState(mode)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "unable to initialize oauth state"})
 		return
@@ -125,34 +136,8 @@ func (h *Handler) GoogleLogin(c *gin.Context) {
 	c.Redirect(http.StatusTemporaryRedirect, h.buildGoogleAuthURL(state))
 }
 
-// GoogleConnect initiates the Google OAuth flow to link a provider to the current user.
-// @Summary Connect Google account
-// @Description Redirects the user to Google's OAuth consent screen to connect a provider.
-// @Tags auth
-// @Security ApiKeyAuth
-// @Success 307
-// @Failure 401 {object} ErrorResponse "Unauthorized"
-// @Router /auth/google/connect [get]
-func (h *Handler) GoogleConnect(c *gin.Context) {
-	if !h.googleConfigured() {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "google oauth is not configured"})
-		return
-	}
 
-	if _, ok := CurrentUser(c); !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
 
-	state, err := buildOAuthState(oauthStateConnect)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "unable to initialize oauth state"})
-		return
-	}
-
-	setStateCookie(c, h.googleStateCookieCfg, state, oauthStateTTL)
-	c.Redirect(http.StatusTemporaryRedirect, h.buildGoogleAuthURL(state))
-}
 
 // GoogleCallback handles the Google OAuth callback.
 // @Summary Google OAuth callback
@@ -284,22 +269,34 @@ func (h *Handler) GoogleCallback(c *gin.Context) {
 // @Success 200 {object} ProvidersResponse
 // @Router /auth/providers [get]
 func (h *Handler) Providers(c *gin.Context) {
+	connected := map[string]bool{}
+	if user, ok := CurrentUser(c); ok {
+		var err error
+		connected, err = h.svc.GetConnectedProviders(c.Request.Context(), user.ID)
+		if err != nil {
+			h.svc.repo.db.QueryRow(c.Request.Context(), "SELECT 1") // dummy to avoid unused error if needed, but we should handle it
+			// if err != nil, we just continue with empty connected map or log it
+		}
+	}
+
 	providers := map[string]ProviderStatus{
 		"google": {
-			Configured: h.googleConfigured(),
-			Scopes:     h.googleCfg.Scopes,
+			Connected: connected["google"],
+			Scopes:    h.googleCfg.Scopes,
 		},
 		"github": {
-			Configured: h.githubConfigured(),
-			Scopes:     h.githubCfg.Scopes,
+			Connected: connected["github"],
+			Scopes:    h.githubAppCfg.Scopes,
 		},
 		"password": {
-			Configured: true,
+			Connected: connected["password"],
 		},
 	}
 
+
 	c.JSON(http.StatusOK, ProvidersResponse{Providers: providers})
 }
+
 
 // Signup creates a password-based account.
 // @Summary Create account
@@ -322,8 +319,16 @@ func (h *Handler) Signup(c *gin.Context) {
 		switch {
 		case errors.Is(err, ErrConflict):
 			c.JSON(http.StatusConflict, gin.H{"error": "email already in use"})
+		case errors.Is(err, ErrInvalidEmail):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid email"})
+		case errors.Is(err, ErrPasswordTooShort):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "password must be at least 10 characters"})
+		case errors.Is(err, ErrPasswordTooLong):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "password must not exceed 128 characters"})
+		case errors.Is(err, ErrPasswordNeedsLettersAndNumbers):
+			c.JSON(http.StatusBadRequest, gin.H{"error": "password must contain both letters and numbers"})
 		case errors.Is(err, ErrInvalidInput):
-			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid email or password"})
+			c.JSON(http.StatusBadRequest, gin.H{"error": "invalid input"})
 		default:
 			c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		}
@@ -425,173 +430,10 @@ func (h *Handler) RequestEmailVerification(c *gin.Context) {
 // @Tags auth
 // @Success 307
 // @Router /auth/github [get]
-func (h *Handler) GitHubLogin(c *gin.Context) {
-	if !h.githubConfigured() {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "github oauth is not configured"})
-		return
-	}
 
-	state, err := buildOAuthState(oauthStateLogin)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "unable to initialize oauth state"})
-		return
-	}
 
-	setStateCookie(c, h.githubStateCookieCfg, state, oauthStateTTL)
-	c.Redirect(http.StatusTemporaryRedirect, h.buildGitHubAuthURL(state))
-}
 
-// GitHubConnect initiates the GitHub OAuth flow to link a provider to the current user.
-// @Summary Connect GitHub account
-// @Description Redirects the user to GitHub's OAuth consent screen to connect a provider.
-// @Tags auth
-// @Security ApiKeyAuth
-// @Success 307
-// @Failure 401 {object} ErrorResponse "Unauthorized"
-// @Router /auth/github/connect [get]
-func (h *Handler) GitHubConnect(c *gin.Context) {
-	if !h.githubConfigured() {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "github oauth is not configured"})
-		return
-	}
 
-	if _, ok := CurrentUser(c); !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-		return
-	}
-
-	state, err := buildOAuthState(oauthStateConnect)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "unable to initialize oauth state"})
-		return
-	}
-
-	setStateCookie(c, h.githubStateCookieCfg, state, oauthStateTTL)
-	c.Redirect(http.StatusTemporaryRedirect, h.buildGitHubAuthURL(state))
-}
-
-// GitHubCallback handles the GitHub OAuth callback.
-// @Summary GitHub OAuth callback
-// @Description Validates OAuth state and code, creates/logs in the user, and sets a session cookie.
-// @Tags auth
-// @Param code query string true "OAuth code"
-// @Param state query string true "OAuth state"
-// @Success 200 {object} LoginResponse
-// @Failure 400 {object} ErrorResponse "Missing code or state"
-// @Failure 401 {object} ErrorResponse "Invalid state"
-// @Failure 500 {object} ErrorResponse "Internal error"
-// @Router /auth/github/callback [get]
-func (h *Handler) GitHubCallback(c *gin.Context) {
-	if !h.githubConfigured() {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "github oauth is not configured"})
-		return
-	}
-
-	if errMsg := strings.TrimSpace(c.Query("error")); errMsg != "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "github oauth error: " + errMsg})
-		return
-	}
-
-	code := strings.TrimSpace(c.Query("code"))
-	state := strings.TrimSpace(c.Query("state"))
-	if code == "" || state == "" {
-		c.JSON(http.StatusBadRequest, gin.H{"error": "missing oauth code or state"})
-		return
-	}
-
-	stateFromCookie, err := c.Cookie(h.githubStateCookieCfg.Name)
-	clearCookie(c, h.githubStateCookieCfg)
-	if err != nil || subtle.ConstantTimeCompare([]byte(state), []byte(stateFromCookie)) != 1 {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid oauth state"})
-		return
-	}
-
-	mode, ok := parseOAuthState(state)
-	if !ok {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid oauth state"})
-		return
-	}
-	if mode != oauthStateLogin && mode != oauthStateConnect {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid oauth state"})
-		return
-	}
-
-	tokens, err := h.exchangeGitHubCode(c.Request.Context(), code)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
-		return
-	}
-
-	profile, email, verified, err := h.getGitHubProfile(c.Request.Context(), tokens.AccessToken)
-	if err != nil {
-		c.JSON(http.StatusBadGateway, gin.H{"error": err.Error()})
-		return
-	}
-
-	if profile.ID == 0 || strings.TrimSpace(email) == "" {
-		c.JSON(http.StatusBadGateway, gin.H{"error": "github profile is missing required identifiers"})
-		return
-	}
-
-	name := strings.TrimSpace(profile.Name)
-	if name == "" {
-		name = profile.Login
-	}
-
-	oauthTokens := OAuthTokens{
-		AccessToken: tokens.AccessToken,
-		TokenType:   tokens.TokenType,
-		Scope:       coreutils.NullableString(tokens.Scope),
-	}
-	if oauthTokens.TokenType == "" {
-		oauthTokens.TokenType = "Bearer"
-	}
-
-	profileReq := OAuthCallbackRequest{
-		ProviderUserID: strconv.FormatInt(profile.ID, 10),
-		Email:          email,
-		EmailVerified:  verified,
-		Name:           name,
-		AvatarURL:      profile.AvatarURL,
-	}
-
-	if mode == oauthStateConnect {
-		user, _, ok := h.authenticateFromCookie(c)
-		if !ok {
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
-			return
-		}
-
-		if err := h.svc.HandleOAuthConnect(c.Request.Context(), user.ID, "github", profileReq, oauthTokens); err != nil {
-			switch {
-			case errors.Is(err, ErrConflict), errors.Is(err, ErrProviderAlreadyConnected):
-				c.JSON(http.StatusConflict, gin.H{"error": "provider already linked"})
-			default:
-				c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-			}
-			return
-		}
-
-		c.JSON(http.StatusOK, gin.H{"message": "provider connected"})
-		return
-	}
-
-	res, token, err := h.svc.HandleOAuthLogin(
-		c.Request.Context(),
-		"github",
-		profileReq,
-		oauthTokens,
-		c.GetHeader("User-Agent"),
-		coreutils.NormalizeClientIP(c.ClientIP()),
-	)
-	if err != nil {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
-		return
-	}
-
-	setSessionCookie(c, h.sessionCookieCfg, token, res.Session.ExpiresAt)
-	c.JSON(http.StatusOK, res)
-}
 
 // Me returns the current authenticated user and session.
 // @Summary Get current user
@@ -792,23 +634,27 @@ func (h *Handler) RevokeAllSessions(c *gin.Context) {
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Router /auth/github/install [get]
 func (h *Handler) GitHubInstall(c *gin.Context) {
-	user, ok := CurrentUser(c)
-	if !ok {
+	if _, ok := CurrentUser(c); !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
-	if h.githubCfg.ClientID == "" {
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "github app is not configured"})
+	if h.githubAppCfg.AppName == "" {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "github app name is not configured"})
 		return
 	}
 
-	installURL := coreutils.FormatGitHubAppInstallURL(h.githubCfg.ClientID)
-	c.JSON(http.StatusOK, gin.H{
-		"install_url": installURL,
-		"user_id":     user.ID,
-	})
+	state, err := buildOAuthState(oauthStateConnect)
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "unable to initialize installation state"})
+		return
+	}
+
+	setStateCookie(c, h.githubStateCookieCfg, state, oauthStateTTL)
+	installURL := coreutils.FormatGitHubAppInstallURL(h.githubAppCfg.AppName, state)
+	c.Redirect(http.StatusTemporaryRedirect, installURL)
 }
+
 
 // GitHubAppCallback handles the GitHub App installation callback.
 // @Summary GitHub App installation callback
@@ -823,13 +669,29 @@ func (h *Handler) GitHubInstall(c *gin.Context) {
 // @Failure 401 {object} ErrorResponse "Unauthorized"
 // @Router /auth/github/app/callback [get]
 func (h *Handler) GitHubAppCallback(c *gin.Context) {
+	state := strings.TrimSpace(c.Query("state"))
+	stateFromCookie, err := c.Cookie(h.githubStateCookieCfg.Name)
+	clearCookie(c, h.githubStateCookieCfg)
+	if err != nil || state == "" || subtle.ConstantTimeCompare([]byte(state), []byte(stateFromCookie)) != 1 {
+		c.JSON(http.StatusUnauthorized, gin.H{"error": "invalid installation state"})
+		return
+	}
+
 	user, ok := CurrentUser(c)
 	if !ok {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "unauthorized"})
 		return
 	}
 
+	// Handle OAuth code if present (combined flow)
+	code := strings.TrimSpace(c.Query("code"))
+	if code != "" {
+		_ = h.svc.LinkGitHubAccountFromCode(c.Request.Context(), user.ID, code)
+	}
+
+
 	installationIDStr := strings.TrimSpace(c.Query("installation_id"))
+
 	if installationIDStr == "" {
 		c.JSON(http.StatusBadRequest, gin.H{"error": "missing installation_id"})
 		return
@@ -843,7 +705,7 @@ func (h *Handler) GitHubAppCallback(c *gin.Context) {
 
 	repositoryName := strings.TrimSpace(c.Query("repository_name"))
 	if repositoryName == "" {
-		repositoryName = "unknown"
+		repositoryName = "account"
 	}
 
 	branch := strings.TrimSpace(c.Query("branch"))
@@ -851,7 +713,7 @@ func (h *Handler) GitHubAppCallback(c *gin.Context) {
 		branch = "main"
 	}
 
-	appID, err := strconv.ParseInt(h.githubCfg.ClientID, 10, 64)
+	appID, err := strconv.ParseInt(h.githubAppCfg.AppID, 10, 64)
 	if err != nil {
 		appID = 0 // App ID as string fallback
 	}
@@ -861,6 +723,7 @@ func (h *Handler) GitHubAppCallback(c *gin.Context) {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
 	}
+
 
 	c.JSON(http.StatusOK, gin.H{
 		"message":         "github app installed",
@@ -1118,192 +981,30 @@ func (h *Handler) getGoogleProfile(ctx context.Context, accessToken string) (*go
 }
 
 func (h *Handler) githubConfigured() bool {
-	return strings.TrimSpace(h.githubCfg.ClientID) != "" &&
-		strings.TrimSpace(h.githubCfg.ClientSecret) != "" &&
-		strings.TrimSpace(h.githubCfg.RedirectURL) != ""
+	return strings.TrimSpace(h.githubAppCfg.ClientID) != "" &&
+		strings.TrimSpace(h.githubAppCfg.ClientSecret) != "" &&
+		strings.TrimSpace(h.githubAppCfg.RedirectURL) != ""
 }
 
-func (h *Handler) buildGitHubAuthURL(state string) string {
-	v := url.Values{}
-	v.Set("client_id", h.githubCfg.ClientID)
-	v.Set("redirect_uri", h.githubCfg.RedirectURL)
-	v.Set("scope", strings.Join(h.githubCfg.Scopes, " "))
-	v.Set("state", state)
-
-	return githubAuthURL + "?" + v.Encode()
+func (h *Handler) loadGitHubAppPrivateKey() ([]byte, error) {
+	if h.githubAppCfg.PrivateKeyPath == "" {
+		return nil, errors.New("github app private key path is not configured")
+	}
+	return os.ReadFile(h.githubAppCfg.PrivateKeyPath)
 }
 
-type githubTokenResponse struct {
-	AccessToken string `json:"access_token"`
-	TokenType   string `json:"token_type"`
-	Scope       string `json:"scope"`
-}
 
-type githubUserInfo struct {
-	ID        int64  `json:"id"`
-	Login     string `json:"login"`
-	Name      string `json:"name"`
-	Email     string `json:"email"`
-	AvatarURL string `json:"avatar_url"`
-}
 
-type githubEmail struct {
-	Email    string `json:"email"`
-	Primary  bool   `json:"primary"`
-	Verified bool   `json:"verified"`
-}
 
-func (h *Handler) exchangeGitHubCode(ctx context.Context, code string) (*githubTokenResponse, error) {
-	form := url.Values{}
-	form.Set("code", code)
-	form.Set("client_id", h.githubCfg.ClientID)
-	form.Set("client_secret", h.githubCfg.ClientSecret)
-	form.Set("redirect_uri", h.githubCfg.RedirectURL)
 
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, githubTokenURL, strings.NewReader(form.Encode()))
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Accept", "application/json")
 
-	resp, err := h.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
 
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return nil, err
-	}
 
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("github token exchange failed with status %d", resp.StatusCode)
-	}
 
-	var out githubTokenResponse
-	if err := json.Unmarshal(body, &out); err != nil {
-		return nil, err
-	}
-	if strings.TrimSpace(out.AccessToken) == "" {
-		return nil, fmt.Errorf("github token response missing access_token")
-	}
 
-	return &out, nil
-}
-
-func (h *Handler) getGitHubProfile(ctx context.Context, accessToken string) (*githubUserInfo, string, bool, error) {
-	user, err := h.getGitHubUser(ctx, accessToken)
-	if err != nil {
-		return nil, "", false, err
-	}
-
-	emails, err := h.getGitHubEmails(ctx, accessToken)
-	if err != nil {
-		return nil, "", false, err
-	}
-
-	email, verified := selectGitHubEmail(emails)
-	if email == "" {
-		email = strings.TrimSpace(user.Email)
-		verified = email != ""
-	}
-
-	return user, email, verified, nil
-}
-
-func (h *Handler) getGitHubUser(ctx context.Context, accessToken string) (*githubUserInfo, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, githubUserInfoURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "kr0n-auth")
-
-	resp, err := h.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("github user request failed with status %d", resp.StatusCode)
-	}
-
-	var out githubUserInfo
-	if err := json.Unmarshal(body, &out); err != nil {
-		return nil, err
-	}
-
-	return &out, nil
-}
-
-func (h *Handler) getGitHubEmails(ctx context.Context, accessToken string) ([]githubEmail, error) {
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, githubUserEmailsURL, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Authorization", "Bearer "+accessToken)
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("User-Agent", "kr0n-auth")
-
-	resp, err := h.httpClient.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
-	if err != nil {
-		return nil, err
-	}
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("github email request failed with status %d", resp.StatusCode)
-	}
-
-	var out []githubEmail
-	if err := json.Unmarshal(body, &out); err != nil {
-		return nil, err
-	}
-
-	return out, nil
-}
-
-func selectGitHubEmail(emails []githubEmail) (string, bool) {
-	for _, email := range emails {
-		if email.Primary && email.Verified {
-			return email.Email, true
-		}
-	}
-
-	for _, email := range emails {
-		if email.Verified {
-			return email.Email, true
-		}
-	}
-
-	for _, email := range emails {
-		if email.Primary {
-			return email.Email, email.Verified
-		}
-	}
-
-	if len(emails) > 0 {
-		return emails[0].Email, emails[0].Verified
-	}
-
-	return "", false
-}
 
 func buildOAuthState(mode string) (string, error) {
+
 	token, err := generateToken()
 	if err != nil {
 		return "", err

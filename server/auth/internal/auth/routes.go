@@ -13,9 +13,12 @@ type ModuleConfig struct {
 	EmailSender          EmailSender
 	SessionCookie        CookieConfig
 	GoogleOAuth          GoogleOAuthConfig
-	GitHubOAuth          GitHubOAuthConfig
+	GitHubApp            GitHubAppConfig
 	GitHubWebhookSecret  string
 }
+
+
+
 
 func RegisterRoutes(r *gin.Engine, db *pgxpool.Pool, cfg ModuleConfig) {
 	repo := NewRepository(db)
@@ -25,31 +28,30 @@ func RegisterRoutes(r *gin.Engine, db *pgxpool.Pool, cfg ModuleConfig) {
 		EmailSender:          cfg.EmailSender,
 	})
 
-	h := NewHandler(svc, cfg.SessionCookie, cfg.GoogleOAuth, cfg.GitHubOAuth, cfg.GitHubWebhookSecret)
-	authMiddleware := AuthMiddleware(svc, cfg.SessionCookie)
+	h := NewHandler(svc, cfg.SessionCookie, cfg.GoogleOAuth, cfg.GitHubApp, cfg.GitHubWebhookSecret)
 
-	RegisterRoutesWithHandler(r, h, authMiddleware)
+	authMiddleware := AuthMiddleware(svc, cfg.SessionCookie)
+	optionalAuthMiddleware := OptionalAuthMiddleware(svc, cfg.SessionCookie)
+
+	RegisterRoutesWithHandler(r, h, authMiddleware, optionalAuthMiddleware)
 }
 
-func RegisterRoutesWithHandler(r *gin.Engine, h *Handler, authMiddleware gin.HandlerFunc) {
+func RegisterRoutesWithHandler(r *gin.Engine, h *Handler, authMiddleware gin.HandlerFunc, optionalAuthMiddleware gin.HandlerFunc) {
 	auth := r.Group("/auth")
 	{
-		auth.GET("/providers", h.Providers)
+		auth.GET("/providers", optionalAuthMiddleware, h.Providers)
 		auth.POST("/signup", h.Signup)
 		auth.POST("/login", h.Login)
 		auth.POST("/email/verify", h.VerifyEmail)
 		auth.POST("/email/verification", h.RequestEmailVerification)
 
-		auth.GET("/google", h.GoogleLogin)
+		auth.GET("/google", optionalAuthMiddleware, h.GoogleStart)
 		auth.GET("/google/callback", h.GoogleCallback)
-		auth.GET("/github", h.GitHubLogin)
-		auth.GET("/github/callback", h.GitHubCallback)
+
 
 		protected := auth.Group("")
 		protected.Use(authMiddleware)
 		{
-			protected.GET("/google/connect", h.GoogleConnect)
-			protected.GET("/github/connect", h.GitHubConnect)
 
 			protected.GET("/me", h.Me)
 			protected.POST("/refresh", h.Refresh)

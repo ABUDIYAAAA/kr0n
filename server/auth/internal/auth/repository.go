@@ -73,6 +73,32 @@ func (r *Repository) GetOAuthAccountByUserAndProvider(ctx context.Context, userI
 	return &acc, nil
 }
 
+func (r *Repository) ListOAuthAccountsByUserID(ctx context.Context, userID uuid.UUID) ([]OAuthAccount, error) {
+	query := `
+	SELECT id, user_id, provider, provider_user_id, created_at, updated_at
+	FROM oauth_accounts
+	WHERE user_id=$1
+	`
+	rows, err := r.db.Query(ctx, query, userID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var accounts []OAuthAccount
+	for rows.Next() {
+		var acc OAuthAccount
+		err := rows.Scan(&acc.ID, &acc.UserID, &acc.Provider, &acc.ProviderUserID, &acc.CreatedAt, &acc.UpdatedAt)
+		if err != nil {
+			return nil, err
+		}
+		accounts = append(accounts, acc)
+	}
+
+	return accounts, rows.Err()
+}
+
+
 func (r *Repository) CreateUser(ctx context.Context, email string, name, avatar *string, emailVerified bool) (*User, error) {
 	return r.createUser(ctx, r.db, email, name, avatar, emailVerified)
 }
@@ -200,14 +226,14 @@ func (r *Repository) GetUserByEmail(ctx context.Context, email string) (*User, e
 func (r *Repository) GetUserWithPasswordHashByEmail(ctx context.Context, email string) (*User, string, error) {
 	query := `
 	SELECT
-		u.id,
-		u.email,
-		u.name,
-		u.avatar_url,
-		u.email_verified,
-		u.created_at,
-		u.updated_at,
-		p.password_hash
+	    u.id,
+	    u.email,
+	    u.name,
+	    u.avatar_url,
+	    u.email_verified,
+	    u.created_at,
+	    u.updated_at,
+	    p.password_hash
 	FROM users u
 	JOIN user_passwords p ON p.user_id = u.id
 	WHERE u.email = $1
@@ -225,6 +251,14 @@ func (r *Repository) GetUserWithPasswordHashByEmail(ctx context.Context, email s
 
 	return &u, hash, nil
 }
+
+func (r *Repository) UserHasPassword(ctx context.Context, userID uuid.UUID) (bool, error) {
+	query := `SELECT EXISTS(SELECT 1 FROM user_passwords WHERE user_id = $1)`
+	var exists bool
+	err := r.db.QueryRow(ctx, query, userID).Scan(&exists)
+	return exists, err
+}
+
 
 func (r *Repository) UpdateUserEmailVerified(ctx context.Context, userID uuid.UUID, verified bool) error {
 	query := `UPDATE users SET email_verified = $1 WHERE id = $2`
