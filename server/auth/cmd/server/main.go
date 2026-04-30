@@ -45,7 +45,7 @@ func main() {
 		RedirectURL:  cfg.GoogleOAuthRedirectURL,
 		Scopes:       strings.Fields(cfg.GoogleOAuthScopes),
 	}
-	log.Println(cfg.GitHubAppClientID)
+
 	githubAppCfg := auth.GitHubAppConfig{
 		AppID:          cfg.GitHubAppID,
 		AppName:        cfg.GitHubAppName,
