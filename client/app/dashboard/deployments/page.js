@@ -250,7 +250,12 @@ export default function DeploymentsPage() {
             {filtered.map((d, i) => (
               <div
                 key={i}
-                className="grid grid-cols-12 gap-4 px-4 py-4 bg-white/5 hover:bg-white/[0.07] border border-transparent hover:border-white/20 items-center">
+                onClick={() =>
+                  router.push(
+                    `/dashboard/deployments/deploymentdetails?project=${encodeURIComponent(d.repo)}&author=${encodeURIComponent(d.user)}&env=${encodeURIComponent(d.env)}&status=${encodeURIComponent(d.status)}&build=${encodeURIComponent(d.build)}&branch=${encodeURIComponent(d.branch)}&title=${encodeURIComponent(d.title)}&hash=${encodeURIComponent(d.hash)}&time=${encodeURIComponent(d.time)}`,
+                  )
+                }
+                className="grid grid-cols-12 gap-4 px-4 py-4 bg-white/5 hover:bg-white/[0.07] border border-transparent hover:border-white/20 items-center cursor-pointer">
                 <div className="font-mono text-xs">{d.id}</div>
 
                 <div>
@@ -292,7 +297,7 @@ export default function DeploymentsPage() {
                 DEPLOYMENT_VELOCITY
               </h3>
 
-              <div className="flex gap-1 h-24">
+              <div className="flex gap-1 h-24 items-end">
                 {[40, 60, 30, 80, 50, 90].map((h, i) => (
                   <div
                     key={i}

@@ -2,9 +2,11 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import Sidebar from "../../sidebar/page";
 
 export default function ProjectsPage() {
+  const router = useRouter();
   const [q, setQ] = useState("");
   const inputRef = useRef(null);
 
@@ -25,24 +27,52 @@ export default function ProjectsPage() {
       repo: "github.com/kron/nucleus",
       status: "Production",
       color: "bg-green-500",
+      author: "arpit",
+      env: "PROD",
+      build: "1M 14S",
+      branch: "main",
+      title: "feat: enhance refraction engine",
+      hash: "72a1bc8f",
+      time: "2M AGO",
     },
     {
       name: "quantum-web",
       repo: "github.com/kron/quantum",
       status: "Building",
       color: "bg-yellow-400",
+      author: "dev",
+      env: "PREVIEW",
+      build: "45S",
+      branch: "dev",
+      title: "fix: token refresh logic",
+      hash: "8ab12cd",
+      time: "10M AGO",
     },
     {
       name: "auth-service",
       repo: "github.com/kron/auth",
       status: "Production",
       color: "bg-green-500",
+      author: "arpit",
+      env: "PROD",
+      build: "58S",
+      branch: "main",
+      title: "chore: rotate secrets",
+      hash: "f2a991b",
+      time: "25M AGO",
     },
     {
       name: "legacy-dash",
       repo: "github.com/kron/legacy",
       status: "Inactive",
       color: "bg-black/30",
+      author: "ops",
+      env: "PREVIEW",
+      build: "2M 08S",
+      branch: "maintenance",
+      title: "fix: patch legacy deps",
+      hash: "d1c4b22",
+      time: "2D AGO",
     },
   ];
 
@@ -98,6 +128,11 @@ export default function ProjectsPage() {
               {filtered.map((p, i) => (
                 <div
                   key={i}
+                  onClick={() =>
+                    router.push(
+                      `/dashboard/deployments/deploymentdetails?project=${encodeURIComponent(p.name)}&author=${encodeURIComponent(p.author)}&env=${encodeURIComponent(p.env)}&status=${encodeURIComponent(p.status)}&build=${encodeURIComponent(p.build)}&branch=${encodeURIComponent(p.branch)}&title=${encodeURIComponent(p.title)}&hash=${encodeURIComponent(p.hash)}&time=${encodeURIComponent(p.time)}`,
+                    )
+                  }
                   className="
                     group
                     clipped
@@ -107,6 +142,7 @@ export default function ProjectsPage() {
                     backdrop-blur-sm
                     hover:bg-black/70
                     transition-all
+                    cursor-pointer
                   ">
                   <div className="p-6">
                     <div className="flex justify-between mb-6">
