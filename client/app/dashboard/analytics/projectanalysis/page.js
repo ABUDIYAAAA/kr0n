@@ -130,15 +130,15 @@ function AnalyticsDashboard() {
             ].map((m) => (
               <div key={m.label} className="relative">
                 {/* OUTER BORDER (CLIPPED) */}
-                <div className="clipped bg-white/10 p-[1px]">
+                <div className="clipped bg-white p-[1px]">
                   {/* INNER CARD */}
-                  <div className="clipped bg-white p-6 hover:bg-zinc-100 transition">
-                    <p className="text-[10px] text-black/50 uppercase mb-4">
+                  <div className="clipped bg-black p-6 hover:bg-black/80 transition">
+                    <p className="text-[10px] text-white/50 uppercase mb-4">
                       {m.label}
                     </p>
 
                     <div className="flex gap-3 items-baseline">
-                      <span className="text-2xl font-bold text-black">
+                      <span className="text-2xl font-bold text-white">
                         {m.value}
                       </span>
                       <span className={`text-xs ${m.color}`}>{m.change}</span>

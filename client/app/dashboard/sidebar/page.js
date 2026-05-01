@@ -25,7 +25,7 @@ export default function Sidebar() {
 
   const config = [
     { name: "Env Variables", href: "/dashboard/evariables", icon: Key },
-    { name: "Settings", href: "/settings", icon: Settings },
+    { name: "Settings", href: "/dashboard/settings", icon: Settings },
   ];
 
   const insights = [
