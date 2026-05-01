@@ -102,20 +102,18 @@ function DeploymentDetails() {
 
             {/* TABS */}
             <div className="flex gap-6 text-xs uppercase">
-              {["Deployment"].map(
-                (tab) => (
-                  <button
-                    key={tab}
-                    onClick={() => setActiveTab(tab)}
-                    className={`pb-2 ${
-                      activeTab === tab
-                        ? "border-b border-white text-white"
-                        : "text-white/40 hover:text-white"
-                    }`}>
-                    {tab}
-                  </button>
-                ),
-              )}
+              {["Deployment"].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setActiveTab(tab)}
+                  className={`pb-2 ${
+                    activeTab === tab
+                      ? "border-b border-white text-white"
+                      : "text-white/40 hover:text-white"
+                  }`}>
+                  {tab}
+                </button>
+              ))}
             </div>
           </div>
         </header>
@@ -154,14 +152,20 @@ function DeploymentDetails() {
                   />
                   <Info label="Status" value={details.status} green />
                   <Info label="Duration" value={details.build} />
-                  <Info label="Environment" value={details.env} badge="Current" />
+                  <Info
+                    label="Environment"
+                    value={details.env}
+                    badge="Current"
+                  />
                 </div>
 
                 <div>
                   <Label>Domains</Label>
                   <div className="space-y-2">
                     <RowLink text={`${details.repo}.kron.app`} />
-                    <RowLink text={`${details.hash}-${details.repo}.kron.app`} />
+                    <RowLink
+                      text={`${details.hash}-${details.repo}.kron.app`}
+                    />
                   </div>
                 </div>
 
@@ -202,7 +206,7 @@ function DeploymentDetails() {
                             "18:49:40.612  Build machine configuration: 2 cores, 8 GB",
                             "18:49:40.901  Cloning github.com/arpittripathi755/WatchWise (Branch: main, Commit: af90866)",
                             "18:49:40.903  Previous build caches not available.",
-                            "18:49:43.087  Running \"vercel build\"",
+                            '18:49:43.087  Running "vercel build"',
                             "18:49:44.097  Vercel CLI 5.1.6",
                             "18:49:44.320  Build Completed in /vercel/output [26ms]",
                             "18:49:44.458  Deploying outputs...",
@@ -211,7 +215,9 @@ function DeploymentDetails() {
                             "18:49:46.028  Skipping cache upload because no files were prepared",
                           ];
                           const filteredLines = lines.filter((line) =>
-                            line.toLowerCase().includes(logQuery.trim().toLowerCase()),
+                            line
+                              .toLowerCase()
+                              .includes(logQuery.trim().toLowerCase()),
                           );
 
                           return (
@@ -223,7 +229,9 @@ function DeploymentDetails() {
                                 <div className="flex items-center gap-2 text-[10px] text-white/40 border border-white/10 px-2 py-1">
                                   <input
                                     value={logQuery}
-                                    onChange={(event) => setLogQuery(event.target.value)}
+                                    onChange={(event) =>
+                                      setLogQuery(event.target.value)
+                                    }
                                     placeholder="Find in logs"
                                     className="bg-transparent outline-none placeholder:text-white/30"
                                   />
@@ -235,10 +243,14 @@ function DeploymentDetails() {
 
                               <div className="px-4 py-3 text-[11px] font-mono text-white/70 space-y-2">
                                 {filteredLines.length === 0 && (
-                                  <div className="text-white/40">No matches</div>
+                                  <div className="text-white/40">
+                                    No matches
+                                  </div>
                                 )}
                                 {filteredLines.map((line) => (
-                                  <div key={line} className="border-b border-white/5 pb-2">
+                                  <div
+                                    key={line}
+                                    className="border-b border-white/5 pb-2">
                                     {line}
                                   </div>
                                 ))}

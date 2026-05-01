@@ -80,20 +80,20 @@ export default function DeploymentsPage() {
     "relative bg-white/5 border border-white/20 px-3 py-1.5 clipped-corner-small hover:bg-white/10 cursor-pointer";
 
   const dropdown =
-      "absolute mt-2 bg-[#111] border border-white/10 text-xs z-50";
-    const successRate = 98.4;
+    "absolute mt-2 bg-[#111] border border-white/10 text-xs z-50";
+  const successRate = 98.4;
 
-    let color = "text-emerald-500";
-    let border = "border-emerald-500";
+  let color = "text-emerald-500";
+  let border = "border-emerald-500";
 
-    if (successRate < 90) {
-      color = "text-yellow-400";
-      border = "border-yellow-400";
-    }
-    if (successRate < 70) {
-      color = "text-red-500";
-      border = "border-red-500";
-    }
+  if (successRate < 90) {
+    color = "text-yellow-400";
+    border = "border-yellow-400";
+  }
+  if (successRate < 70) {
+    color = "text-red-500";
+    border = "border-red-500";
+  }
 
   return (
     <div className="flex min-h-screen bg-[#121414] text-[#e3e2e2] font-sans">
@@ -105,7 +105,6 @@ export default function DeploymentsPage() {
           <header className="flex justify-between items-end">
             <div>
               <h1 className="text-3xl font-bold uppercase flex items-center gap-4">
-                
                 <span className="text-[12px] font-mono text-white/50 border border-white/10 px-2 py-0.5">
                   v2.4.0-STABLE
                 </span>

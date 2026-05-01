@@ -30,7 +30,7 @@ export default function Sidebar() {
 
   const insights = [
     { name: "Usage", href: "/usage", icon: Circle },
-    { name: "Support", href: "/support", icon: HelpCircle },
+    { name: "Support", href: "/dashboard/support", icon: HelpCircle },
   ];
 
   return (

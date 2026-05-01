@@ -140,10 +140,6 @@ export default function SettingsPage() {
                 />
               </button>
             </div>
-
-            <div className="flex justify-end">
-              
-            </div>
           </section>
 
           {/* TRANSFER */}
@@ -165,14 +161,11 @@ export default function SettingsPage() {
           {/* DELETE */}
           <section className="border border-red-500/30 bg-red-500/5">
             <div className="p-8 space-y-6">
-              <div>
-                <h2 className="text-red-400 font-bold text-lg">
-                  Delete Project
-                </h2>
-                <p className="text-red-200/60 text-sm">
-                  Permanently remove this project and all data.
-                </p>
-              </div>
+              <h2 className="text-red-400 font-bold text-lg">Delete Project</h2>
+
+              <p className="text-red-200/60 text-sm">
+                Permanently remove this project and all data.
+              </p>
 
               <div className="flex items-center gap-6 p-4 border border-red-400/20 bg-black/20">
                 <div className="flex-1">
@@ -192,44 +185,51 @@ export default function SettingsPage() {
             </div>
 
             <div className="bg-red-500/10 border-t border-red-400/20 p-4 flex justify-end">
-              <button
-                onClick={() => setShowDeleteConfirm(true)}
-                className="px-8 py-3 bg-red-400 text-black font-bold clipped-btn">
-                Delete Project
-              </button>
+              <div className="clip-wrapper bg-red-400/80 p-[1px] inline-flex">
+                <button
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="clip-inner bg-red-400 text-black px-8 py-3 font-bold">
+                  Delete Project
+                </button>
+              </div>
             </div>
           </section>
         </main>
       </div>
 
+      {/* MODAL */}
       {showDeleteConfirm && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
-          <div className="w-full max-w-[520px] border border-red-400/30 bg-[#0b0c0d] p-6">
-            <div className="flex items-center justify-between">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm">
+          <div className="w-full max-w-[520px] border border-white/10 bg-[#0d0e0f] p-6 space-y-4">
+            <div className="flex justify-between items-center">
               <h2 className="text-lg font-bold text-red-400">Confirm Delete</h2>
+
               <button
                 onClick={() => setShowDeleteConfirm(false)}
                 className="text-white/50 hover:text-white">
-                x
+                ✕
               </button>
             </div>
 
-            <p className="mt-4 text-sm text-white/60">
+            <p className="text-sm text-white/60">
               This will permanently delete the project and all its data. This
               action cannot be undone.
             </p>
 
-            <div className="mt-6 flex justify-end gap-3">
+            <div className="flex justify-end gap-3">
               <div className="clip-wrapper bg-white/20 p-[1px] inline-flex">
                 <button
                   onClick={() => setShowDeleteConfirm(false)}
-                  className="clip-inner bg-transparent px-6 py-2 text-sm">
+                  className="clip-inner bg-transparent px-6 py-2 text-sm font-bold">
                   Cancel
                 </button>
               </div>
-              <button className="px-6 py-2 bg-red-400 text-black text-sm font-bold clipped-btn">
-                Delete Project
-              </button>
+
+              <div className="clip-wrapper bg-red-400/80 p-[1px] inline-flex">
+                <button className="clip-inner bg-red-400 text-black px-6 py-2 text-sm font-bold">
+                  Delete Project
+                </button>
+              </div>
             </div>
           </div>
         </div>

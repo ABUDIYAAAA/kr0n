@@ -170,9 +170,7 @@ export default function AnalyticsPage() {
               </div>
 
               {/* FOOTER BUTTON */}
-              <div className="p-6 border-t border-white/10 text-center">
-               
-              </div>
+              <div className="p-6 border-t border-white/10 text-center"></div>
             </div>
           </div>
         </main>

@@ -67,7 +67,7 @@ export default function Home() {
                 placeholder="https://github.com/kron/project-alpha"
               />
 
-              <button className="bg-white text-black font-black px-10 py-5 uppercase tracking-widest text-sm clipped-btn hover:bg-zinc-200 active:translate-y-1">
+              <button className="bg-white text-black font-black px-10 py-5 uppercase tracking-widest text-sm clipped-btn-lg hover:bg-zinc-200 active:translate-y-1">
                 DEPLOY NOW
               </button>
             </div>
@@ -91,7 +91,6 @@ export default function Home() {
                 <div
                   key={item.title}
                   className="h-64 p-6 border border-white/10 bg-white/5 flex flex-col justify-between relative overflow-hidden">
-                  
                   <div className="flex items-center justify-end">
                     <div className="w-10 h-10 bg-white text-black flex items-center justify-center clipped-btn-reverse">
                       <Icon size={18} className="text-black/80" />
@@ -208,7 +207,7 @@ export default function Home() {
               System ready <br /> for input.
             </h2>
 
-            <button className="bg-white text-black font-black px-16 py-8 text-xl uppercase clipped-btn hover:bg-zinc-200">
+            <button className="bg-white text-black font-black px-16 py-8 text-xl uppercase clipped-btn-lg hover:bg-zinc-200">
               ESTABLISH CONNECTION
             </button>
           </div>
