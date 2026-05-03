@@ -3,7 +3,7 @@
 import { Calendar, ChevronLeft, ChevronRight } from "lucide-react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Sidebar from "../sidebar/page";
+import DashboardShell from "@/components/dashboard/DashboardShell";
 import { CheckCircle, TrendingUp } from "lucide-react";
 
 export default function DeploymentsPage() {
@@ -96,11 +96,8 @@ export default function DeploymentsPage() {
   }
 
   return (
-    <div className="flex min-h-screen bg-[#121414] text-[#e3e2e2] font-sans">
-      <Sidebar />
-
-      <div className="flex flex-col flex-1">
-        <main className="p-8 max-w-[1440px] mx-auto w-full space-y-8 pb-20">
+    <DashboardShell>
+      <main className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-[#121414] p-8 font-sans text-[#e3e2e2] pb-20 max-w-[1440px] mx-auto w-full space-y-8">
           {/* HEADER */}
           <header className="flex justify-between items-end">
             <div>
@@ -345,8 +342,7 @@ export default function DeploymentsPage() {
               </div>
             </div>
           </section>
-        </main>
-      </div>
-    </div>
+      </main>
+    </DashboardShell>
   );
 }

@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Search, Settings, ArrowLeft } from "lucide-react";
 import { useRouter } from "next/navigation";
-import Sidebar from "../../../sidebar/page";
+import DashboardShell from "@/components/dashboard/DashboardShell";
 
 export default function NewProjectPage() {
   const router = useRouter();
@@ -24,16 +24,12 @@ export default function NewProjectPage() {
   });
 
   return (
-    <div className="flex bg-[#0d0e0f] text-white min-h-screen font-sans">
-      {/* SIDEBAR */}
-      <Sidebar />
-
-      {/* MAIN CONTENT */}
-      <main className="flex-1">
+    <DashboardShell>
+      <main className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-[#0d0e0f] font-sans text-white">
         {/* NAVBAR */}
         <nav className="flex justify-between items-center px-8 w-full h-16 sticky top-0 z-50 bg-neutral-950/50 backdrop-blur-[20px] border-b border-white/10">
           <button
-            onClick={() => router.push("/projects")}
+            onClick={() => router.push("/dashboard/projects")}
             className="flex items-center gap-2 text-neutral-400 hover:text-white transition-colors font-medium tracking-tight">
             <ArrowLeft size={18} />
             Back
@@ -168,6 +164,6 @@ export default function NewProjectPage() {
           </div>
         </div>
       </main>
-    </div>
+    </DashboardShell>
   );
 }

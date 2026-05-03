@@ -1,7 +1,8 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
-import Sidebar from "@/app/dashboard/sidebar/page";
+import DashboardShell from "@/components/dashboard/DashboardShell";
+import { DEMO_PROJECT_SLUGS } from "@/lib/demo-data";
 import { useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronUp, MoreHorizontal } from "lucide-react";
 
@@ -35,7 +36,7 @@ function DeploymentDetails() {
     }));
   };
 
-  const projects = ["watch-wise", "sast-assignments", "core-engine"];
+  const projects = DEMO_PROJECT_SLUGS;
   const [selectedProject, setSelectedProject] = useState("watch-wise");
 
   const details = {
@@ -57,12 +58,9 @@ function DeploymentDetails() {
   }, [selectedParam]);
 
   return (
-    <div className="flex bg-[#0d0e0f] text-white min-h-screen">
-      <Sidebar />
-
-      <div className="flex-1 relative">
-        {/* HEADER */}
-        <header className="sticky top-0 z-40 bg-black/50 backdrop-blur-xl border-b border-white/10">
+    <DashboardShell>
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0d0e0f] text-white">
+        <header className="z-40 shrink-0 border-b border-white/10 bg-black/50 backdrop-blur-xl">
           <div className="px-8 py-4 space-y-4 relative">
             {/* TOP ROW */}
             <div className="flex justify-between items-center">
@@ -118,8 +116,7 @@ function DeploymentDetails() {
           </div>
         </header>
 
-        {/* CONTENT */}
-        <main className="max-w-[1400px] mx-auto p-8 space-y-10">
+        <main className="mx-auto max-h-full min-h-0 max-w-[1400px] flex-1 space-y-10 overflow-y-auto overscroll-y-contain p-8">
           {/* MAIN CARD */}
           <div className="border border-white/10 bg-white/5 p-8">
             <div className="flex justify-between mb-8">
@@ -279,7 +276,7 @@ function DeploymentDetails() {
           </div>
         </main>
       </div>
-    </div>
+    </DashboardShell>
   );
 }
 

@@ -1,7 +1,8 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
-import Sidebar from "../../sidebar/page";
+import DashboardShell from "@/components/dashboard/DashboardShell";
+import { DEMO_PROJECT_SLUGS } from "@/lib/demo-data";
 import { useSearchParams } from "next/navigation";
 import { ChevronDown, X } from "lucide-react";
 
@@ -9,7 +10,7 @@ function AnalyticsDashboard() {
   const searchParams = useSearchParams();
   const selectedParam = searchParams.get("project");
 
-  const projects = ["watch-wise", "sast-assignments", "core-engine"];
+  const projects = DEMO_PROJECT_SLUGS;
 
   const [selected, setSelected] = useState(null);
   const [open, setOpen] = useState(false);
@@ -38,12 +39,9 @@ function AnalyticsDashboard() {
   const points = dataMap[range].map((y, i) => `${i * 100},${y}`).join(" ");
 
   return (
-    <div className="flex min-h-screen bg-[#0d0e0f] text-white">
-      <Sidebar />
-
-      <div className="flex flex-col flex-1">
-        {/* NAVBAR */}
-        <nav className="bg-black/80 backdrop-blur-xl border-b border-white/10 px-8 h-16 flex items-center justify-between">
+    <DashboardShell>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0d0e0f] text-white">
+        <nav className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 bg-black/80 px-8 backdrop-blur-xl">
           {/* LEFT */}
           <div className="relative flex items-center gap-2 font-mono text-xs uppercase">
             <button
@@ -91,7 +89,7 @@ function AnalyticsDashboard() {
         </nav>
 
         {/* CONTENT */}
-        <main className="max-w-[1440px] mx-auto w-full pt-24 px-8 pb-20">
+        <main className="mx-auto min-h-0 w-full max-w-[1440px] flex-1 overflow-y-auto overscroll-y-contain px-8 pb-20 pt-8">
           {/* HEADER */}
           <div className="mb-10">
             <h1 className="text-3xl font-bold">{selected || "All Projects"}</h1>
@@ -183,7 +181,7 @@ function AnalyticsDashboard() {
           </div>
         </main>
       </div>
-    </div>
+    </DashboardShell>
   );
 }
 

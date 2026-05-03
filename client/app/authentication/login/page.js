@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 export default function Login() {
   return (
     <div className="bg-[#121414] text-[#e3e2e2] min-h-screen flex flex-col">
@@ -92,8 +94,12 @@ export default function Login() {
             {/* FOOTER LINK */}
             <div className="text-center pt-4">
               <p className="text-[12px] text-zinc-500">
-                Don't have an account?{" "}
-                <a className="text-white font-bold hover:underline">Sign up</a>
+                Don&apos;t have an account?{" "}
+                <Link
+                  href="/authentication/signup"
+                  className="text-white font-bold hover:underline">
+                  Sign up
+                </Link>
               </p>
             </div>
           </div>

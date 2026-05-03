@@ -3,7 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import Sidebar from "../../sidebar/page";
+import DashboardShell from "@/components/dashboard/DashboardShell";
 
 export default function ProjectsPage() {
   const router = useRouter();
@@ -83,12 +83,8 @@ export default function ProjectsPage() {
   );
 
   return (
-    <div className="flex bg-[#0d0e0f] text-white min-h-screen">
-      {/* ✅ SIDEBAR COMPONENT */}
-      <Sidebar />
-
-      {/* MAIN */}
-      <main className="flex-1">
+    <DashboardShell>
+      <main className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain bg-[#0d0e0f] text-white">
         {/* TOP BAR */}
         <div className="flex justify-between items-center px-8 py-4 border-b border-white/10 bg-black/40 backdrop-blur">
           <h1 className="text-xl font-bold uppercase">All Projects</h1>
@@ -202,6 +198,6 @@ export default function ProjectsPage() {
           </div>
         </div>
       </main>
-    </div>
+    </DashboardShell>
   );
 }

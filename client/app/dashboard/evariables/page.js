@@ -1,7 +1,8 @@
 "use client";
 
 import { useRef, useState } from "react";
-import Sidebar from "../sidebar/page";
+import DashboardShell from "@/components/dashboard/DashboardShell";
+import { DEMO_PROJECT_SLUGS } from "@/lib/demo-data";
 import {
   ChevronDown,
   Eye,
@@ -14,8 +15,10 @@ import {
 export default function EnvPage() {
   const [openDropdown, setOpenDropdown] = useState(null);
   const [openProjectDropdown, setOpenProjectDropdown] = useState(false);
-  const [selectedProject, setSelectedProject] = useState("watch-wise");
-  const projects = ["watch-wise", "sast-assignments", "core-engine"];
+  const [selectedProject, setSelectedProject] = useState(
+    DEMO_PROJECT_SLUGS[0],
+  );
+  const projects = DEMO_PROJECT_SLUGS;
   const [showModal, setShowModal] = useState(false);
   const [isSensitive, setIsSensitive] = useState(true);
   const [envDropdownOpen, setEnvDropdownOpen] = useState(false);
@@ -118,12 +121,9 @@ export default function EnvPage() {
   };
 
   return (
-    <div className="flex bg-[#0d0e0f] text-white min-h-screen">
-      <Sidebar />
-
-      <div className="flex-1">
-        {/* HEADER */}
-        <header className="sticky top-0 z-40 bg-black/50 backdrop-blur-xl border-b border-white/10">
+    <DashboardShell>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0d0e0f] text-white">
+        <header className="z-40 shrink-0 border-b border-white/10 bg-black/50 backdrop-blur-xl">
           <div className="flex justify-between items-center px-6 h-16">
             {/* LEFT */}
             <div className="relative">
@@ -167,8 +167,7 @@ export default function EnvPage() {
           </div>
         </header>
 
-        {/* MAIN */}
-        <main className="pt-24 pb-16 px-8 max-w-[1400px] mx-auto">
+        <main className="mx-auto min-h-0 max-w-[1400px] flex-1 overflow-y-auto overscroll-y-contain px-8 pb-16 pt-8">
           {/* TITLE */}
           <div className="flex justify-between items-end mb-10">
             <div>
@@ -457,6 +456,6 @@ export default function EnvPage() {
           </div>
         )}
       </div>
-    </div>
+    </DashboardShell>
   );
 }

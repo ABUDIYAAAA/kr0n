@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Sidebar from "../sidebar/page";
+import DashboardShell from "@/components/dashboard/DashboardShell";
+import { DEMO_SUPPORT_PROJECTS } from "@/lib/demo-data";
 import {
   ChevronDown,
   MoreVertical,
@@ -50,12 +51,9 @@ export default function SupportPage() {
   });
 
   return (
-    <div className="flex bg-[#0d0e0f] text-white min-h-screen">
-      <Sidebar />
-
-      <div className="flex-1">
-        {/* HEADER */}
-        <header className="fixed top-0 left-[240px] right-0 h-16 flex justify-between items-center px-8 bg-black/50 backdrop-blur-xl border-b border-white/10 z-40">
+    <DashboardShell>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0d0e0f] text-white">
+        <header className="z-40 flex h-16 shrink-0 items-center justify-between border-b border-white/10 bg-black/50 px-8 backdrop-blur-xl">
           <div className="flex items-center gap-6">
             <div className="relative">
               <button
@@ -67,7 +65,7 @@ export default function SupportPage() {
 
               {openDropdown && (
                 <div className="absolute mt-2 w-44 bg-[#111] border border-white/10">
-                  {["sast-assignments-eoe7", "watch-wise"].map((p) => (
+                  {DEMO_SUPPORT_PROJECTS.map((p) => (
                     <div
                       key={p}
                       onClick={() => {
@@ -95,7 +93,7 @@ export default function SupportPage() {
         </header>
 
         {/* MAIN */}
-        <main className="pt-24 px-8 max-w-[1400px] mx-auto">
+        <main className="mx-auto min-h-0 max-w-[1400px] flex-1 overflow-y-auto overscroll-y-contain px-8 pb-16 pt-8">
           {/* SEARCH */}
           <div className="flex justify-between gap-4 mb-8">
             <div className="relative flex-1">
@@ -193,7 +191,6 @@ export default function SupportPage() {
             </div>
           )}
         </main>
-      </div>
 
       {/* MODAL */}
       {showNewCase && (
@@ -229,6 +226,7 @@ export default function SupportPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </DashboardShell>
   );
 }

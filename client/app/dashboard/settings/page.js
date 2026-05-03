@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import Sidebar from "../sidebar/page";
+import DashboardShell from "@/components/dashboard/DashboardShell";
+import { DEMO_SETTINGS_PROJECTS } from "@/lib/demo-data";
 import { ChevronDown, MoreVertical, Copy } from "lucide-react";
 
 export default function SettingsPage() {
@@ -15,12 +16,9 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="flex bg-[#0d0e0f] text-white min-h-screen">
-      <Sidebar />
-
-      <div className="flex-1">
-        {/* HEADER */}
-        <header className="fixed top-0 left-[240px] right-0 z-40 flex justify-between items-center px-8 h-16 bg-black/50 backdrop-blur-xl border-b border-white/10">
+    <DashboardShell>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0d0e0f] text-white">
+        <header className="z-40 flex h-16 shrink-0 items-center justify-between border-b border-white/10 bg-black/50 px-8 backdrop-blur-xl">
           {/* LEFT */}
           <div className="relative">
             <button
@@ -32,19 +30,17 @@ export default function SettingsPage() {
 
             {openDropdown && (
               <div className="absolute mt-2 w-44 bg-[#111] border border-white/10">
-                {["sast-assignments-eoe7", "watch-wise", "core-engine"].map(
-                  (p) => (
-                    <div
-                      key={p}
-                      onClick={() => {
-                        setProject(p);
-                        setOpenDropdown(false);
-                      }}
-                      className="px-3 py-2 hover:bg-white/10 cursor-pointer text-sm">
-                      {p}
-                    </div>
-                  ),
-                )}
+                {DEMO_SETTINGS_PROJECTS.map((p) => (
+                  <div
+                    key={p}
+                    onClick={() => {
+                      setProject(p);
+                      setOpenDropdown(false);
+                    }}
+                    className="px-3 py-2 hover:bg-white/10 cursor-pointer text-sm">
+                    {p}
+                  </div>
+                ))}
               </div>
             )}
           </div>
@@ -58,8 +54,7 @@ export default function SettingsPage() {
           <MoreVertical className="text-white/70" size={18} />
         </header>
 
-        {/* MAIN */}
-        <main className="pt-28 pb-24 max-w-[1200px] mx-auto px-8 space-y-8">
+        <main className="mx-auto min-h-0 max-w-[1200px] flex-1 space-y-8 overflow-y-auto overscroll-y-contain px-8 pb-24 pt-8">
           {/* PROJECT NAME */}
           <section className="border border-white/10 bg-white/5 p-8 space-y-6">
             <div>
@@ -195,7 +190,6 @@ export default function SettingsPage() {
             </div>
           </section>
         </main>
-      </div>
 
       {/* MODAL */}
       {showDeleteConfirm && (
@@ -234,6 +228,7 @@ export default function SettingsPage() {
           </div>
         </div>
       )}
-    </div>
+      </div>
+    </DashboardShell>
   );
 }

@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Sidebar from "../sidebar/page";
+import DashboardShell from "@/components/dashboard/DashboardShell";
+import { DEMO_PROJECT_SLUGS } from "@/lib/demo-data";
 import {
   Search,
   ChevronDown,
@@ -15,14 +16,7 @@ import {
 export default function AnalyticsPage() {
   const router = useRouter();
 
-  const projects = [
-    "watch-wise",
-    "sast-assignments-mdoe",
-    "sast-assignments-eoe7",
-    "sast-assignments-r6ui",
-    "sast-assignments",
-    "sast-assignment-arpit",
-  ];
+  const projects = DEMO_PROJECT_SLUGS;
 
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null); // null = All Projects
@@ -39,14 +33,9 @@ export default function AnalyticsPage() {
     : filteredProjects;
 
   return (
-    <div className="flex min-h-screen bg-[#0d0e0f] text-[#e3e2e2]">
-      {/* SIDEBAR */}
-      <Sidebar />
-
-      {/* MAIN */}
-      <div className="flex flex-col flex-1">
-        {/* TOP NAV */}
-        <header className="flex justify-between items-center px-8 h-16 border-b border-white/10">
+    <DashboardShell>
+      <div className="flex min-h-0 flex-1 flex-col overflow-hidden bg-[#0d0e0f] text-[#e3e2e2]">
+        <header className="flex h-16 shrink-0 items-center justify-between border-b border-white/10 px-8">
           {/* 🔽 ALL PROJECTS DROPDOWN */}
           <div className="relative flex items-center gap-2 text-xs font-mono uppercase">
             <button
@@ -95,8 +84,7 @@ export default function AnalyticsPage() {
           <div className="text-white/40">•••</div>
         </header>
 
-        {/* MAIN CONTENT */}
-        <main className="flex flex-1 items-center justify-center p-8">
+        <main className="flex min-h-0 flex-1 items-center justify-center overflow-y-auto overscroll-y-contain p-8">
           <div className="w-full max-w-[480px] flex flex-col items-center">
             {/* ICON */}
             <div className="w-16 h-16 border border-white/10 flex items-center justify-center mb-8 bg-white/5">
@@ -175,6 +163,6 @@ export default function AnalyticsPage() {
           </div>
         </main>
       </div>
-    </div>
+    </DashboardShell>
   );
 }

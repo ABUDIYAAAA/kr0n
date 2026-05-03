@@ -12,9 +12,13 @@ import {
   Circle,
   HelpCircle,
 } from "lucide-react";
+import RailUserFooter from "@/components/dashboard/RailUserFooter";
 
-export default function Sidebar() {
+export default function DashboardSidebar() {
   const path = usePathname();
+
+  const isActiveNav = (href) =>
+    path === href || (href === "/usage" && path.startsWith("/usage"));
 
   const nav = [
     { name: "Projects", href: "/dashboard/projects", icon: Folder },
@@ -34,18 +38,18 @@ export default function Sidebar() {
   ];
 
   return (
-    <aside className="w-64 border-r border-white/10 bg-[#0b0b0b] flex flex-col justify-between">
-      <div className="p-6">
-        {/* USER */}
-        <div className="flex items-center gap-3 mb-6">
+    <aside className="flex h-full min-h-0 w-64 shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[#0b0b0b]">
+      <div className="shrink-0 border-b border-white/10 p-6">
+        <div className="flex items-center gap-3">
           <div className="w-10 h-10 border border-white/20 bg-white/5" />
           <div>
             <div className="text-sm font-bold">arpittripathi</div>
             <div className="text-[10px] text-white/40 uppercase">Hobby</div>
           </div>
         </div>
+      </div>
 
-        {/* PLATFORM */}
+      <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-6 pt-5">
         <div className="text-[10px] text-white/20 uppercase mb-2 tracking-widest">
           Platform
         </div>
@@ -57,7 +61,7 @@ export default function Sidebar() {
               <Link key={item.name} href={item.href}>
                 <div
                   className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition ${
-                    path === item.href
+                    isActiveNav(item.href)
                       ? "text-white bg-white/5"
                       : "text-white/40 hover:text-white"
                   }`}>
@@ -69,7 +73,6 @@ export default function Sidebar() {
           })}
         </nav>
 
-        {/* CONFIGURE */}
         <div className="text-[10px] text-white/20 uppercase mb-2 tracking-widest">
           Configure
         </div>
@@ -81,7 +84,7 @@ export default function Sidebar() {
               <Link key={item.name} href={item.href}>
                 <div
                   className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition ${
-                    path === item.href
+                    isActiveNav(item.href)
                       ? "text-white bg-white/5"
                       : "text-white/40 hover:text-white"
                   }`}>
@@ -93,7 +96,6 @@ export default function Sidebar() {
           })}
         </nav>
 
-        {/* INSIGHTS */}
         <div className="text-[10px] text-white/20 uppercase mb-2 tracking-widest">
           Insights
         </div>
@@ -105,7 +107,7 @@ export default function Sidebar() {
               <Link key={item.name} href={item.href}>
                 <div
                   className={`flex items-center gap-3 px-3 py-2 cursor-pointer transition ${
-                    path === item.href
+                    isActiveNav(item.href)
                       ? "text-white bg-white/5"
                       : "text-white/40 hover:text-white"
                   }`}>
@@ -118,11 +120,7 @@ export default function Sidebar() {
         </nav>
       </div>
 
-      {/* FOOTER */}
-      <div className="p-6 border-t border-white/10">
-        <div className="text-xl font-bold">KRON</div>
-        <div className="text-[10px] text-white/40 mt-1">v 2.4.0 - STABLE</div>
-      </div>
+      <RailUserFooter />
     </aside>
   );
 }
