@@ -54,140 +54,140 @@ export default function SettingsPage() {
           <MoreVertical className="text-white/70" size={18} />
         </header>
 
-        <main className="mx-auto min-h-0 max-w-[1200px] flex-1 space-y-8 overflow-y-auto overscroll-y-contain px-8 pb-24 pt-8">
+        <main className="mx-auto min-h-0 w-full max-w-none flex-1 space-y-8 overflow-y-auto px-8 pb-24 pt-8 no-scrollbar">
           {/* PROJECT NAME */}
           <section className="border border-white/10 bg-white/5 p-8 space-y-6">
-            <div>
-              <h2 className="text-lg font-bold mb-2">Project Name</h2>
-              <p className="text-white/40 text-sm">
-                Update your project's display name across dashboard.
-              </p>
-            </div>
-
-            <div>
-              <label className="text-xs uppercase text-white/40">
-                Project Identifier
-              </label>
-
-              <div className="flex mt-2">
-                <span className="px-3 py-2 bg-white/5 border border-r-0 border-white/10 text-white/40 text-sm">
-                  engine.io/
-                </span>
-
-                <input
-                  value={project}
-                  onChange={(e) => setProject(e.target.value)}
-                  className="flex-1 bg-white/5 border border-white/10 px-3 py-2 outline-none"
-                />
+              <div>
+                <h2 className="text-lg font-bold mb-2">Project Name</h2>
+                <p className="text-white/40 text-sm">
+                  Update your project's display name across dashboard.
+                </p>
               </div>
-            </div>
 
-            <div className="flex justify-end">
-              <div className="clip-wrapper bg-white/60 p-[1px] inline-flex">
-                <button className="clip-inner bg-white text-black px-6 py-2 font-bold">
-                  Save
-                </button>
+              <div>
+                <label className="text-xs uppercase text-white/40">
+                  Project Identifier
+                </label>
+
+                <div className="flex mt-2">
+                  <span className="px-3 py-2 bg-white/5 border border-r-0 border-white/10 text-white/40 text-sm">
+                    engine.io/
+                  </span>
+
+                  <input
+                    value={project}
+                    onChange={(e) => setProject(e.target.value)}
+                    className="flex-1 bg-white/5 border border-white/10 px-3 py-2 outline-none"
+                  />
+                </div>
               </div>
-            </div>
+
+              <div className="flex justify-end">
+                <div className="clip-wrapper bg-white/60 p-[1px] inline-flex">
+                  <button className="clip-inner bg-white text-black px-6 py-2 font-bold">
+                    Save
+                  </button>
+                </div>
+              </div>
           </section>
 
           {/* PROJECT ID */}
           <section className="border border-white/10 bg-white/5 p-8 space-y-6">
-            <div>
-              <h2 className="text-lg font-bold mb-2">Project ID</h2>
-              <p className="text-white/40 text-sm">
-                Unique identifier for API usage.
-              </p>
-            </div>
+              <div>
+                <h2 className="text-lg font-bold mb-2">Project ID</h2>
+                <p className="text-white/40 text-sm">
+                  Unique identifier for API usage.
+                </p>
+              </div>
 
-            <div className="flex items-center gap-4 bg-black/40 p-4 border border-white/10">
-              <code className="flex-1 text-sm tracking-widest">
-                prj_k7n9x2v5m8l1q
-              </code>
+              <div className="flex items-center gap-4 bg-black/40 p-4 border border-white/10">
+                <code className="flex-1 text-sm tracking-widest">
+                  prj_k7n9x2v5m8l1q
+                </code>
 
-              <button onClick={copyId}>
-                <Copy size={16} />
-              </button>
-            </div>
+                <button onClick={copyId}>
+                  <Copy size={16} />
+                </button>
+              </div>
           </section>
 
           {/* DATA PREF */}
           <section className="border border-white/10 bg-white/5 p-8 space-y-6">
-            <div>
-              <h2 className="text-lg font-bold mb-2">Data Preferences</h2>
-              <p className="text-white/40 text-sm">
-                Control how project data is used.
-              </p>
-            </div>
+              <div>
+                <h2 className="text-lg font-bold mb-2">Data Preferences</h2>
+                <p className="text-white/40 text-sm">
+                  Control how project data is used.
+                </p>
+              </div>
 
-            <div className="flex justify-between items-center bg-white/5 border border-white/10 p-4">
-              <span>Improve models with this project's data</span>
+              <div className="flex justify-between items-center bg-white/5 border border-white/10 p-4">
+                <span>Improve models with this project's data</span>
 
-              <button
-                onClick={() => setToggle(!toggle)}
-                className={`w-12 h-6 flex items-center px-1 ${
-                  toggle ? "bg-white" : "bg-white/20"
-                }`}>
-                <div
-                  className={`w-4 h-4 ${
-                    toggle ? "bg-black ml-auto" : "bg-white"
-                  }`}
-                />
-              </button>
-            </div>
+                <button
+                  onClick={() => setToggle(!toggle)}
+                  className={`w-12 h-6 flex items-center px-1 ${
+                    toggle ? "bg-white" : "bg-white/20"
+                  }`}>
+                  <div
+                    className={`w-4 h-4 ${
+                      toggle ? "bg-black ml-auto" : "bg-white"
+                    }`}
+                  />
+                </button>
+              </div>
           </section>
 
           {/* TRANSFER */}
           <section className="border border-white/10 bg-white/5 p-8 flex justify-between items-center">
-            <div>
-              <h2 className="text-lg font-bold mb-2">Transfer</h2>
-              <p className="text-white/40 text-sm">
-                Move this project to another workspace.
-              </p>
-            </div>
+              <div>
+                <h2 className="text-lg font-bold mb-2">Transfer</h2>
+                <p className="text-white/40 text-sm">
+                  Move this project to another workspace.
+                </p>
+              </div>
 
-            <div className="clip-wrapper bg-white/30 p-[1px] inline-flex">
-              <button className="clip-inner bg-transparent px-6 py-2 font-bold">
-                Transfer Project
-              </button>
-            </div>
+              <div className="clip-wrapper bg-white/30 p-[1px] inline-flex">
+                <button className="clip-inner bg-transparent px-6 py-2 font-bold">
+                  Transfer Project
+                </button>
+              </div>
           </section>
 
           {/* DELETE */}
           <section className="border border-red-500/30 bg-red-500/5">
-            <div className="p-8 space-y-6">
-              <h2 className="text-red-400 font-bold text-lg">Delete Project</h2>
+              <div className="p-8 space-y-6">
+                <h2 className="text-red-400 font-bold text-lg">Delete Project</h2>
 
-              <p className="text-red-200/60 text-sm">
-                Permanently remove this project and all data.
-              </p>
+                <p className="text-red-200/60 text-sm">
+                  Permanently remove this project and all data.
+                </p>
 
-              <div className="flex items-center gap-6 p-4 border border-red-400/20 bg-black/20">
-                <div className="flex-1">
-                  <div className="text-xs text-red-400/60">PROJECT NAME</div>
-                  <div className="font-bold">{project}</div>
-                </div>
+                <div className="flex items-center gap-6 p-4 border border-red-400/20 bg-black/20">
+                  <div className="flex-1">
+                    <div className="text-xs text-red-400/60">PROJECT NAME</div>
+                    <div className="font-bold">{project}</div>
+                  </div>
 
-                <div className="text-right">
-                  <div className="text-xs text-red-400/60">LAST UPDATED</div>
-                  <div className="text-sm text-white/70">2 days ago</div>
-                </div>
+                  <div className="text-right">
+                    <div className="text-xs text-red-400/60">LAST UPDATED</div>
+                    <div className="text-sm text-white/70">2 days ago</div>
+                  </div>
 
-                <div className="px-3 py-1 border border-red-400 text-red-400 text-xs font-bold uppercase">
-                  Deployment Failed
+                  <div className="px-3 py-1 border border-red-400 text-red-400 text-xs font-bold uppercase">
+                    Deployment Failed
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="bg-red-500/10 border-t border-red-400/20 p-4 flex justify-end">
-              <div className="clip-wrapper bg-red-400/80 p-[1px] inline-flex">
-                <button
-                  onClick={() => setShowDeleteConfirm(true)}
-                  className="clip-inner bg-red-400 text-black px-8 py-3 font-bold">
-                  Delete Project
-                </button>
+              <div className="bg-red-500/10 border-t border-red-400/20 p-4 flex justify-end">
+                <div className="clip-wrapper bg-red-400/80 p-[1px] inline-flex">
+                  <button
+                    onClick={() => setShowDeleteConfirm(true)}
+                    className="clip-inner bg-red-400 text-black px-8 py-3 font-bold">
+                    Delete Project
+                  </button>
+                </div>
               </div>
-            </div>
           </section>
         </main>
 
