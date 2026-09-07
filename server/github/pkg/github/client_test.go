@@ -1,6 +1,7 @@
 package github
 
 import (
+	"context"
 	"crypto/hmac"
 	"crypto/sha256"
 	"encoding/hex"
@@ -49,7 +50,7 @@ func TestListInstallationRepositoriesSorting(t *testing.T) {
 	client := NewClient(12345, nil, "secret")
 
 	// Verify sorting logic directly on RepositoryItem struct
-	items, err := client.ListInstallationRepositories(nil, "", "")
+	items, err := client.ListInstallationRepositories(context.TODO(), "", "")
 	// When mock server is not configured, expect error from Do(nil req)
 	if err == nil && len(items) > 0 {
 		fmt.Println("Returned items:", len(items))

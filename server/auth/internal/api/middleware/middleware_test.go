@@ -198,15 +198,41 @@ func TestRequireAuthMiddleware(t *testing.T) {
 		t.Fatalf("expected 401 for blacklisted token, got %d", rr.Code)
 	}
 
-	// 4. Blacklisted Session
-	repo.blacklistedTokens[claims.ID] = false
-	repo.blacklistedSess["sess_1"] = true
+	// 5. User Level Revocation
+	repo.blacklistedSess["sess_1"] = false
+	repo.userRevocations["usr_1"] = time.Now().Add(10 * time.Second).Unix()
 	req = httptest.NewRequest(http.MethodGet, "/me", nil)
 	req.AddCookie(accessCookie)
 	rr = httptest.NewRecorder()
 	mw.ServeHTTP(rr, req)
 	if rr.Code != http.StatusUnauthorized {
-		t.Fatalf("expected 401 for blacklisted session, got %d", rr.Code)
+		t.Fatalf("expected 401 for revoked user, got %d", rr.Code)
+	}
+
+	// 6. Invalid Cookie Signature
+	badCookie := &http.Cookie{Name: cfg.CookieNameAccess, Value: validToken + ".tampered"}
+	req = httptest.NewRequest(http.MethodGet, "/me", nil)
+	req.AddCookie(badCookie)
+	rr = httptest.NewRecorder()
+	mw.ServeHTTP(rr, req)
+	if rr.Code != http.StatusUnauthorized {
+		t.Fatalf("expected 401 for tampered cookie, got %d", rr.Code)
+	}
+}
+
+func TestRateLimiterMiddleware_NilRedis(t *testing.T) {
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	mw := RateLimiterMiddleware(nil, 10, time.Minute)(nextHandler)
+
+	req := httptest.NewRequest(http.MethodGet, "/test", nil)
+	rr := httptest.NewRecorder()
+	mw.ServeHTTP(rr, req)
+
+	if rr.Code != http.StatusOK {
+		t.Fatalf("expected 200 when redis is nil, got %d", rr.Code)
 	}
 }
 

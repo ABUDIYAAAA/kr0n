@@ -10,9 +10,9 @@ import (
 // Config holds all centralized runtime environment configurations for auth microservice.
 type Config struct {
 	// Server
-	Port        string `env:"PORT"`
+	Port        string `env:"PORT" envDefault:"8080"`
 	Env         string `env:"ENV" envDefault:"development"`
-	FrontendURL string `env:"FRONTEND_URL"`
+	FrontendURL string `env:"FRONTEND_URL" envDefault:"http://localhost:3000"`
 	CookieSecure bool  `env:"COOKIE_SECURE" envDefault:"false"`
 
 	// Database & Cache
@@ -38,8 +38,8 @@ type Config struct {
 	// JWT & Tokens
 	JWTAccessSecret  string        `env:"JWT_ACCESS_SECRET,required"`
 	JWTRefreshSecret string        `env:"JWT_REFRESH_SECRET,required"`
-	JWTAccessTTL     time.Duration `env:"JWT_ACCESS_TTL"`
-	JWTRefreshTTL    time.Duration `env:"JWT_REFRESH_TTL"` // 30 days
+	JWTAccessTTL     time.Duration `env:"JWT_ACCESS_TTL" envDefault:"15m"`
+	JWTRefreshTTL    time.Duration `env:"JWT_REFRESH_TTL" envDefault:"720h"` // 30 days
 
 	// Cookies & Signatures
 	CookieDomain          string `env:"COOKIE_DOMAIN" envDefault:""`
