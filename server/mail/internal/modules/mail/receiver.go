@@ -9,14 +9,19 @@ import (
 	pkf "mail.kron.com/pkg/kafka"
 )
 
+// KafkaReceiver abstracts Kafka message consumer loop contract for unit testing.
+type KafkaReceiver interface {
+	Start(ctx context.Context, handler pkf.MessageHandler) error
+}
+
 // EventReceiver manages Kafka subscription and message deserialization for mail events.
 type EventReceiver struct {
-	receiver *pkf.Receiver
+	receiver KafkaReceiver
 	service  Service
 }
 
 // NewEventReceiver constructs an EventReceiver binding Kafka consumer to mail business logic.
-func NewEventReceiver(receiver *pkf.Receiver, service Service) *EventReceiver {
+func NewEventReceiver(receiver KafkaReceiver, service Service) *EventReceiver {
 	return &EventReceiver{
 		receiver: receiver,
 		service:  service,

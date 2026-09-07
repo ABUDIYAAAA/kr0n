@@ -6,19 +6,23 @@ import (
 	"log"
 	"time"
 
-	pkf "auth.kron.com/pkg/kafka"
 )
+
+// EventPublisher abstracts Kafka publishing contract for unit testing and flexibility.
+type EventPublisher interface {
+	PublishEvent(ctx context.Context, key string, payload []byte) error
+}
 
 // OutboxWorker processes pending outbox events from PostgreSQL and publishes them to Kafka.
 type OutboxWorker struct {
 	repo         Repository
-	producer     *pkf.Producer
+	publisher    EventPublisher
 	batchSize    int
 	pollInterval time.Duration
 }
 
 // NewOutboxWorker constructs a new transactional OutboxWorker background instance.
-func NewOutboxWorker(repo Repository, producer *pkf.Producer, batchSize int, pollInterval time.Duration) *OutboxWorker {
+func NewOutboxWorker(repo Repository, publisher EventPublisher, batchSize int, pollInterval time.Duration) *OutboxWorker {
 	if batchSize <= 0 {
 		batchSize = 50
 	}
@@ -27,7 +31,7 @@ func NewOutboxWorker(repo Repository, producer *pkf.Producer, batchSize int, pol
 	}
 	return &OutboxWorker{
 		repo:         repo,
-		producer:     producer,
+		publisher:    publisher,
 		batchSize:    batchSize,
 		pollInterval: pollInterval,
 	}
@@ -71,7 +75,7 @@ func (w *OutboxWorker) processBatch(ctx context.Context) error {
 			return ctx.Err()
 		}
 
-		err := w.producer.PublishEvent(ctx, event.IdempotencyKey, event.Payload)
+		err := w.publisher.PublishEvent(ctx, event.IdempotencyKey, event.Payload)
 		if err != nil {
 			log.Printf("[OUTBOX WORKER ERROR] Publish failed for Outbox ID %s (Key: %s): %v", event.ID, event.IdempotencyKey, err)
 			_ = w.repo.MarkOutboxEventFailed(ctx, event.ID, err.Error())
