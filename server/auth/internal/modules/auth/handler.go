@@ -3,6 +3,7 @@ package auth
 import (
 	"errors"
 	"net/http"
+	"strconv"
 	"strings"
 
 	"auth.kron.com/internal/api/config"
@@ -283,8 +284,8 @@ func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
 	response.Success(w, http.StatusOK, "Logged out successfully", nil)
 }
 
-// ListSessions lists all active sessions for the user.
-// GET /api/v1/auth/sessions
+// ListSessions lists active sessions for the user with pagination.
+// GET /api/v1/auth/sessions?page=1&limit=10
 func (h *Handler) ListSessions(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(ContextKeyUserID).(string)
 	if !ok || userID == "" {
@@ -294,13 +295,22 @@ func (h *Handler) ListSessions(w http.ResponseWriter, r *http.Request) {
 
 	currentSessionID, _ := r.Context().Value(ContextKeySessionID).(string)
 
-	sessions, err := h.service.ListUserSessions(r.Context(), userID, currentSessionID)
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	sessions, meta, err := h.service.ListUserSessions(r.Context(), userID, currentSessionID, page, limit)
 	if err != nil {
 		response.ErrorResponse(w, http.StatusInternalServerError, ErrCodeInternalError, "Failed to list sessions", nil)
 		return
 	}
 
-	response.Success(w, http.StatusOK, "Active sessions retrieved", sessions)
+	response.PaginatedSuccess(w, http.StatusOK, "Active sessions retrieved", sessions, meta)
 }
 
 // RevokeSession revokes a specific session.
@@ -409,6 +419,8 @@ func (h *Handler) HandleOAuthCallback(w http.ResponseWriter, r *http.Request) {
 // ==========================================
 
 func (h *Handler) setAuthCookies(w http.ResponseWriter, accessToken, refreshToken, deviceID string) {
+	isSecure := h.cfg.CookieSecure || h.cfg.Env == "production"
+
 	// 1. Signed Access Token Cookie
 	crypto.SetSignedCookie(w, crypto.CookieOptions{
 		Name:     h.cfg.CookieNameAccess,
@@ -418,7 +430,7 @@ func (h *Handler) setAuthCookies(w http.ResponseWriter, accessToken, refreshToke
 		Path:     "/",
 		MaxAge:   int(h.cfg.JWTAccessTTL.Seconds()),
 		HTTPOnly: true,
-		Secure:   false, // Set to true in TLS/production
+		Secure:   isSecure,
 		SameSite: http.SameSiteLaxMode,
 	})
 
@@ -432,7 +444,7 @@ func (h *Handler) setAuthCookies(w http.ResponseWriter, accessToken, refreshToke
 			Path:     "/",
 			MaxAge:   int(h.cfg.JWTRefreshTTL.Seconds()),
 			HTTPOnly: true,
-			Secure:   false,
+			Secure:   isSecure,
 			SameSite: http.SameSiteLaxMode,
 		})
 	}
@@ -447,7 +459,7 @@ func (h *Handler) setAuthCookies(w http.ResponseWriter, accessToken, refreshToke
 			Path:     "/",
 			MaxAge:   DeviceCookieMaxAge,
 			HTTPOnly: true,
-			Secure:   false,
+			Secure:   isSecure,
 			SameSite: http.SameSiteLaxMode,
 		})
 	}

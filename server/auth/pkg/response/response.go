@@ -21,6 +21,23 @@ type Error struct {
 	Details any    `json:"details,omitempty"`
 }
 
+// PaginationMeta contains structural metadata for paginated collection responses.
+type PaginationMeta struct {
+	Page       int   `json:"page"`
+	Limit      int   `json:"limit"`
+	TotalCount int64 `json:"total_count"`
+	TotalPages int   `json:"total_pages"`
+	HasNext    bool  `json:"has_next"`
+}
+
+// PaginatedResponse envelopes collection data alongside pagination metadata.
+type PaginatedResponse struct {
+	Success bool           `json:"success"`
+	Message string         `json:"message,omitempty"`
+	Data    any            `json:"data,omitempty"`
+	Meta    PaginationMeta `json:"meta"`
+}
+
 // JSON sends a JSON response with the provided HTTP status code and payload.
 func JSON(w http.ResponseWriter, statusCode int, payload any) {
 	w.Header().Set("Content-Type", "application/json; charset=utf-8")
@@ -41,6 +58,17 @@ func Success(w http.ResponseWriter, statusCode int, message string, data any) {
 		Success: true,
 		Message: message,
 		Data:    data,
+	}
+	JSON(w, statusCode, res)
+}
+
+// PaginatedSuccess sends a standardized 2xx success response with pagination metadata.
+func PaginatedSuccess(w http.ResponseWriter, statusCode int, message string, data any, meta PaginationMeta) {
+	res := PaginatedResponse{
+		Success: true,
+		Message: message,
+		Data:    data,
+		Meta:    meta,
 	}
 	JSON(w, statusCode, res)
 }

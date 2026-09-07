@@ -7,9 +7,13 @@ import (
 	"fmt"
 	"log"
 	"strings"
+	"time"
 
+	"github.com/google/uuid"
 	"github.kron.com/internal/api/config"
 	pkgh "github.kron.com/pkg/github"
+	pkfk "github.kron.com/pkg/kafka"
+	"github.kron.com/pkg/response"
 )
 
 var (
@@ -20,28 +24,31 @@ var (
 type Service interface {
 	GetInstallationStatus(ctx context.Context, userID string) (*InstallationStatusResponse, error)
 	SaveInstallationCallback(ctx context.Context, userID string, req InstallationCallbackRequest) (*InstallationStatusResponse, error)
-	ListUserRepositories(ctx context.Context, userID string, visibility string) ([]pkgh.RepositoryItem, error)
+	ListUserRepositories(ctx context.Context, userID string, visibility string, page, limit int) ([]pkgh.RepositoryItem, response.PaginationMeta, error)
+	ListRepositoryContents(ctx context.Context, userID string, repoFullName string, branch string, path string) ([]pkgh.ContentItem, error)
 	TrackRepository(ctx context.Context, userID string, req TrackRepositoryRequest) (*TrackedRepositoryResponse, error)
-	ListTrackedRepositories(ctx context.Context, userID string) ([]TrackedRepositoryResponse, error)
+	ListTrackedRepositories(ctx context.Context, userID string, page, limit int) ([]TrackedRepositoryResponse, response.PaginationMeta, error)
 	UntrackRepository(ctx context.Context, userID string, repoID string) error
 	HandleWebhookEvent(ctx context.Context, eventType string, signatureHeader string, body []byte) error
 }
 
 type githubService struct {
-	repo     Repository
-	cfg      *config.Config
-	ghClient *pkgh.Client
+	repo          Repository
+	cfg           *config.Config
+	ghClient      *pkgh.Client
+	kafkaProducer *pkfk.Producer
 }
 
-func NewService(repo Repository, cfg *config.Config, ghClient *pkgh.Client) Service {
+func NewService(repo Repository, cfg *config.Config, ghClient *pkgh.Client, kafkaProducer *pkfk.Producer) Service {
 	if ghClient == nil {
 		ghClient = pkgh.NewClient(cfg.GitHubAppID, cfg.GitHubPrivateKey, cfg.GitHubWebhookSecret)
 	}
 
 	return &githubService{
-		repo:     repo,
-		cfg:      cfg,
-		ghClient: ghClient,
+		repo:          repo,
+		cfg:           cfg,
+		ghClient:      ghClient,
+		kafkaProducer: kafkaProducer,
 	}
 }
 
@@ -79,25 +86,74 @@ func (s *githubService) SaveInstallationCallback(ctx context.Context, userID str
 	return s.GetInstallationStatus(ctx, userID)
 }
 
-func (s *githubService) ListUserRepositories(ctx context.Context, userID string, visibility string) ([]pkgh.RepositoryItem, error) {
+func (s *githubService) ListUserRepositories(ctx context.Context, userID string, visibility string, page, limit int) ([]pkgh.RepositoryItem, response.PaginationMeta, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+
 	inst, err := s.repo.GetInstallationByUserID(ctx, userID)
 	if err != nil {
-		return nil, ErrInstallationNotFound
+		return nil, response.PaginationMeta{}, ErrInstallationNotFound
 	}
 
 	// 1. Get installation access token
 	token, _, err := s.ghClient.ExchangeInstallationToken(ctx, inst.InstallationID)
 	if err != nil {
-		return nil, fmt.Errorf("failed to exchange installation access token for installation ID %d: %w", inst.InstallationID, err)
+		return nil, response.PaginationMeta{}, fmt.Errorf("failed to exchange installation access token for installation ID %d: %w", inst.InstallationID, err)
 	}
 
 	// 2. Fetch user repositories directly from GitHub REST API
 	repos, err := s.ghClient.ListInstallationRepositories(ctx, token, visibility)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list github repositories: %w", err)
+		return nil, response.PaginationMeta{}, fmt.Errorf("failed to list github repositories: %w", err)
 	}
 
-	return repos, nil
+	totalCount := int64(len(repos))
+	start := (page - 1) * limit
+	if start > int(totalCount) {
+		start = int(totalCount)
+	}
+	end := start + limit
+	if end > int(totalCount) {
+		end = int(totalCount)
+	}
+
+	slicedRepos := repos[start:end]
+	totalPages := 0
+	if limit > 0 {
+		totalPages = int((totalCount + int64(limit) - 1) / int64(limit))
+	}
+	meta := response.PaginationMeta{
+		Page:       page,
+		Limit:      limit,
+		TotalCount: totalCount,
+		TotalPages: totalPages,
+		HasNext:    page < totalPages,
+	}
+
+	return slicedRepos, meta, nil
+}
+
+func (s *githubService) ListRepositoryContents(ctx context.Context, userID string, repoFullName string, branch string, path string) ([]pkgh.ContentItem, error) {
+	inst, err := s.repo.GetInstallationByUserID(ctx, userID)
+	if err != nil {
+		return nil, ErrInstallationNotFound
+	}
+
+	token, _, err := s.ghClient.ExchangeInstallationToken(ctx, inst.InstallationID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to exchange installation token: %w", err)
+	}
+
+	parts := strings.Split(repoFullName, "/")
+	if len(parts) != 2 {
+		return nil, fmt.Errorf("invalid repository full name '%s'", repoFullName)
+	}
+
+	return s.ghClient.ListRepositoryContents(ctx, token, parts[0], parts[1], branch, path)
 }
 
 func (s *githubService) TrackRepository(ctx context.Context, userID string, req TrackRepositoryRequest) (*TrackedRepositoryResponse, error) {
@@ -135,10 +191,17 @@ func (s *githubService) TrackRepository(ctx context.Context, userID string, req 
 	}, nil
 }
 
-func (s *githubService) ListTrackedRepositories(ctx context.Context, userID string) ([]TrackedRepositoryResponse, error) {
-	list, err := s.repo.GetTrackedRepositoriesByUserID(ctx, userID)
+func (s *githubService) ListTrackedRepositories(ctx context.Context, userID string, page, limit int) ([]TrackedRepositoryResponse, response.PaginationMeta, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	list, totalCount, err := s.repo.GetTrackedRepositoriesByUserID(ctx, userID, page, limit)
 	if err != nil {
-		return nil, err
+		return nil, response.PaginationMeta{}, err
 	}
 
 	result := make([]TrackedRepositoryResponse, 0, len(list))
@@ -156,7 +219,20 @@ func (s *githubService) ListTrackedRepositories(ctx context.Context, userID stri
 			CreatedAt:     item.CreatedAt,
 		})
 	}
-	return result, nil
+
+	totalPages := 0
+	if limit > 0 {
+		totalPages = int((totalCount + int64(limit) - 1) / int64(limit))
+	}
+	meta := response.PaginationMeta{
+		Page:       page,
+		Limit:      limit,
+		TotalCount: totalCount,
+		TotalPages: totalPages,
+		HasNext:    page < totalPages,
+	}
+
+	return result, meta, nil
 }
 
 func (s *githubService) UntrackRepository(ctx context.Context, userID string, repoID string) error {
@@ -210,9 +286,36 @@ func (s *githubService) HandleWebhookEvent(ctx context.Context, eventType string
 		return nil
 	}
 
-	// 5. Log Push Detection
-	log.Printf("[GITHUB PUSH DETECTED] [TODO: Publish Push Event to Kafka] Repository: %s (ID: %d) | Ref: %s | Commit: %s | Pusher: %s | Tracked By Users: %d",
+	// 5. Publish Deployment Trigger Event to Kafka
+	log.Printf("[GITHUB PUSH DETECTED] Repository: %s (ID: %d) | Ref: %s | Commit: %s | Pusher: %s | Tracked By Users: %d",
 		pushEvent.Repo.FullName, pushEvent.Repo.ID, pushEvent.Ref, pushEvent.After, pushEvent.Pusher.Name, len(trackedRepos))
+
+	if s.kafkaProducer != nil {
+		userIDs := make([]string, 0, len(trackedRepos))
+		for _, tr := range trackedRepos {
+			userIDs = append(userIDs, tr.UserID)
+		}
+
+		evtMap := map[string]any{
+			"event_id":       uuid.NewString(),
+			"event_type":     "DEPLOYMENT_TRIGGERED",
+			"github_repo_id": pushEvent.Repo.ID,
+			"repo_full_name": pushEvent.Repo.FullName,
+			"ref":            pushEvent.Ref,
+			"commit_sha":     pushEvent.After,
+			"pusher":         pushEvent.Pusher.Name,
+			"user_ids":       userIDs,
+			"triggered_at":   time.Now().UTC().Format(time.RFC3339),
+		}
+		evtBytes, _ := json.Marshal(evtMap)
+		idempotencyKey := fmt.Sprintf("deploy_push:%d:%s", pushEvent.Repo.ID, pushEvent.After)
+
+		if err := s.kafkaProducer.PublishEvent(ctx, idempotencyKey, evtBytes); err != nil {
+			log.Printf("[GITHUB WEBHOOK KAFKA ERROR] Failed to publish deployment trigger event: %v", err)
+		} else {
+			log.Printf("[GITHUB WEBHOOK KAFKA SUCCESS] Published deployment trigger event for repo %s (Commit: %s)", pushEvent.Repo.FullName, pushEvent.After)
+		}
+	}
 
 	return nil
 }

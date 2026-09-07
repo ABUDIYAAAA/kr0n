@@ -20,9 +20,8 @@ func RegisterRoutes(r chi.Router, cfg *config.Config, handler *Handler) {
 			r.Post("/installation/callback", handler.HandleInstallationCallback)
 
 			r.Get("/repositories", handler.ListUserRepositories)
-			r.Post("/repositories/track", handler.TrackRepository)
+			r.Get("/repositories/contents", handler.ListRepositoryContents)
 			r.Get("/repositories/tracked", handler.ListTrackedRepositories)
-			r.Delete("/repositories/track/{id}", handler.UntrackRepository)
 		})
 	})
 }

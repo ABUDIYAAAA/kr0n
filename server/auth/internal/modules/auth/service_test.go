@@ -203,14 +203,14 @@ func (m *mockRepository) GetSessionByTokenHash(ctx context.Context, tokenHash st
 	return nil, ErrNotFound
 }
 
-func (m *mockRepository) GetUserActiveSessions(ctx context.Context, userID string) ([]UserSession, error) {
+func (m *mockRepository) GetUserActiveSessions(ctx context.Context, userID string, page, limit int) ([]UserSession, int64, error) {
 	var list []UserSession
 	for _, s := range m.sessions {
 		if s.UserID == userID && !s.IsRevoked {
 			list = append(list, *s)
 		}
 	}
-	return list, nil
+	return list, int64(len(list)), nil
 }
 
 func (m *mockRepository) RevokeSession(ctx context.Context, sessionID, userID string) error {
@@ -748,12 +748,12 @@ func TestSessionsManagement(t *testing.T) {
 	claims, _ := jwt.ParseAndValidateToken(authResp.AccessToken, cfg.JWTAccessSecret)
 
 	// List sessions
-	sessions, err := svc.ListUserSessions(ctx, claims.UserID, claims.SessionID)
+	sessions, meta, err := svc.ListUserSessions(ctx, claims.UserID, claims.SessionID, 1, 10)
 	if err != nil {
 		t.Fatalf("ListUserSessions failed: %v", err)
 	}
-	if len(sessions) != 1 {
-		t.Fatalf("expected 1 session, got %d", len(sessions))
+	if len(sessions) != 1 || meta.TotalCount != 1 {
+		t.Fatalf("expected 1 session, got %d (total: %d)", len(sessions), meta.TotalCount)
 	}
 	if !sessions[0].IsCurrent {
 		t.Fatalf("expected IsCurrent to be true")
@@ -765,8 +765,8 @@ func TestSessionsManagement(t *testing.T) {
 		Password: "Password123!",
 	}, "dev_2", "127.0.0.2", "UA")
 
-	sessions, _ = svc.ListUserSessions(ctx, claims.UserID, claims.SessionID)
-	if len(sessions) != 2 {
+	sessions, meta, _ = svc.ListUserSessions(ctx, claims.UserID, claims.SessionID, 1, 10)
+	if len(sessions) != 2 || meta.TotalCount != 2 {
 		t.Fatalf("expected 2 sessions, got %d", len(sessions))
 	}
 

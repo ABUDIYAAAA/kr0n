@@ -16,6 +16,7 @@ import (
 	"github.kron.com/internal/api/router"
 	"github.kron.com/internal/modules/github"
 	pkgh "github.kron.com/pkg/github"
+	pkfk "github.kron.com/pkg/kafka"
 )
 
 func main() {
@@ -47,13 +48,31 @@ func main() {
 
 	// 3. Initialize GitHub API Client & Webhook Verifier
 	ghClient := pkgh.NewClient(cfg.GitHubAppID, cfg.GitHubPrivateKey, cfg.GitHubWebhookSecret)
+	if redisClient != nil {
+		ghClient.SetRedisClient(redisClient)
+	}
 
-	// 4. Initialize GitHub Module Layers
+	// 4. Initialize Kafka Deployment Event Producer
+	kafkaProducer := pkfk.NewProducer(cfg.KafkaBrokers, cfg.KafkaDeploymentTopic)
+	defer kafkaProducer.Close()
+
+	// 5. Initialize GitHub Module Layers
 	repo := github.NewRepository(dbPool, redisClient)
-	service := github.NewService(repo, cfg, ghClient)
+	service := github.NewService(repo, cfg, ghClient, kafkaProducer)
 	handler := github.NewHandler(service, cfg)
 
-	// 5. Initialize Router & Server
+	// 6. Initialize & Start Kafka Service Event Consumer for Repository Watch setup
+	eventConsumer := github.NewEventConsumer(cfg.KafkaBrokers, cfg.KafkaServiceTopic, cfg.KafkaGroupID, repo)
+	consumerCtx, cancelConsumer := context.WithCancel(context.Background())
+	defer cancelConsumer()
+
+	go func() {
+		if err := eventConsumer.Start(consumerCtx); err != nil && !errors.Is(err, context.Canceled) {
+			log.Printf("[ERROR] GitHub event consumer exited with error: %v", err)
+		}
+	}()
+
+	// 6. Initialize Router & Server
 	r := router.NewRouter(cfg, handler)
 
 	addr := fmt.Sprintf(":%s", cfg.Port)

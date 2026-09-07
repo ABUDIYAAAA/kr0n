@@ -11,7 +11,9 @@ import (
 type Config struct {
 	// Server
 	Port        string `env:"PORT"`
+	Env         string `env:"ENV" envDefault:"development"`
 	FrontendURL string `env:"FRONTEND_URL"`
+	CookieSecure bool  `env:"COOKIE_SECURE" envDefault:"false"`
 
 	// Database & Cache
 	DBConn    string `env:"DB_URL,required"`

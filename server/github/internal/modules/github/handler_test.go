@@ -22,7 +22,7 @@ func setupTestHandler() (*Handler, *mockRepository, *config.Config) {
 		GitHubWebhookSecret: "test_secret_123",
 	}
 	ghClient := pkgh.NewClient(12345, nil, cfg.GitHubWebhookSecret)
-	svc := NewService(repo, cfg, ghClient)
+	svc := NewService(repo, cfg, ghClient, nil)
 	handler := NewHandler(svc, cfg)
 	return handler, repo, cfg
 }

@@ -48,7 +48,7 @@ type Repository interface {
 	GetInstallationByInstallationID(ctx context.Context, instID int64) (*Installation, error)
 	TrackRepository(ctx context.Context, repo *TrackedRepo) error
 	UntrackRepository(ctx context.Context, userID string, repoID string) error
-	GetTrackedRepositoriesByUserID(ctx context.Context, userID string) ([]TrackedRepo, error)
+	GetTrackedRepositoriesByUserID(ctx context.Context, userID string, page, limit int) ([]TrackedRepo, int64, error)
 	GetTrackedRepositoryByGitHubID(ctx context.Context, githubRepoID int64) ([]TrackedRepo, error)
 }
 
@@ -185,32 +185,42 @@ func (r *githubRepository) UntrackRepository(ctx context.Context, userID string,
 	return nil
 }
 
-func (r *githubRepository) GetTrackedRepositoriesByUserID(ctx context.Context, userID string) ([]TrackedRepo, error) {
+func (r *githubRepository) GetTrackedRepositoriesByUserID(ctx context.Context, userID string, page, limit int) ([]TrackedRepo, int64, error) {
 	if r.db == nil {
-		return []TrackedRepo{}, nil
+		return []TrackedRepo{}, 0, nil
 	}
 
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+	offset := (page - 1) * limit
+
 	query := `
-		SELECT id, user_id, github_repo_id, repo_name, full_name, owner_login, is_private, default_branch, html_url, created_at, updated_at
+		SELECT id, user_id, github_repo_id, repo_name, full_name, owner_login, is_private, default_branch, html_url, created_at, updated_at, COUNT(*) OVER() as total_count
 		FROM github_tracked_repos
 		WHERE user_id = $1
 		ORDER BY created_at DESC
+		LIMIT $2 OFFSET $3
 	`
-	rows, err := r.db.Query(ctx, query, userID)
+	rows, err := r.db.Query(ctx, query, userID, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list tracked repositories: %w", err)
+		return nil, 0, fmt.Errorf("failed to list tracked repositories: %w", err)
 	}
 	defer rows.Close()
 
 	var list []TrackedRepo
+	var totalCount int64
 	for rows.Next() {
 		var item TrackedRepo
-		if err := rows.Scan(&item.ID, &item.UserID, &item.GitHubRepoID, &item.RepoName, &item.FullName, &item.OwnerLogin, &item.IsPrivate, &item.DefaultBranch, &item.HTMLURL, &item.CreatedAt, &item.UpdatedAt); err != nil {
-			return nil, err
+		if err := rows.Scan(&item.ID, &item.UserID, &item.GitHubRepoID, &item.RepoName, &item.FullName, &item.OwnerLogin, &item.IsPrivate, &item.DefaultBranch, &item.HTMLURL, &item.CreatedAt, &item.UpdatedAt, &totalCount); err != nil {
+			return nil, 0, err
 		}
 		list = append(list, item)
 	}
-	return list, nil
+	return list, totalCount, nil
 }
 
 func (r *githubRepository) GetTrackedRepositoryByGitHubID(ctx context.Context, githubRepoID int64) ([]TrackedRepo, error) {

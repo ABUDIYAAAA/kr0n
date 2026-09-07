@@ -24,6 +24,10 @@ type Config struct {
 	GitHubPrivateKeyPath  string
 	GitHubPrivateKey      []byte
 	GitHubWebhookSecret   string
+	KafkaBrokers          []string
+	KafkaServiceTopic     string
+	KafkaDeploymentTopic  string
+	KafkaGroupID           string
 }
 
 func NewConfig() (*Config, error) {
@@ -59,6 +63,9 @@ func NewConfig() (*Config, error) {
 		return nil, errors.New("JWT_ACCESS_SECRET is required")
 	}
 
+	kafkaBrokersStr := getEnv("KAFKA_BROKERS", "localhost:9092")
+	kafkaBrokers := strings.Split(kafkaBrokersStr, ",")
+
 	return &Config{
 		Port:                  port,
 		Environment:           env,
@@ -74,6 +81,10 @@ func NewConfig() (*Config, error) {
 		GitHubPrivateKeyPath:  githubPrivateKeyPath,
 		GitHubPrivateKey:      privateKeyBytes,
 		GitHubWebhookSecret:   githubWebhookSecret,
+		KafkaBrokers:          kafkaBrokers,
+		KafkaServiceTopic:     getEnv("KAFKA_SERVICE_TOPIC", "service.events"),
+		KafkaDeploymentTopic:  getEnv("KAFKA_DEPLOYMENT_TOPIC", "deployment.events"),
+		KafkaGroupID:          getEnv("KAFKA_GROUP_ID", "github-service-group"),
 	}, nil
 }
 

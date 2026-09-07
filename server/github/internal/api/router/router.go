@@ -7,6 +7,7 @@ import (
 	chimiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 	"github.kron.com/internal/api/config"
+	"github.kron.com/internal/api/middleware"
 	"github.kron.com/internal/modules/github"
 )
 
@@ -16,6 +17,7 @@ func NewRouter(cfg *config.Config, handler *github.Handler) http.Handler {
 	r.Use(chimiddleware.Recoverer)
 	r.Use(chimiddleware.RealIP)
 	r.Use(chimiddleware.Logger)
+	r.Use(middleware.MaxBodySizeMiddleware(5 * 1024 * 1024)) // 5 MB max body size for webhook payloads
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{cfg.FrontendURL},

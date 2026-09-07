@@ -15,6 +15,7 @@ import (
 	"auth.kron.com/pkg/crypto"
 	"auth.kron.com/pkg/email"
 	"auth.kron.com/pkg/jwt"
+	"auth.kron.com/pkg/response"
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 )
@@ -42,7 +43,7 @@ type Service interface {
 	ForgotPassword(ctx context.Context, req ForgotPasswordRequest) error
 	ResetPassword(ctx context.Context, req ResetPasswordRequest) error
 	Logout(ctx context.Context, sessionID, userID, tokenJTI string) error
-	ListUserSessions(ctx context.Context, userID, currentSessionID string) ([]SessionResponse, error)
+	ListUserSessions(ctx context.Context, userID, currentSessionID string, page, limit int) ([]SessionResponse, response.PaginationMeta, error)
 	RevokeSession(ctx context.Context, sessionIDToRevoke, currentUserID string) error
 	RevokeAllOtherSessions(ctx context.Context, currentUserID, currentSessionID string) error
 
@@ -523,11 +524,18 @@ func (s *authService) Logout(ctx context.Context, sessionID, userID, tokenJTI st
 	return nil
 }
 
-// ListUserSessions returns all active sessions for the user.
-func (s *authService) ListUserSessions(ctx context.Context, userID, currentSessionID string) ([]SessionResponse, error) {
-	sessions, err := s.repo.GetUserActiveSessions(ctx, userID)
+// ListUserSessions returns active sessions for the user with pagination metadata.
+func (s *authService) ListUserSessions(ctx context.Context, userID, currentSessionID string, page, limit int) ([]SessionResponse, response.PaginationMeta, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	sessions, totalCount, err := s.repo.GetUserActiveSessions(ctx, userID, page, limit)
 	if err != nil {
-		return nil, err
+		return nil, response.PaginationMeta{}, err
 	}
 
 	result := make([]SessionResponse, 0, len(sessions))
@@ -544,7 +552,19 @@ func (s *authService) ListUserSessions(ctx context.Context, userID, currentSessi
 		})
 	}
 
-	return result, nil
+	totalPages := 0
+	if limit > 0 {
+		totalPages = int((totalCount + int64(limit) - 1) / int64(limit))
+	}
+	meta := response.PaginationMeta{
+		Page:       page,
+		Limit:      limit,
+		TotalCount: totalCount,
+		TotalPages: totalPages,
+		HasNext:    page < totalPages,
+	}
+
+	return result, meta, nil
 }
 
 // RevokeSession revokes a specific session belonging to the user.

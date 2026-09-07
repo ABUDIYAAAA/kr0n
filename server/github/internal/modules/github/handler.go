@@ -76,7 +76,7 @@ func (h *Handler) HandleInstallationCallback(w http.ResponseWriter, r *http.Requ
 }
 
 // ListUserRepositories lists user repositories from GitHub REST API sorted by last_updated.
-// GET /api/v1/github/repositories
+// GET /api/v1/github/repositories?page=1&limit=20&visibility=all
 func (h *Handler) ListUserRepositories(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(ContextKeyUserID).(string)
 	if !ok || userID == "" {
@@ -85,8 +85,16 @@ func (h *Handler) ListUserRepositories(w http.ResponseWriter, r *http.Request) {
 	}
 
 	visibility := r.URL.Query().Get("visibility") // all, public, private
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
 
-	repos, err := h.service.ListUserRepositories(r.Context(), userID, visibility)
+	repos, meta, err := h.service.ListUserRepositories(r.Context(), userID, visibility, page, limit)
 	if err != nil {
 		if err == ErrInstallationNotFound {
 			response.ErrorResponse(w, http.StatusForbidden, ErrCodeInstallationRequired, "GitHub App must be installed to view repositories", nil)
@@ -96,7 +104,38 @@ func (h *Handler) ListUserRepositories(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	response.Success(w, http.StatusOK, "User repositories retrieved", repos)
+	response.PaginatedSuccess(w, http.StatusOK, "User repositories retrieved", repos, meta)
+}
+
+// ListRepositoryContents lists directory contents and files for root directory picking.
+// GET /api/v1/github/repositories/contents?repo_full_name=owner/repo&branch=main&path=/
+func (h *Handler) ListRepositoryContents(w http.ResponseWriter, r *http.Request) {
+	userID, ok := r.Context().Value(ContextKeyUserID).(string)
+	if !ok || userID == "" {
+		response.ErrorResponse(w, http.StatusUnauthorized, ErrCodeUnauthorized, "Unauthorized", nil)
+		return
+	}
+
+	repoFullName := r.URL.Query().Get("repo_full_name")
+	if repoFullName == "" {
+		response.ErrorResponse(w, http.StatusBadRequest, ErrCodeValidationFailed, "Missing required query parameter repo_full_name", nil)
+		return
+	}
+
+	branch := r.URL.Query().Get("branch")
+	path := r.URL.Query().Get("path")
+
+	contents, err := h.service.ListRepositoryContents(r.Context(), userID, repoFullName, branch, path)
+	if err != nil {
+		if err == ErrInstallationNotFound {
+			response.ErrorResponse(w, http.StatusForbidden, ErrCodeInstallationRequired, "GitHub App must be installed to view repository contents", nil)
+			return
+		}
+		response.ErrorResponse(w, http.StatusInternalServerError, ErrCodeGitHubAPIError, err.Error(), nil)
+		return
+	}
+
+	response.Success(w, http.StatusOK, "Repository contents retrieved", contents)
 }
 
 // TrackRepository adds a repository to deployment tracking.
@@ -124,7 +163,7 @@ func (h *Handler) TrackRepository(w http.ResponseWriter, r *http.Request) {
 }
 
 // ListTrackedRepositories lists all user tracked repositories.
-// GET /api/v1/github/repositories/tracked
+// GET /api/v1/github/repositories/tracked?page=1&limit=10
 func (h *Handler) ListTrackedRepositories(w http.ResponseWriter, r *http.Request) {
 	userID, ok := r.Context().Value(ContextKeyUserID).(string)
 	if !ok || userID == "" {
@@ -132,13 +171,22 @@ func (h *Handler) ListTrackedRepositories(w http.ResponseWriter, r *http.Request
 		return
 	}
 
-	tracked, err := h.service.ListTrackedRepositories(r.Context(), userID)
+	page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+	if page < 1 {
+		page = 1
+	}
+	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+
+	tracked, meta, err := h.service.ListTrackedRepositories(r.Context(), userID, page, limit)
 	if err != nil {
 		response.ErrorResponse(w, http.StatusInternalServerError, ErrCodeInternalError, "Failed to list tracked repositories", nil)
 		return
 	}
 
-	response.Success(w, http.StatusOK, "Tracked repositories retrieved", tracked)
+	response.PaginatedSuccess(w, http.StatusOK, "Tracked repositories retrieved", tracked, meta)
 }
 
 // UntrackRepository removes a repository from deployment tracking.

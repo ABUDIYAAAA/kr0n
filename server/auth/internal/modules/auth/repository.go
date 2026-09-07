@@ -115,7 +115,7 @@ type Repository interface {
 	CreateSession(ctx context.Context, session *UserSession) error
 	GetSessionByID(ctx context.Context, sessionID string) (*UserSession, error)
 	GetSessionByTokenHash(ctx context.Context, tokenHash string) (*UserSession, error)
-	GetUserActiveSessions(ctx context.Context, userID string) ([]UserSession, error)
+	GetUserActiveSessions(ctx context.Context, userID string, page, limit int) ([]UserSession, int64, error)
 	RevokeSession(ctx context.Context, sessionID, userID string) error
 	RevokeAllUserSessions(ctx context.Context, userID string, exceptSessionID string) error
 	UpdateSessionActivity(ctx context.Context, sessionID, ipAddress, userAgent string) error
@@ -658,21 +658,31 @@ func (r *sqlRepository) GetSessionByTokenHash(ctx context.Context, tokenHash str
 	return &s, nil
 }
 
-func (r *sqlRepository) GetUserActiveSessions(ctx context.Context, userID string) ([]UserSession, error) {
+func (r *sqlRepository) GetUserActiveSessions(ctx context.Context, userID string, page, limit int) ([]UserSession, int64, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 10
+	}
+	offset := (page - 1) * limit
+
 	query := `
-		SELECT id, user_id, session_token_hash, device_id, COALESCE(ip_address::text, ''), COALESCE(user_agent, ''), is_revoked, last_active_at, expires_at, created_at
+		SELECT id, user_id, session_token_hash, device_id, COALESCE(ip_address::text, ''), COALESCE(user_agent, ''), is_revoked, last_active_at, expires_at, created_at, COUNT(*) OVER() as total_count
 		FROM user_sessions
 		WHERE user_id = $1 AND is_revoked = FALSE AND expires_at > NOW()
-		ORDER BY last_active_at DESC;
+		ORDER BY last_active_at DESC
+		LIMIT $2 OFFSET $3;
 	`
 
-	rows, err := r.db.Query(ctx, query, userID)
+	rows, err := r.db.Query(ctx, query, userID, limit, offset)
 	if err != nil {
-		return nil, fmt.Errorf("failed to query active sessions: %w", err)
+		return nil, 0, fmt.Errorf("failed to query active sessions: %w", err)
 	}
 	defer rows.Close()
 
 	var sessions []UserSession
+	var totalCount int64
 	for rows.Next() {
 		var s UserSession
 		if err := rows.Scan(
@@ -686,13 +696,14 @@ func (r *sqlRepository) GetUserActiveSessions(ctx context.Context, userID string
 			&s.LastActiveAt,
 			&s.ExpiresAt,
 			&s.CreatedAt,
+			&totalCount,
 		); err != nil {
-			return nil, fmt.Errorf("failed to scan session row: %w", err)
+			return nil, 0, fmt.Errorf("failed to scan session row: %w", err)
 		}
 		sessions = append(sessions, s)
 	}
 
-	return sessions, nil
+	return sessions, totalCount, nil
 }
 
 func (r *sqlRepository) RevokeSession(ctx context.Context, sessionID, userID string) error {

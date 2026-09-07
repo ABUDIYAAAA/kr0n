@@ -70,14 +70,14 @@ func (m *mockRepository) UntrackRepository(ctx context.Context, userID string, r
 	return ErrNotFound
 }
 
-func (m *mockRepository) GetTrackedRepositoriesByUserID(ctx context.Context, userID string) ([]TrackedRepo, error) {
+func (m *mockRepository) GetTrackedRepositoriesByUserID(ctx context.Context, userID string, page, limit int) ([]TrackedRepo, int64, error) {
 	var list []TrackedRepo
 	for _, repo := range m.trackedRepos {
 		if repo.UserID == userID {
 			list = append(list, *repo)
 		}
 	}
-	return list, nil
+	return list, int64(len(list)), nil
 }
 
 func (m *mockRepository) GetTrackedRepositoryByGitHubID(ctx context.Context, githubRepoID int64) ([]TrackedRepo, error) {
@@ -95,7 +95,7 @@ func TestInstallationStatusAndCallback(t *testing.T) {
 	cfg := &config.Config{
 		GitHubWebhookSecret: "secret",
 	}
-	svc := NewService(repo, cfg, nil)
+	svc := NewService(repo, cfg, nil, nil)
 	ctx := context.Background()
 
 	// 1. Installation status uninstalled
@@ -122,11 +122,11 @@ func TestListUserRepositoriesUninstalled(t *testing.T) {
 	cfg := &config.Config{
 		GitHubWebhookSecret: "secret",
 	}
-	svc := NewService(repo, cfg, nil)
+	svc := NewService(repo, cfg, nil, nil)
 	ctx := context.Background()
 
 	// Uninstalled user should return ErrInstallationNotFound
-	_, err := svc.ListUserRepositories(ctx, "usr_2", "all")
+	_, _, err := svc.ListUserRepositories(ctx, "usr_2", "all", 1, 20)
 	if err != ErrInstallationNotFound {
 		t.Fatalf("expected ErrInstallationNotFound, got %v", err)
 	}
@@ -137,7 +137,7 @@ func TestTrackAndUntrackRepository(t *testing.T) {
 	cfg := &config.Config{
 		GitHubWebhookSecret: "secret",
 	}
-	svc := NewService(repo, cfg, nil)
+	svc := NewService(repo, cfg, nil, nil)
 	ctx := context.Background()
 
 	// Track repo
@@ -158,11 +158,11 @@ func TestTrackAndUntrackRepository(t *testing.T) {
 	}
 
 	// List tracked repos
-	list, err := svc.ListTrackedRepositories(ctx, "usr_1")
+	list, meta, err := svc.ListTrackedRepositories(ctx, "usr_1", 1, 10)
 	if err != nil {
 		t.Fatalf("ListTrackedRepositories failed: %v", err)
 	}
-	if len(list) != 1 {
+	if len(list) != 1 || meta.TotalCount != 1 {
 		t.Fatalf("expected 1 tracked repo, got %d", len(list))
 	}
 
@@ -172,7 +172,7 @@ func TestTrackAndUntrackRepository(t *testing.T) {
 		t.Fatalf("UntrackRepository failed: %v", err)
 	}
 
-	list, _ = svc.ListTrackedRepositories(ctx, "usr_1")
+	list, _, _ = svc.ListTrackedRepositories(ctx, "usr_1", 1, 10)
 	if len(list) != 0 {
 		t.Fatalf("expected 0 tracked repos after untrack, got %d", len(list))
 	}
@@ -185,7 +185,7 @@ func TestHandleWebhookEventPush(t *testing.T) {
 		GitHubWebhookSecret: webhookSecret,
 	}
 	ghClient := pkgh.NewClient(12345, nil, webhookSecret)
-	svc := NewService(repo, cfg, ghClient)
+	svc := NewService(repo, cfg, ghClient, nil)
 	ctx := context.Background()
 
 	// Track repo ID 101 first

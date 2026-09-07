@@ -262,7 +262,7 @@ func TestHandlerLogoutAndSessions(t *testing.T) {
 	handler.Signup(rr, req)
 
 	user, _ := repo.GetUserByEmail(context.Background(), "sess@kron.com")
-	sessions, _ := repo.GetUserActiveSessions(context.Background(), user.ID)
+	sessions, _, _ := repo.GetUserActiveSessions(context.Background(), user.ID, 1, 10)
 	sessID := sessions[0].ID
 
 	// Logout

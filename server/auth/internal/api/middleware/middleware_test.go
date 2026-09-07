@@ -86,8 +86,8 @@ func (m *mockMiddlewareRepo) GetSessionByID(ctx context.Context, sessionID strin
 func (m *mockMiddlewareRepo) GetSessionByTokenHash(ctx context.Context, tokenHash string) (*auth.UserSession, error) {
 	return nil, nil
 }
-func (m *mockMiddlewareRepo) GetUserActiveSessions(ctx context.Context, userID string) ([]auth.UserSession, error) {
-	return nil, nil
+func (m *mockMiddlewareRepo) GetUserActiveSessions(ctx context.Context, userID string, page, limit int) ([]auth.UserSession, int64, error) {
+	return nil, 0, nil
 }
 func (m *mockMiddlewareRepo) RevokeSession(ctx context.Context, sessionID, userID string) error {
 	return nil
