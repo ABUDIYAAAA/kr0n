@@ -9,6 +9,7 @@ import (
 
 	"auth.kron.com/internal/api/config"
 	"auth.kron.com/internal/modules/auth"
+	"auth.kron.com/pkg/crypto"
 	"auth.kron.com/pkg/jwt"
 	"github.com/jackc/pgx/v5"
 )
@@ -170,24 +171,27 @@ func TestRequireAuthMiddleware(t *testing.T) {
 		t.Fatalf("expected 401 for missing token, got %d", rr.Code)
 	}
 
-	// 2. Valid Token via Header
+	// 2. Valid Token via Signed Cookie
 	validToken, claims, err := jwt.GenerateAccessToken("usr_1", "sess_1", "dev_1", "alice@kron.com", "alice", cfg.JWTAccessSecret, cfg.JWTAccessTTL)
 	if err != nil {
 		t.Fatalf("failed to generate token: %v", err)
 	}
 
+	signedCookieVal := crypto.SignValue(validToken, cfg.CookieAccessSignature)
+	accessCookie := &http.Cookie{Name: cfg.CookieNameAccess, Value: signedCookieVal}
+
 	req = httptest.NewRequest(http.MethodGet, "/me", nil)
-	req.Header.Set("Authorization", "Bearer "+validToken)
+	req.AddCookie(accessCookie)
 	rr = httptest.NewRecorder()
 	mw.ServeHTTP(rr, req)
 	if rr.Code != http.StatusOK {
-		t.Fatalf("expected 200 for valid token, got %d", rr.Code)
+		t.Fatalf("expected 200 for valid signed cookie, got %d", rr.Code)
 	}
 
 	// 3. Blacklisted Token
 	repo.blacklistedTokens[claims.ID] = true
 	req = httptest.NewRequest(http.MethodGet, "/me", nil)
-	req.Header.Set("Authorization", "Bearer "+validToken)
+	req.AddCookie(accessCookie)
 	rr = httptest.NewRecorder()
 	mw.ServeHTTP(rr, req)
 	if rr.Code != http.StatusUnauthorized {
@@ -198,7 +202,7 @@ func TestRequireAuthMiddleware(t *testing.T) {
 	repo.blacklistedTokens[claims.ID] = false
 	repo.blacklistedSess["sess_1"] = true
 	req = httptest.NewRequest(http.MethodGet, "/me", nil)
-	req.Header.Set("Authorization", "Bearer "+validToken)
+	req.AddCookie(accessCookie)
 	rr = httptest.NewRecorder()
 	mw.ServeHTTP(rr, req)
 	if rr.Code != http.StatusUnauthorized {
