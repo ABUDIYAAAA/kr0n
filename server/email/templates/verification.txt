@@ -1,6 +1,0 @@
-Hi {{ .Name }},
-
-Use the link below to verify your email address:
-{{ .Link }}
-
-This link expires soon for security.

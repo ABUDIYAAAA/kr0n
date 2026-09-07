@@ -1,5 +1,0 @@
-Kr0n
-
-{{ .Subject }}
-
-{{ template "content" . }}

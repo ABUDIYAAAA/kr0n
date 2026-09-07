@@ -1,3 +1,0 @@
-Hi {{ .Name }},
-
-{{ .Message }}
