@@ -18,6 +18,8 @@ func RegisterRoutes(r chi.Router, handler *Handler, authMiddleware func(chi.Rout
 		public.Get("/verify-email", handler.VerifyEmail)
 		public.Post("/verify-email", handler.VerifyEmail)
 		public.Post("/resend-verification", handler.ResendVerification)
+		public.Post("/forgot-password", handler.ForgotPassword)
+		public.Post("/reset-password", handler.ResetPassword)
 
 		// OAuth
 		public.Get("/oauth/{provider}/url", handler.GetOAuthURL)

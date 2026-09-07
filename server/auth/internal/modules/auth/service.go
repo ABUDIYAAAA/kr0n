@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"log"
@@ -14,6 +15,8 @@ import (
 	"auth.kron.com/pkg/crypto"
 	"auth.kron.com/pkg/email"
 	"auth.kron.com/pkg/jwt"
+	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 )
 
 var (
@@ -36,6 +39,8 @@ type Service interface {
 	UpdateUsername(ctx context.Context, userID, newUsername string) (*UserResponse, error)
 	VerifyEmail(ctx context.Context, tokenStr string) error
 	ResendVerificationEmail(ctx context.Context, req ResendVerificationRequest) error
+	ForgotPassword(ctx context.Context, req ForgotPasswordRequest) error
+	ResetPassword(ctx context.Context, req ResetPasswordRequest) error
 	Logout(ctx context.Context, sessionID, userID, tokenJTI string) error
 	ListUserSessions(ctx context.Context, userID, currentSessionID string) ([]SessionResponse, error)
 	RevokeSession(ctx context.Context, sessionIDToRevoke, currentUserID string) error
@@ -68,7 +73,7 @@ func NewService(repo Repository, cfg *config.Config, emailService email.EmailSer
 // Standard Authentication Flows
 // ==========================================
 
-// Signup registers a new user, sends email verification token, and establishes a session.
+// Signup registers a new user, sends email verification token via Outbox pattern, and establishes a session.
 func (s *authService) Signup(ctx context.Context, req SignupRequest, deviceID, ip, userAgent string) (*AuthResponse, string, error) {
 	// 1. Sanitize input
 	emailLower := strings.ToLower(strings.TrimSpace(req.Email))
@@ -80,18 +85,25 @@ func (s *authService) Signup(ctx context.Context, req SignupRequest, deviceID, i
 		return nil, "", fmt.Errorf("failed to hash password: %w", err)
 	}
 
-	// 3. Create user in PostgreSQL
-	user, err := s.repo.CreateUser(ctx, emailLower, usernameClean, &passwordHash)
-	if err != nil {
-		if errors.Is(err, ErrConflict) {
-			return nil, "", ErrUserAlreadyExists
-		}
-		return nil, "", err
-	}
+	var user *User
+	idempotencyKey := fmt.Sprintf("signup:%s:%d", emailLower, time.Now().UnixNano())
 
-	// 4. Generate email verification token
-	rawToken, err := crypto.GenerateRandomToken(32)
-	if err == nil {
+	// 3. Execute User creation, Token creation, and Outbox Event insertion inside a single SQL Transaction
+	err = s.repo.WithTx(ctx, func(tx pgx.Tx) error {
+		var txErr error
+		user, txErr = s.repo.CreateUserTx(ctx, tx, emailLower, usernameClean, &passwordHash)
+		if txErr != nil {
+			if errors.Is(txErr, ErrConflict) {
+				return ErrUserAlreadyExists
+			}
+			return txErr
+		}
+
+		rawToken, txErr := crypto.GenerateRandomToken(32)
+		if txErr != nil {
+			return fmt.Errorf("failed to generate verification token: %w", txErr)
+		}
+
 		tokenHash := crypto.HashTokenSHA256(rawToken)
 		securityToken := &SecurityToken{
 			UserID:    user.ID,
@@ -100,18 +112,51 @@ func (s *authService) Signup(ctx context.Context, req SignupRequest, deviceID, i
 			ExpiresAt: time.Now().UTC().Add(EmailVerificationTokenTTL),
 		}
 
-		if err := s.repo.CreateSecurityToken(ctx, securityToken); err == nil {
-			// Dispatch verification email in background
-			go func() {
-				verificationURL := fmt.Sprintf("%s/authentication/emailverified", s.cfg.FrontendURL)
-				_ = s.emailService.SendVerificationEmail(context.Background(), user.Email, user.Username, rawToken, verificationURL)
-			}()
-		} else {
-			log.Printf("[ERROR] failed to create email verification token: %v", err)
+		if txErr := s.repo.CreateSecurityTokenTx(ctx, tx, securityToken); txErr != nil {
+			return fmt.Errorf("failed to create security token: %w", txErr)
 		}
+
+		// Prepare Transactional Outbox Event
+		verificationURL := fmt.Sprintf("%s/authentication/emailverified", s.cfg.FrontendURL)
+		eventPayload := map[string]any{
+			"event_id":           uuid.NewString(),
+			"event_type":         "EMAIL_VERIFICATION",
+			"to_email":           user.Email,
+			"username":           user.Username,
+			"template_id":        "email_verification",
+			"idempotency_key":    idempotencyKey,
+			"timestamp":          time.Now().UTC(),
+			"verification_token": rawToken,
+			"verification_url":   verificationURL,
+			"metadata": map[string]string{
+				"source": "user_signup",
+			},
+		}
+
+		payloadBytes, txErr := json.Marshal(eventPayload)
+		if txErr != nil {
+			return fmt.Errorf("failed to marshal outbox event payload: %w", txErr)
+		}
+
+		outboxEvent := &OutboxEvent{
+			EventType:      "EMAIL_VERIFICATION",
+			Payload:        payloadBytes,
+			IdempotencyKey: idempotencyKey,
+			Status:         "PENDING",
+		}
+
+		if txErr := s.repo.InsertOutboxEventTx(ctx, tx, outboxEvent); txErr != nil {
+			return fmt.Errorf("failed to insert outbox event: %w", txErr)
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		return nil, "", err
 	}
 
-	// 5. Create active session and issue tokens
+	// 4. Create active session and issue tokens
 	authResp, refreshToken, err := s.createSessionAndTokens(ctx, user, deviceID, ip, userAgent)
 	if err != nil {
 		return nil, "", err
@@ -309,27 +354,151 @@ func (s *authService) ResendVerificationEmail(ctx context.Context, req ResendVer
 		return ErrEmailAlreadyVerified
 	}
 
-	rawToken, err := crypto.GenerateRandomToken(32)
+	idempotencyKey := fmt.Sprintf("resend_verify:%s:%d", user.ID, time.Now().UnixNano())
+
+	return s.repo.WithTx(ctx, func(tx pgx.Tx) error {
+		rawToken, txErr := crypto.GenerateRandomToken(32)
+		if txErr != nil {
+			return fmt.Errorf("failed to generate verification token: %w", txErr)
+		}
+
+		tokenHash := crypto.HashTokenSHA256(rawToken)
+		securityToken := &SecurityToken{
+			UserID:    user.ID,
+			TokenHash: tokenHash,
+			Type:      TokenTypeEmailVerification,
+			ExpiresAt: time.Now().UTC().Add(EmailVerificationTokenTTL),
+		}
+
+		if txErr := s.repo.CreateSecurityTokenTx(ctx, tx, securityToken); txErr != nil {
+			return fmt.Errorf("failed to create security token: %w", txErr)
+		}
+
+		verificationURL := fmt.Sprintf("%s/authentication/emailverified", s.cfg.FrontendURL)
+		eventPayload := map[string]any{
+			"event_id":           uuid.NewString(),
+			"event_type":         "EMAIL_VERIFICATION",
+			"to_email":           user.Email,
+			"username":           user.Username,
+			"template_id":        "email_verification",
+			"idempotency_key":    idempotencyKey,
+			"timestamp":          time.Now().UTC(),
+			"verification_token": rawToken,
+			"verification_url":   verificationURL,
+			"metadata": map[string]string{
+				"source": "resend_verification",
+			},
+		}
+
+		payloadBytes, txErr := json.Marshal(eventPayload)
+		if txErr != nil {
+			return fmt.Errorf("failed to marshal outbox event payload: %w", txErr)
+		}
+
+		outboxEvent := &OutboxEvent{
+			EventType:      "EMAIL_VERIFICATION",
+			Payload:        payloadBytes,
+			IdempotencyKey: idempotencyKey,
+			Status:         "PENDING",
+		}
+
+		return s.repo.InsertOutboxEventTx(ctx, tx, outboxEvent)
+	})
+}
+
+// ForgotPassword generates password reset security token and queues outbox email event.
+func (s *authService) ForgotPassword(ctx context.Context, req ForgotPasswordRequest) error {
+	emailLower := strings.ToLower(strings.TrimSpace(req.Email))
+
+	user, err := s.repo.GetUserByEmail(ctx, emailLower)
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			// Do not leak user account existence
+			return nil
+		}
+		return err
+	}
+
+	idempotencyKey := fmt.Sprintf("pwd_reset:%s:%d", user.ID, time.Now().UnixNano())
+
+	return s.repo.WithTx(ctx, func(tx pgx.Tx) error {
+		rawToken, txErr := crypto.GenerateRandomToken(32)
+		if txErr != nil {
+			return fmt.Errorf("failed to generate password reset token: %w", txErr)
+		}
+
+		tokenHash := crypto.HashTokenSHA256(rawToken)
+		securityToken := &SecurityToken{
+			UserID:    user.ID,
+			TokenHash: tokenHash,
+			Type:      TokenTypePasswordReset,
+			ExpiresAt: time.Now().UTC().Add(PasswordResetTokenTTL),
+		}
+
+		if txErr := s.repo.CreateSecurityTokenTx(ctx, tx, securityToken); txErr != nil {
+			return fmt.Errorf("failed to create password reset security token: %w", txErr)
+		}
+
+		resetURL := fmt.Sprintf("%s/authentication/resetpassword", s.cfg.FrontendURL)
+		eventPayload := map[string]any{
+			"event_id":        uuid.NewString(),
+			"event_type":      "PASSWORD_RESET",
+			"to_email":        user.Email,
+			"username":        user.Username,
+			"template_id":     "password_reset",
+			"idempotency_key": idempotencyKey,
+			"timestamp":       time.Now().UTC(),
+			"reset_token":     rawToken,
+			"reset_url":       resetURL,
+			"metadata": map[string]string{
+				"source": "forgot_password",
+			},
+		}
+
+		payloadBytes, txErr := json.Marshal(eventPayload)
+		if txErr != nil {
+			return fmt.Errorf("failed to marshal outbox payload: %w", txErr)
+		}
+
+		outboxEvent := &OutboxEvent{
+			EventType:      "PASSWORD_RESET",
+			Payload:        payloadBytes,
+			IdempotencyKey: idempotencyKey,
+			Status:         "PENDING",
+		}
+
+		return s.repo.InsertOutboxEventTx(ctx, tx, outboxEvent)
+	})
+}
+
+// ResetPassword validates reset token, hashes new password, updates user, and revokes all active sessions.
+func (s *authService) ResetPassword(ctx context.Context, req ResetPasswordRequest) error {
+	tokenHash := crypto.HashTokenSHA256(strings.TrimSpace(req.Token))
+
+	token, err := s.repo.GetValidSecurityToken(ctx, tokenHash, TokenTypePasswordReset)
+	if err != nil {
+		return ErrInvalidSecurityToken
+	}
+
+	newHash, err := crypto.HashPassword(req.NewPassword)
+	if err != nil {
+		return fmt.Errorf("failed to hash new password: %w", err)
+	}
+
+	err = s.repo.WithTx(ctx, func(tx pgx.Tx) error {
+		if txErr := s.repo.UpdatePasswordTx(ctx, tx, token.UserID, newHash); txErr != nil {
+			return txErr
+		}
+
+		return s.repo.MarkSecurityTokenUsedTx(ctx, tx, token.ID)
+	})
 	if err != nil {
 		return err
 	}
 
-	tokenHash := crypto.HashTokenSHA256(rawToken)
-	securityToken := &SecurityToken{
-		UserID:    user.ID,
-		TokenHash: tokenHash,
-		Type:      TokenTypeEmailVerification,
-		ExpiresAt: time.Now().UTC().Add(EmailVerificationTokenTTL),
-	}
-
-	if err := s.repo.CreateSecurityToken(ctx, securityToken); err != nil {
-		return err
-	}
-
-	go func() {
-		verificationURL := fmt.Sprintf("%s/authentication/emailverified", s.cfg.FrontendURL)
-		_ = s.emailService.SendVerificationEmail(context.Background(), user.Email, user.Username, rawToken, verificationURL)
-	}()
+	// Revoke all active user sessions & blacklist in Redis
+	_ = s.repo.RevokeAllUserSessions(ctx, token.UserID, "")
+	_ = s.repo.BlacklistUserRevocation(ctx, token.UserID, time.Now().UTC(), s.cfg.JWTAccessTTL)
 
 	return nil
 }

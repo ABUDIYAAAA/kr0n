@@ -71,15 +71,33 @@ type UserSession struct {
 	CreatedAt        time.Time `json:"created_at"`
 }
 
+// OutboxEvent represents a transactional outbox message to be published to Kafka.
+type OutboxEvent struct {
+	ID             string     `json:"id"`
+	EventType      string     `json:"event_type"`
+	Payload        []byte     `json:"payload"`
+	IdempotencyKey string     `json:"idempotency_key"`
+	Status         string     `json:"status"` // PENDING, PUBLISHED, FAILED
+	RetryCount     int        `json:"retry_count"`
+	ErrorMessage   string     `json:"error_message,omitempty"`
+	CreatedAt      time.Time  `json:"created_at"`
+	PublishedAt    *time.Time `json:"published_at,omitempty"`
+}
+
 // Repository defines data access operations for auth against PostgreSQL and Redis.
 type Repository interface {
+	// Transaction execution wrapper
+	WithTx(ctx context.Context, fn func(tx pgx.Tx) error) error
+
 	// User operations
 	CreateUser(ctx context.Context, email, username string, passwordHash *string) (*User, error)
+	CreateUserTx(ctx context.Context, tx pgx.Tx, email, username string, passwordHash *string) (*User, error)
 	GetUserByID(ctx context.Context, id string) (*User, error)
 	GetUserByEmail(ctx context.Context, email string) (*User, error)
 	GetUserByUsername(ctx context.Context, username string) (*User, error)
 	GetUserByEmailOrUsername(ctx context.Context, login string) (*User, error)
 	UpdateUsername(ctx context.Context, userID, username string) error
+	UpdatePasswordTx(ctx context.Context, tx pgx.Tx, userID, passwordHash string) error
 	VerifyUserEmail(ctx context.Context, userID string) error
 
 	// OAuth Account operations
@@ -88,8 +106,10 @@ type Repository interface {
 
 	// Security Token operations
 	CreateSecurityToken(ctx context.Context, token *SecurityToken) error
+	CreateSecurityTokenTx(ctx context.Context, tx pgx.Tx, token *SecurityToken) error
 	GetValidSecurityToken(ctx context.Context, tokenHash, tokenType string) (*SecurityToken, error)
 	MarkSecurityTokenUsed(ctx context.Context, tokenID string) error
+	MarkSecurityTokenUsedTx(ctx context.Context, tx pgx.Tx, tokenID string) error
 
 	// Session operations (PostgreSQL)
 	CreateSession(ctx context.Context, session *UserSession) error
@@ -99,6 +119,12 @@ type Repository interface {
 	RevokeSession(ctx context.Context, sessionID, userID string) error
 	RevokeAllUserSessions(ctx context.Context, userID string, exceptSessionID string) error
 	UpdateSessionActivity(ctx context.Context, sessionID, ipAddress, userAgent string) error
+
+	// Outbox pattern operations
+	InsertOutboxEventTx(ctx context.Context, tx pgx.Tx, event *OutboxEvent) error
+	GetPendingOutboxEvents(ctx context.Context, limit int) ([]OutboxEvent, error)
+	MarkOutboxEventPublished(ctx context.Context, id string) error
+	MarkOutboxEventFailed(ctx context.Context, id string, errMsg string) error
 
 	// Redis Blacklisting & Caching
 	BlacklistToken(ctx context.Context, jti string, ttl time.Duration) error
@@ -125,12 +151,37 @@ func NewRepository(db *pgxpool.Pool, redisClient *redis.Client) Repository {
 	}
 }
 
+// WithTx runs callback functions inside a single database transaction block.
+func (r *sqlRepository) WithTx(ctx context.Context, fn func(tx pgx.Tx) error) error {
+	tx, err := r.db.Begin(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to begin transaction: %w", err)
+	}
+
+	defer func() {
+		if p := recover(); p != nil {
+			_ = tx.Rollback(ctx)
+			panic(p)
+		}
+	}()
+
+	if err := fn(tx); err != nil {
+		_ = tx.Rollback(ctx)
+		return err
+	}
+
+	if err := tx.Commit(ctx); err != nil {
+		return fmt.Errorf("failed to commit transaction: %w", err)
+	}
+
+	return nil
+}
+
 // ==========================================
 // PostgreSQL Operations
 // ==========================================
 
 func (r *sqlRepository) CreateUser(ctx context.Context, email, username string, passwordHash *string) (*User, error) {
-	// Generate a UUIDv7 in Go for strict sequential ID generation
 	id, err := uuid.NewV7()
 	if err != nil {
 		id = uuid.New()
@@ -154,10 +205,43 @@ func (r *sqlRepository) CreateUser(ctx context.Context, email, username string, 
 	)
 	if err != nil {
 		var pgErr *pgconn.PgError
-		if errors.As(err, &pgErr) && pgErr.Code == "23505" { // Unique violation
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
 			return nil, ErrConflict
 		}
 		return nil, fmt.Errorf("failed to insert user: %w", err)
+	}
+
+	return &user, nil
+}
+
+func (r *sqlRepository) CreateUserTx(ctx context.Context, tx pgx.Tx, email, username string, passwordHash *string) (*User, error) {
+	id, err := uuid.NewV7()
+	if err != nil {
+		id = uuid.New()
+	}
+
+	query := `
+		INSERT INTO users (id, email, username, password_hash, created_at, updated_at)
+		VALUES ($1, $2, $3, $4, NOW(), NOW())
+		RETURNING id, email, username, password_hash, email_verified_at, created_at, updated_at;
+	`
+
+	var user User
+	err = tx.QueryRow(ctx, query, id.String(), email, username, passwordHash).Scan(
+		&user.ID,
+		&user.Email,
+		&user.Username,
+		&user.PasswordHash,
+		&user.EmailVerifiedAt,
+		&user.CreatedAt,
+		&user.UpdatedAt,
+	)
+	if err != nil {
+		var pgErr *pgconn.PgError
+		if errors.As(err, &pgErr) && pgErr.Code == "23505" {
+			return nil, ErrConflict
+		}
+		return nil, fmt.Errorf("failed to insert user in transaction: %w", err)
 	}
 
 	return &user, nil
@@ -294,6 +378,25 @@ func (r *sqlRepository) UpdateUsername(ctx context.Context, userID, username str
 	return nil
 }
 
+func (r *sqlRepository) UpdatePasswordTx(ctx context.Context, tx pgx.Tx, userID, passwordHash string) error {
+	query := `
+		UPDATE users
+		SET password_hash = $2, updated_at = NOW()
+		WHERE id = $1;
+	`
+
+	res, err := tx.Exec(ctx, query, userID, passwordHash)
+	if err != nil {
+		return fmt.Errorf("failed to update user password in transaction: %w", err)
+	}
+
+	if res.RowsAffected() == 0 {
+		return ErrNotFound
+	}
+
+	return nil
+}
+
 func (r *sqlRepository) VerifyUserEmail(ctx context.Context, userID string) error {
 	query := `
 		UPDATE users
@@ -394,6 +497,26 @@ func (r *sqlRepository) CreateSecurityToken(ctx context.Context, token *Security
 	return nil
 }
 
+func (r *sqlRepository) CreateSecurityTokenTx(ctx context.Context, tx pgx.Tx, token *SecurityToken) error {
+	id, err := uuid.NewV7()
+	if err != nil {
+		id = uuid.New()
+	}
+	token.ID = id.String()
+
+	query := `
+		INSERT INTO security_tokens (id, user_id, token_hash, type, expires_at, created_at)
+		VALUES ($1, $2, $3, $4, $5, NOW());
+	`
+
+	_, err = tx.Exec(ctx, query, token.ID, token.UserID, token.TokenHash, token.Type, token.ExpiresAt)
+	if err != nil {
+		return fmt.Errorf("failed to insert security token in transaction: %w", err)
+	}
+
+	return nil
+}
+
 func (r *sqlRepository) GetValidSecurityToken(ctx context.Context, tokenHash, tokenType string) (*SecurityToken, error) {
 	query := `
 		SELECT id, user_id, token_hash, type, expires_at, used_at, created_at
@@ -431,6 +554,21 @@ func (r *sqlRepository) MarkSecurityTokenUsed(ctx context.Context, tokenID strin
 	_, err := r.db.Exec(ctx, query, tokenID)
 	if err != nil {
 		return fmt.Errorf("failed to mark security token used: %w", err)
+	}
+
+	return nil
+}
+
+func (r *sqlRepository) MarkSecurityTokenUsedTx(ctx context.Context, tx pgx.Tx, tokenID string) error {
+	query := `
+		UPDATE security_tokens
+		SET used_at = NOW()
+		WHERE id = $1;
+	`
+
+	_, err := tx.Exec(ctx, query, tokenID)
+	if err != nil {
+		return fmt.Errorf("failed to mark security token used in transaction: %w", err)
 	}
 
 	return nil
@@ -603,6 +741,107 @@ func (r *sqlRepository) UpdateSessionActivity(ctx context.Context, sessionID, ip
 	_, err := r.db.Exec(ctx, query, sessionID, ipAddress, userAgent)
 	if err != nil {
 		return fmt.Errorf("failed to update session activity: %w", err)
+	}
+
+	return nil
+}
+
+// ==========================================
+// Outbox Operations
+// ==========================================
+
+func (r *sqlRepository) InsertOutboxEventTx(ctx context.Context, tx pgx.Tx, event *OutboxEvent) error {
+	if event.ID == "" {
+		id, err := uuid.NewV7()
+		if err != nil {
+			event.ID = uuid.NewString()
+		} else {
+			event.ID = id.String()
+		}
+	}
+
+	query := `
+		INSERT INTO outbox_events (id, event_type, payload, idempotency_key, status, retry_count, created_at)
+		VALUES ($1, $2, $3, $4, 'PENDING', 0, NOW());
+	`
+
+	_, err := tx.Exec(ctx, query, event.ID, event.EventType, event.Payload, event.IdempotencyKey)
+	if err != nil {
+		return fmt.Errorf("failed to insert outbox event in transaction: %w", err)
+	}
+
+	return nil
+}
+
+func (r *sqlRepository) GetPendingOutboxEvents(ctx context.Context, limit int) ([]OutboxEvent, error) {
+	if limit <= 0 {
+		limit = 50
+	}
+
+	query := `
+		SELECT id, event_type, payload, idempotency_key, status, retry_count, error_message, created_at, published_at
+		FROM outbox_events
+		WHERE status = 'PENDING' AND retry_count < 5
+		ORDER BY created_at ASC
+		LIMIT $1
+		FOR UPDATE SKIP LOCKED;
+	`
+
+	rows, err := r.db.Query(ctx, query, limit)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query pending outbox events: %w", err)
+	}
+	defer rows.Close()
+
+	var events []OutboxEvent
+	for rows.Next() {
+		var e OutboxEvent
+		if err := rows.Scan(
+			&e.ID,
+			&e.EventType,
+			&e.Payload,
+			&e.IdempotencyKey,
+			&e.Status,
+			&e.RetryCount,
+			&e.ErrorMessage,
+			&e.CreatedAt,
+			&e.PublishedAt,
+		); err != nil {
+			return nil, fmt.Errorf("failed to scan outbox event row: %w", err)
+		}
+		events = append(events, e)
+	}
+
+	return events, nil
+}
+
+func (r *sqlRepository) MarkOutboxEventPublished(ctx context.Context, id string) error {
+	query := `
+		UPDATE outbox_events
+		SET status = 'PUBLISHED', published_at = NOW()
+		WHERE id = $1;
+	`
+
+	_, err := r.db.Exec(ctx, query, id)
+	if err != nil {
+		return fmt.Errorf("failed to mark outbox event published: %w", err)
+	}
+
+	return nil
+}
+
+func (r *sqlRepository) MarkOutboxEventFailed(ctx context.Context, id string, errMsg string) error {
+	query := `
+		UPDATE outbox_events
+		SET status = CASE WHEN retry_count + 1 >= 5 THEN 'FAILED' ELSE 'PENDING' END,
+		    retry_count = retry_count + 1,
+		    error_message = $2
+		WHERE id = $1;
+	`
+
+	_, err := r.db.Exec(ctx, query, id, errMsg)
+	if err != nil {
+		return fmt.Errorf("failed to mark outbox event failed: %w", err)
 	}
 
 	return nil

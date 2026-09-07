@@ -7,7 +7,7 @@ import (
 	"github.com/joho/godotenv"
 )
 
-// Config holds all centralized runtime environment configurations.
+// Config holds all centralized runtime environment configurations for auth microservice.
 type Config struct {
 	// Server
 	Port        string `env:"PORT"`
@@ -16,6 +16,12 @@ type Config struct {
 	// Database & Cache
 	DBConn    string `env:"DB_URL,required"`
 	RedisConn string `env:"REDIS_URI,required"`
+
+	// Kafka Messaging & Transactional Outbox
+	KafkaBrokers       []string      `env:"KAFKA_BROKERS" envSeparator:"," envDefault:"localhost:9092"`
+	KafkaEmailTopic    string        `env:"KAFKA_EMAIL_TOPIC" envDefault:"email-events"`
+	OutboxBatchSize    int           `env:"OUTBOX_BATCH_SIZE" envDefault:"50"`
+	OutboxPollInterval time.Duration `env:"OUTBOX_POLL_INTERVAL" envDefault:"1s"`
 
 	// OAuth 2.0 Providers
 	GoogleClientID     string `env:"GOOGLE_CLIENT_ID"`

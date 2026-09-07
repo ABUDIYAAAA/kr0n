@@ -17,6 +17,7 @@ import (
 	"auth.kron.com/internal/modules/auth"
 	"auth.kron.com/internal/modules/auth/oauth"
 	"auth.kron.com/pkg/email"
+	pkf "auth.kron.com/pkg/kafka"
 )
 
 func main() {
@@ -54,18 +55,31 @@ func main() {
 	oauthRegistry.Register(githubProvider)
 	log.Println("[INFO] Registered GitHub OAuth provider")
 
-	// 5. Initialize Email Service
+	// 5. Initialize Email Service & Kafka Producer
 	emailService := email.NewLogEmailService()
+	kafkaProducer := pkf.NewProducer(cfg.KafkaBrokers, cfg.KafkaEmailTopic)
+	defer kafkaProducer.Close()
 
 	// 6. Initialize Module Layers (Repository -> Service -> Handler)
 	authRepo := auth.NewRepository(dbPool, redisClient)
 	authService := auth.NewService(authRepo, cfg, emailService, oauthRegistry)
 	authHandler := auth.NewHandler(authService, cfg)
 
-	// 7. Initialize Root Router
+	// 7. Initialize and Start Transactional Outbox Worker
+	outboxWorker := auth.NewOutboxWorker(authRepo, kafkaProducer, cfg.OutboxBatchSize, cfg.OutboxPollInterval)
+	outboxCtx, cancelOutbox := context.WithCancel(context.Background())
+	defer cancelOutbox()
+
+	go func() {
+		if err := outboxWorker.Start(outboxCtx); err != nil && !errors.Is(err, context.Canceled) {
+			log.Printf("[ERROR] Outbox worker exited with error: %v", err)
+		}
+	}()
+
+	// 8. Initialize Root Router
 	r := router.NewRouter(cfg, authRepo, authHandler)
 
-	// 8. Start HTTP Server with Graceful Shutdown
+	// 9. Start HTTP Server with Graceful Shutdown
 	addr := fmt.Sprintf(":%s", cfg.Port)
 	srv := &http.Server{
 		Addr:         addr,
@@ -95,6 +109,9 @@ func main() {
 	case sig := <-shutdown:
 		log.Printf("[INFO] shutdown signal received (%v), shutting down gracefully...", sig)
 
+		// Cancel outbox worker context
+		cancelOutbox()
+
 		shutdownCtx, shutdownCancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer shutdownCancel()
 
@@ -102,6 +119,6 @@ func main() {
 			log.Printf("[ERROR] graceful shutdown failed, forcing close: %v", err)
 			_ = srv.Close()
 		}
-		log.Println("[INFO] Server stopped cleanly")
+		log.Println("[INFO] Auth Service stopped cleanly")
 	}
 }

@@ -39,6 +39,17 @@ type ResendVerificationRequest struct {
 	Email string `json:"email" validate:"required,email,max=255"`
 }
 
+// ForgotPasswordRequest payload for requesting password reset link via email.
+type ForgotPasswordRequest struct {
+	Email string `json:"email" validate:"required,email,max=255"`
+}
+
+// ResetPasswordRequest payload for completing password reset with token.
+type ResetPasswordRequest struct {
+	Token       string `json:"token" validate:"required,min=32,max=128"`
+	NewPassword string `json:"new_password" validate:"required,min=8,max=100"`
+}
+
 // OAuthCallbackRequest payload for finalizing OAuth code exchange.
 type OAuthCallbackRequest struct {
 	Code  string `json:"code" validate:"required"`

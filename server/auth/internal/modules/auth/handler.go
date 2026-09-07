@@ -225,6 +225,44 @@ func (h *Handler) ResendVerification(w http.ResponseWriter, r *http.Request) {
 	response.Success(w, http.StatusOK, "Verification email sent if account exists and is unverified", nil)
 }
 
+// ForgotPassword handles requesting a password reset email link.
+// POST /api/v1/auth/forgot-password
+func (h *Handler) ForgotPassword(w http.ResponseWriter, r *http.Request) {
+	var req ForgotPasswordRequest
+	if fieldErrors, err := validator.DecodeAndValidate(r, &req); err != nil {
+		response.ErrorResponse(w, http.StatusBadRequest, ErrCodeValidationFailed, "Invalid email address", fieldErrors)
+		return
+	}
+
+	if err := h.service.ForgotPassword(r.Context(), req); err != nil {
+		response.ErrorResponse(w, http.StatusInternalServerError, ErrCodeInternalError, "Failed to process password reset request", nil)
+		return
+	}
+
+	response.Success(w, http.StatusOK, "If an account with that email exists, a password reset link has been sent", nil)
+}
+
+// ResetPassword handles completing password reset using token.
+// POST /api/v1/auth/reset-password
+func (h *Handler) ResetPassword(w http.ResponseWriter, r *http.Request) {
+	var req ResetPasswordRequest
+	if fieldErrors, err := validator.DecodeAndValidate(r, &req); err != nil {
+		response.ErrorResponse(w, http.StatusBadRequest, ErrCodeValidationFailed, "Invalid reset password request", fieldErrors)
+		return
+	}
+
+	if err := h.service.ResetPassword(r.Context(), req); err != nil {
+		if errors.Is(err, ErrInvalidSecurityToken) {
+			response.ErrorResponse(w, http.StatusBadRequest, ErrCodeInvalidToken, "Password reset token is invalid or expired", nil)
+			return
+		}
+		response.ErrorResponse(w, http.StatusInternalServerError, ErrCodeInternalError, "Failed to reset password", nil)
+		return
+	}
+
+	response.Success(w, http.StatusOK, "Password reset successfully. Please log in with your new password", nil)
+}
+
 // Logout terminates current session and clears cookies.
 // POST /api/v1/auth/logout
 func (h *Handler) Logout(w http.ResponseWriter, r *http.Request) {
