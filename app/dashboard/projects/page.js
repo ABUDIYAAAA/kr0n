@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 
-const STORAGE_KEY = "kron_canvas_positions_v3";
+const STORAGE_KEY = "kron_canvas_positions_v4";
 
 export default function ProjectsPage() {
   const router = useRouter();
@@ -80,15 +80,15 @@ export default function ProjectsPage() {
     },
   ];
 
-  // Calculate clean, balanced 2x2 default positions based on available canvas dimensions
+  // Calculate clean, balanced 2x2 default positions based on available canvas dimensions and scaled cards
   const getDefaultPositions = useCallback((canvasWidth, canvasHeight) => {
-    const cardW = 360;
-    const cardH = 220;
+    const cardW = 316;
+    const cardH = 176;
 
     // Check if 2 columns can comfortably fit
-    if (canvasWidth >= 780) {
-      const colGap = Math.min(48, Math.max(24, Math.floor((canvasWidth - 2 * cardW) / 4)));
-      const startX = Math.max(36, Math.min(48, Math.floor((canvasWidth - (2 * cardW + colGap)) / 3)));
+    if (canvasWidth >= 700) {
+      const colGap = Math.min(40, Math.max(20, Math.floor((canvasWidth - 2 * cardW) / 4)));
+      const startX = Math.max(32, Math.min(48, Math.floor((canvasWidth - (2 * cardW + colGap)) / 3)));
       const col0X = startX;
       const col1X = startX + cardW + colGap;
 
@@ -118,9 +118,9 @@ export default function ProjectsPage() {
 
   const [positions, setPositions] = useState({
     "nucleus-engine": { x: 44, y: 80 },
-    "quantum-web": { x: 436, y: 80 },
-    "auth-service": { x: 44, y: 324 },
-    "legacy-dash": { x: 436, y: 324 },
+    "quantum-web": { x: 396, y: 80 },
+    "auth-service": { x: 44, y: 276 },
+    "legacy-dash": { x: 396, y: 276 },
   });
 
   const [activeDraggingName, setActiveDraggingName] = useState(null);
@@ -168,8 +168,8 @@ export default function ProjectsPage() {
             let changed = false;
             for (const name of Object.keys(updated)) {
               const p = updated[name];
-              const cardW = 360;
-              const cardH = 220;
+              const cardW = 316;
+              const cardH = 176;
               const maxX = Math.max(16, width - cardW - 16);
               const maxY = Math.max(16, height - cardH - 16);
               const clampedX = Math.min(Math.max(p.x, 16), maxX);
@@ -239,8 +239,8 @@ export default function ProjectsPage() {
       const rawY = dragInfoRef.current.initialCardY + deltaY;
 
       const canvasRect = canvas.getBoundingClientRect();
-      const cardWidth = dragInfoRef.current.cardWidth || 360;
-      const cardHeight = dragInfoRef.current.cardHeight || 220;
+      const cardWidth = dragInfoRef.current.cardWidth || 316;
+      const cardHeight = dragInfoRef.current.cardHeight || 176;
 
       const minX = 16;
       const maxX = Math.max(minX, canvasRect.width - cardWidth - 16);
@@ -320,15 +320,15 @@ export default function ProjectsPage() {
               "radial-gradient(circle, rgba(255, 255, 255, 0.055) 1px, transparent 1px)",
             backgroundSize: "24px 24px",
           }}>
-          {/* FLOATING SEARCH BAR */}
-          <div className="absolute top-5 left-8 z-20 w-80 md:w-96">
+          {/* FLOATING SEARCH BAR - ALWAYS ON TOP (z-40) */}
+          <div className="absolute top-5 left-8 z-40 w-80 md:w-96">
             <div className="relative group">
               <input
                 ref={inputRef}
                 value={q}
                 onChange={(e) => setQ(e.target.value)}
                 placeholder="Search projects by name or domain..."
-                className="w-full bg-[#0a0a0a]/90 backdrop-blur border border-white/12 px-5 py-3 text-xs outline-none placeholder:text-white/20 focus:border-white/30 text-white shadow-xl"
+                className="w-full bg-[#0a0a0a] border border-white/12 px-5 py-3 text-xs outline-none placeholder:text-white/20 focus:border-white/30 text-white shadow-xl"
               />
 
               <div className="absolute right-3.5 top-1/2 -translate-y-1/2 text-[10px] tracking-widest text-white/80 border border-white/10 px-2 py-0.5 pointer-events-none">
@@ -339,7 +339,7 @@ export default function ProjectsPage() {
             </div>
           </div>
 
-          {/* DRAGGABLE PROJECT CARDS */}
+          {/* DRAGGABLE PROJECT CARDS (z-10 normal, z-20 while dragging, stays underneath z-40 search bar) */}
           {projects.map((p) => {
             const pos = positions[p.name] || { x: 44, y: 80 };
             const isDragging = activeDraggingName === p.name;
@@ -367,39 +367,38 @@ export default function ProjectsPage() {
                   }
                 }}
                 className={`
-                  w-[360px] max-w-[calc(100vw-32px)]
+                  w-[316px] max-w-[calc(100vw-32px)]
                   group
                   clipped
-                  border border-white/30
-                  bg-black/60
+                  border border-white/25
+                  bg-black/50
                   text-white
-                  backdrop-blur-sm
                   transition-colors
                   outline-none
                   focus-visible:ring-1 focus-visible:ring-white/50
                   ${
                     isDragging
-                      ? "cursor-grabbing z-30 shadow-[0_20px_40px_rgba(0,0,0,0.9)] border-white/60 bg-black/80"
-                      : "cursor-grab z-10 hover:bg-black/70 hover:border-white/50"
+                      ? "cursor-grabbing z-20 shadow-[0_16px_32px_rgba(0,0,0,0.85)] border-white/50 bg-black/70"
+                      : "cursor-grab z-10 hover:bg-black/60 hover:border-white/40"
                   }
                   ${matched ? "opacity-100" : "opacity-20 pointer-events-none"}
                 `}>
-                <div className="p-6">
-                  <div className="flex justify-between mb-6">
-                    <div className="w-10 h-10 bg-white/5 border border-white/15 flex items-center justify-center">
-                      <span className="text-xs text-white">□</span>
+                <div className="p-5">
+                  <div className="flex justify-between mb-4">
+                    <div className="w-8 h-8 bg-white/5 border border-white/15 flex items-center justify-center">
+                      <span className="text-[11px] text-white">□</span>
                     </div>
 
-                    <div className="flex items-center gap-2 text-xs uppercase text-white/70">
-                      <div className={`w-2 h-2 ${p.color}`} />
+                    <div className="flex items-center gap-1.5 text-[11px] uppercase text-white/70">
+                      <div className={`w-1.5 h-1.5 ${p.color}`} />
                       {p.status}
                     </div>
                   </div>
 
-                  <h3 className="text-lg font-bold mb-1">{p.name}</h3>
-                  <p className="text-sm text-white/50 font-mono">{p.repo}</p>
+                  <h3 className="text-base font-bold mb-0.5">{p.name}</h3>
+                  <p className="text-xs text-white/50 font-mono">{p.repo}</p>
 
-                  <div className="flex justify-between mt-6 pt-4 border-t border-white/10 text-xs text-white/40">
+                  <div className="flex justify-between mt-4 pt-3 border-t border-white/10 text-[11px] text-white/40">
                     <span>Updated recently</span>
                     <span className="group-hover:text-white transition-colors">→</span>
                   </div>
@@ -409,7 +408,7 @@ export default function ProjectsPage() {
           })}
 
           {/* CANVAS WORKSPACE CONTROLS */}
-          <div className="absolute bottom-5 left-8 z-20 flex items-center gap-4">
+          <div className="absolute bottom-5 left-8 z-30 flex items-center gap-4">
             <button
               type="button"
               onClick={resetLayout}
@@ -422,7 +421,7 @@ export default function ProjectsPage() {
           </div>
 
           {/* FLOATING USAGE HUD (COLLAPSIBLE TO PRESERVE WORKSPACE AREA) */}
-          <div className="absolute bottom-5 right-8 z-20">
+          <div className="absolute bottom-5 right-8 z-30">
             {usageOpen ? (
               <div className="w-72 p-5 border border-white/15 bg-black/85 backdrop-blur-md shadow-2xl">
                 <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
