@@ -1,12 +1,14 @@
 "use client";
 
 import { Suspense, useEffect, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import { DEMO_PROJECT_SLUGS } from "@/lib/demo-data";
-import { useSearchParams } from "next/navigation";
 import { ChevronDown, ChevronUp, MoreHorizontal } from "lucide-react";
 
 function DeploymentDetails() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const selectedParam = searchParams.get("project");
   const [logQuery, setLogQuery] = useState("");
@@ -37,10 +39,12 @@ function DeploymentDetails() {
   };
 
   const projects = DEMO_PROJECT_SLUGS;
-  const [selectedProject, setSelectedProject] = useState("watch-wise");
+  const [selectedProjectOverride, setSelectedProjectOverride] = useState(null);
+  const selectedProject =
+    selectedProjectOverride ?? selectedParam ?? "watch-wise";
 
   const details = {
-    repo: selectedParam || "watch-wise",
+    repo: selectedProject,
     author: authorParam || "arpit",
     env: envParam || "Production",
     status: statusParam || "Ready",
@@ -50,12 +54,6 @@ function DeploymentDetails() {
     hash: hashParam || "f2a991b",
     time: timeParam || "2h ago",
   };
-
-  useEffect(() => {
-    if (selectedParam) {
-      setSelectedProject(selectedParam);
-    }
-  }, [selectedParam]);
 
   return (
     <DashboardShell>
@@ -79,8 +77,13 @@ function DeploymentDetails() {
                       <div
                         key={p}
                         onClick={() => {
-                          setSelectedProject(p);
+                          setSelectedProjectOverride(p);
                           setOpenDropdown(false);
+                          const q = new URLSearchParams(searchParams.toString());
+                          q.set("project", p);
+                          router.replace(
+                            `/dashboard/deployments/deploymentdetails?${q.toString()}`,
+                          );
                         }}
                         className="px-3 py-2 hover:bg-white/10 cursor-pointer text-sm">
                         {p}
@@ -92,7 +95,12 @@ function DeploymentDetails() {
 
               {/* BREADCRUMB */}
               <div className="text-xs text-white/40 uppercase">
-                Deployments / <span className="text-white">{details.hash}</span>
+                <Link
+                  href="/dashboard/deployments"
+                  className="hover:text-white transition">
+                  Deployments
+                </Link>{" "}
+                / <span className="text-white">{details.hash}</span>
               </div>
 
               <MoreHorizontal className="text-white/40" size={18} />
@@ -126,13 +134,15 @@ function DeploymentDetails() {
               </div>
 
               <div className="flex gap-3">
-                <button className="border border-white/20 px-4 py-1 text-xs">
+                <button className="border border-white/20 px-4 py-1 text-xs hover:bg-white/5 transition">
                   Share
                 </button>
-                <button className="border border-white/20 px-4 py-1 text-xs">
+                <Link
+                  href={`/dashboard/logs?project=${encodeURIComponent(details.repo)}`}
+                  className="border border-white/20 px-4 py-1 text-xs hover:bg-white/10 transition inline-flex items-center">
                   Logs
-                </button>
-                <button className="bg-white text-black px-4 py-1 text-xs clipped-btn">
+                </Link>
+                <button className="bg-white text-black px-4 py-1 text-xs clipped-btn hover:bg-zinc-200 transition">
                   Visit
                 </button>
               </div>
@@ -269,8 +279,16 @@ function DeploymentDetails() {
 
           {/* BOTTOM CARDS */}
           <div className="grid grid-cols-4 gap-6">
-            <SmallCard title="Runtime Logs" desc="View runtime logs" />
-            <SmallCard title="Observability" desc="Monitor performance" />
+            <SmallCard
+              title="Runtime Logs"
+              desc="View runtime logs"
+              href={`/dashboard/logs?project=${encodeURIComponent(details.repo)}`}
+            />
+            <SmallCard
+              title="Observability"
+              desc="Monitor performance"
+              href={`/dashboard/analytics/projectanalysis?project=${encodeURIComponent(details.repo)}`}
+            />
             <SmallCard title="Speed Insights" desc="Not Enabled" disabled />
             <SmallCard title="Web Analytics" desc="Not Enabled" disabled />
           </div>
@@ -315,14 +333,26 @@ function RowLink({ text }) {
   );
 }
 
-function SmallCard({ title, desc, disabled }) {
-  return (
+function SmallCard({ title, desc, disabled, href }) {
+  const content = (
     <div
-      className={`border border-white/10 p-4 ${
-        disabled ? "opacity-50" : "hover:border-white/30"
+      className={`border border-white/10 p-4 transition ${
+        disabled
+          ? "opacity-50 cursor-not-allowed"
+          : "hover:border-white/30 hover:bg-white/[0.04] cursor-pointer"
       }`}>
       <div className="text-sm font-bold">{title}</div>
       <div className="text-xs text-white/40">{desc}</div>
     </div>
   );
+
+  if (href && !disabled) {
+    return (
+      <Link href={href} className="block group">
+        {content}
+      </Link>
+    );
+  }
+
+  return content;
 }

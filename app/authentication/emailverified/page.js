@@ -1,13 +1,17 @@
 "use client";
 
+import Link from "next/link";
+
 export default function EmailVerifiedPage() {
   return (
     <div className="bg-[#0d0e0f] min-h-screen flex flex-col text-white font-sans">
       {/* NAV */}
       <nav className="fixed top-0 w-full z-50 flex justify-center py-8">
-        <div className="text-2xl font-black tracking-[0.2em] text-white uppercase">
+        <Link
+          href="/"
+          className="text-2xl font-black tracking-[0.2em] text-white uppercase hover:text-zinc-200">
           KRON
-        </div>
+        </Link>
       </nav>
 
       {/* MAIN */}
@@ -39,9 +43,11 @@ export default function EmailVerifiedPage() {
               <div className="w-full h-[1px] bg-black/5 my-4" />
 
               {/* BUTTON */}
-              <button className="clipped-button w-full bg-black text-white py-4 px-8 text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-zinc-800 transition-colors active:scale-[0.98] duration-75">
-                You can close this page
-              </button>
+              <Link
+                href="/dashboard/projects"
+                className="clipped-button w-full bg-black text-white py-4 px-8 text-[11px] uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-zinc-800 transition-colors active:scale-[0.98] duration-75">
+                Go to Dashboard →
+              </Link>
             </div>
           </div>
 

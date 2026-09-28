@@ -60,7 +60,7 @@ export default function SettingsPage() {
               <div>
                 <h2 className="text-lg font-bold mb-2">Project Name</h2>
                 <p className="text-white/40 text-sm">
-                  Update your project's display name across dashboard.
+                  Update your project&apos;s display name across dashboard.
                 </p>
               </div>
 
@@ -121,7 +121,7 @@ export default function SettingsPage() {
               </div>
 
               <div className="flex justify-between items-center bg-white/5 border border-white/10 p-4">
-                <span>Improve models with this project's data</span>
+                <span>Improve models with this project&apos;s data</span>
 
                 <button
                   onClick={() => setToggle(!toggle)}

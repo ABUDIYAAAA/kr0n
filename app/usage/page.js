@@ -341,7 +341,7 @@ export default function UsagePage() {
                   </div>
                   <div className="flex shrink-0 flex-wrap items-center gap-2">
                     <Link
-                      href={`/dashboard/analytics?project=${encodeURIComponent(project)}`}
+                      href={`/dashboard/analytics/projectanalysis?project=${encodeURIComponent(project)}`}
                       className="flex items-center gap-2 border border-white/20 bg-transparent px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/80 hover:border-white/40 hover:bg-white/[0.05]">
                       <PanelRight size={12} />
                       Open in Observability
@@ -420,7 +420,7 @@ export default function UsagePage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <Link
-                      href={`/dashboard/analytics?project=${encodeURIComponent(project)}`}
+                      href={`/dashboard/analytics/projectanalysis?project=${encodeURIComponent(project)}`}
                       className="flex items-center gap-2 border border-white/20 px-3 py-2 text-[10px] font-bold uppercase tracking-widest text-white/80 hover:bg-white/[0.06]">
                       <PanelRight size={12} />
                       Open in Observability

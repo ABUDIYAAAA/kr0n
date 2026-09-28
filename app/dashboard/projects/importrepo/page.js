@@ -42,13 +42,17 @@ export default function NewProjectPage() {
           </div>
 
           <div className="flex items-center gap-4">
-            <button className="p-2 text-neutral-400 hover:bg-white/5 hover:text-white active:bg-white/10 transition-all">
+            <button
+              onClick={() => router.push("/dashboard/settings")}
+              className="p-2 text-neutral-400 hover:bg-white/5 hover:text-white active:bg-white/10 transition-all cursor-pointer"
+              aria-label="Settings">
               <Settings size={18} />
             </button>
 
             <div className="w-8 h-8 rounded-full overflow-hidden border border-white/20">
               <img
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuAd_1edko2U7Cvejq65JXe_buYSJE-fSqzN1udINZrSMWUfIDOa63vGXJXPnNqodF8pIM8v9ZWY0i4egMTer0QxpEiADPvjz5N4PYLGyml0id7pV2sqmeXC9MduPCDcgVphRa9OOV-gi5qCg1jEGtMz68_Tm8ClyK3vmwzGege8Z15hKhfKGLn0KqzNDZ4AsVookgGMlXBK60pxzTowWRRat8RINBT7_E3o86GUQXt6a5DlqBumzXgmCL9idYzV7q7iK6v5i2r_Ggw"
+                alt="User avatar"
                 className="w-full h-full object-cover"
               />
             </div>

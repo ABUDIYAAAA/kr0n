@@ -1,8 +1,20 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function Signup() {
+  const router = useRouter();
+
+  const handleSignup = (e) => {
+    e?.preventDefault();
+    router.push("/authentication/emailverified");
+  };
+
+  const handleSocial = () => {
+    router.push("/dashboard/projects");
+  };
+
   return (
     <div className="bg-[#0d0e0f] text-[#e3e2e2] min-h-screen flex flex-col relative overflow-hidden">
       {/* 🔥 PROPER DOTTED GRID (FIXED) */}
@@ -17,9 +29,11 @@ export default function Signup() {
 
       {/* HEADER */}
       <header className="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-8 h-16 bg-black/70 backdrop-blur-xl border-b border-white/10">
-        <div className="font-mono text-2xl font-black tracking-tight text-white">
+        <Link
+          href="/"
+          className="font-mono text-2xl font-black tracking-tight text-white hover:text-zinc-200">
           KRON
-        </div>
+        </Link>
 
         <div>
           <Link
@@ -35,7 +49,11 @@ export default function Signup() {
         <div className="w-full max-w-[420px] space-y-10">
           {/* HEADER TEXT */}
           <div className="text-center space-y-2">
-            <h1 className="font-mono text-4xl font-black text-white">KRON</h1>
+            <Link
+              href="/"
+              className="font-mono text-4xl font-black text-white hover:text-zinc-200 inline-block">
+              KRON
+            </Link>
             <p className="text-zinc-500 uppercase tracking-widest text-[11px]">
               Authenticate to deploy
             </p>
@@ -45,9 +63,13 @@ export default function Signup() {
           <div className="border border-white/20 bg-black/90 p-8 space-y-6">
             {/* SOCIAL */}
             <div className="space-y-3">
-              <button className="w-full flex items-center justify-center gap-3 border border-white/20 py-3 hover:bg-white hover:text-black">
+              <button
+                type="button"
+                onClick={handleSocial}
+                className="w-full flex items-center justify-center gap-3 border border-white/20 py-3 hover:bg-white hover:text-black cursor-pointer">
                 <img
                   src="https://www.svgrepo.com/show/475656/google-color.svg"
+                  alt="Google"
                   className="w-5 h-5"
                 />
                 <span className="uppercase tracking-wider text-[12px] font-semibold">
@@ -55,12 +77,15 @@ export default function Signup() {
                 </span>
               </button>
 
-              <button className="group w-full flex items-center justify-center gap-3 border border-white/20 py-3 hover:bg-white hover:text-black transition-none">
+              <button
+                type="button"
+                onClick={handleSocial}
+                className="group w-full flex items-center justify-center gap-3 border border-white/20 py-3 hover:bg-white hover:text-black transition-none cursor-pointer">
                 <img
                   src="https://www.svgrepo.com/show/512317/github-142.svg"
+                  alt="GitHub"
                   className="w-5 h-5 invert group-hover:invert-0 transition-none"
                 />
-
                 <span className="uppercase tracking-wider text-[12px] font-semibold">
                   Continue with GitHub
                 </span>
@@ -75,7 +100,7 @@ export default function Signup() {
             </div>
 
             {/* FORM */}
-            <form className="space-y-5">
+            <form onSubmit={handleSignup} className="space-y-5">
               <div>
                 <label className="text-[10px] uppercase tracking-widest text-zinc-500">
                   Email

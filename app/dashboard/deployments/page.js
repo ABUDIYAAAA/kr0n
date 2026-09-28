@@ -6,13 +6,45 @@ import { useRouter } from "next/navigation";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import { CheckCircle, TrendingUp } from "lucide-react";
 
+const INITIAL_DEPLOYMENTS = [
+  {
+    id: "#8291",
+    env: "PROD",
+    status: "SUCCESS",
+    repo: "core-engine",
+    branch: "main",
+    user: "arpit",
+    timestamp: 1714000000000,
+    icon: CheckCircle,
+    color: "text-emerald-500",
+    build: "1M 14S",
+    title: "feat: enhance refraction engine",
+    hash: "72a1bc8f",
+    time: "2M AGO",
+  },
+  {
+    id: "#8290",
+    env: "PREVIEW",
+    status: "BUILDING",
+    repo: "auth-service",
+    branch: "dev",
+    user: "dev",
+    timestamp: 1714000000000 - 600000,
+    icon: CheckCircle,
+    color: "text-amber-400",
+    build: "45S",
+    title: "fix: token refresh logic",
+    hash: "8ab12cd",
+    time: "10M AGO",
+  },
+];
+
 export default function DeploymentsPage() {
   const router = useRouter();
 
-  const today = new Date();
   const [openCal, setOpenCal] = useState(false);
-  const [month, setMonth] = useState(today.getMonth());
-  const [year, setYear] = useState(today.getFullYear());
+  const [month, setMonth] = useState(4); // May
+  const [year, setYear] = useState(2024);
   const [selectedDate, setSelectedDate] = useState(null);
 
   const [openDropdown, setOpenDropdown] = useState(null);
@@ -28,38 +60,7 @@ export default function DeploymentsPage() {
   const daysInMonth = new Date(year, month + 1, 0).getDate();
   const firstDay = new Date(year, month, 1).getDay();
 
-  const deployments = [
-    {
-      id: "#8291",
-      env: "PROD",
-      status: "SUCCESS",
-      repo: "core-engine",
-      branch: "main",
-      user: "arpit",
-      timestamp: Date.now(),
-      icon: CheckCircle,
-      color: "text-emerald-500",
-      build: "1M 14S",
-      title: "feat: enhance refraction engine",
-      hash: "72a1bc8f",
-      time: "2M AGO",
-    },
-    {
-      id: "#8290",
-      env: "PREVIEW",
-      status: "BUILDING",
-      repo: "auth-service",
-      branch: "dev",
-      user: "dev",
-      timestamp: Date.now(),
-      icon: CheckCircle,
-      color: "text-amber-400",
-      build: "45S",
-      title: "fix: token refresh logic",
-      hash: "8ab12cd",
-      time: "10M AGO",
-    },
-  ];
+  const deployments = INITIAL_DEPLOYMENTS;
 
   const filtered = deployments.filter((d) => {
     if (filters.repo !== "ALL" && d.repo !== filters.repo) return false;

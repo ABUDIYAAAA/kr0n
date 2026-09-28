@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense, useEffect, useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import { DEMO_PROJECT_SLUGS } from "@/lib/demo-data";
 import {
@@ -13,14 +13,24 @@ import {
   Terminal,
 } from "lucide-react";
 
-export default function AnalyticsPage() {
+function AnalyticsContent() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const projectParam = searchParams.get("project");
 
   const projects = DEMO_PROJECT_SLUGS;
 
   const [search, setSearch] = useState("");
   const [selected, setSelected] = useState(null); // null = All Projects
   const [openDropdown, setOpenDropdown] = useState(false);
+
+  useEffect(() => {
+    if (projectParam) {
+      router.replace(
+        `/dashboard/analytics/projectanalysis?project=${encodeURIComponent(projectParam)}`,
+      );
+    }
+  }, [projectParam, router]);
 
   // 🔍 Search filter
   const filteredProjects = projects.filter((p) =>
@@ -66,6 +76,9 @@ export default function AnalyticsPage() {
                     onClick={() => {
                       setSelected(p);
                       setOpenDropdown(false);
+                      router.push(
+                        `/dashboard/analytics/projectanalysis?project=${encodeURIComponent(p)}`,
+                      );
                     }}
                     className="px-3 py-2 hover:bg-white/10 cursor-pointer">
                     {p}
@@ -164,5 +177,13 @@ export default function AnalyticsPage() {
         </main>
       </div>
     </DashboardShell>
+  );
+}
+
+export default function AnalyticsPage() {
+  return (
+    <Suspense fallback={null}>
+      <AnalyticsContent />
+    </Suspense>
   );
 }

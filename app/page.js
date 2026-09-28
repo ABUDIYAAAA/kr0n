@@ -9,9 +9,9 @@ export default function Home() {
       <header className="sticky top-0 z-50 w-full border-b border-white/10 bg-black/40 backdrop-blur-xl">
         <nav className="flex justify-between items-center px-12 py-4 max-w-7xl mx-auto">
           <div className="flex items-center gap-12">
-            <span className="text-2xl font-black tracking-widest text-white">
+            <Link href="/" className="text-2xl font-black tracking-widest text-white">
               KRON
-            </span>
+            </Link>
 
             <div className="hidden md:flex gap-8">
               <a className="text-xs font-bold uppercase text-white border-b border-white pb-1">
@@ -67,9 +67,11 @@ export default function Home() {
                 placeholder="https://github.com/kron/project-alpha"
               />
 
-              <button className="bg-white text-black font-black px-10 py-5 uppercase tracking-widest text-sm clipped-btn-lg hover:bg-zinc-200 active:translate-y-1">
+              <Link
+                href="/dashboard/projects/importrepo"
+                className="bg-white text-black font-black px-10 py-5 uppercase tracking-widest text-sm clipped-btn-lg hover:bg-zinc-200 active:translate-y-1 inline-flex items-center justify-center">
                 DEPLOY NOW
-              </button>
+              </Link>
             </div>
 
             <p className="text-[11px] tracking-widest text-zinc-500 mt-6 uppercase font-mono">
@@ -207,9 +209,11 @@ export default function Home() {
               System ready <br /> for input.
             </h2>
 
-            <button className="bg-white text-black font-black px-16 py-8 text-xl uppercase clipped-btn-lg hover:bg-zinc-200">
+            <Link
+              href="/authentication/login"
+              className="bg-white text-black font-black px-16 py-8 text-xl uppercase clipped-btn-lg hover:bg-zinc-200 inline-block">
               ESTABLISH CONNECTION
-            </button>
+            </Link>
           </div>
         </section>
       </main>

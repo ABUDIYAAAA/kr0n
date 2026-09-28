@@ -1,34 +1,31 @@
 "use client";
 
 import { Suspense, useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { useRouter, useSearchParams } from "next/navigation";
 import DashboardShell from "@/components/dashboard/DashboardShell";
 import { DEMO_PROJECT_SLUGS } from "@/lib/demo-data";
-import { useSearchParams } from "next/navigation";
 import { ChevronDown, X } from "lucide-react";
 
 function AnalyticsDashboard() {
+  const router = useRouter();
   const searchParams = useSearchParams();
   const selectedParam = searchParams.get("project");
 
   const projects = DEMO_PROJECT_SLUGS;
 
-  const [selected, setSelected] = useState(null);
+  const [selectedOverride, setSelectedOverride] = useState(null);
+  const selected = selectedOverride ?? selectedParam ?? null;
   const [open, setOpen] = useState(false);
   const [range, setRange] = useState("24H");
 
   const availableProjects = useMemo(() => {
-    if (selectedParam && !projects.includes(selectedParam)) {
-      return [selectedParam, ...projects];
+    if (selected && !projects.includes(selected)) {
+      return [selected, ...projects];
     }
 
     return projects;
-  }, [projects, selectedParam]);
-
-  useEffect(() => {
-    if (selectedParam) {
-      setSelected(selectedParam);
-    }
-  }, [selectedParam]);
+  }, [projects, selected]);
 
   const dataMap = {
     "24H": [380, 320, 340, 200, 280, 100, 150, 50, 120, 40, 80],
@@ -55,7 +52,8 @@ function AnalyticsDashboard() {
               <button
                 onClick={(e) => {
                   e.stopPropagation();
-                  setSelected(null);
+                  setSelectedOverride(null);
+                  router.replace("/dashboard/analytics");
                 }}
                 className="text-white/40 hover:text-white">
                 <X size={14} />
@@ -68,8 +66,11 @@ function AnalyticsDashboard() {
                   <div
                     key={p}
                     onClick={() => {
-                      setSelected(p);
+                      setSelectedOverride(p);
                       setOpen(false);
+                      router.replace(
+                        `/dashboard/analytics/projectanalysis?project=${encodeURIComponent(p)}`,
+                      );
                     }}
                     className="px-3 py-2 hover:bg-white/10 cursor-pointer">
                     {p}
@@ -80,9 +81,11 @@ function AnalyticsDashboard() {
           </div>
 
           {/* CENTER */}
-          <div className="text-xs font-mono uppercase tracking-widest border-b border-white pb-1">
+          <Link
+            href="/dashboard/analytics"
+            className="text-xs font-mono uppercase tracking-widest border-b border-white pb-1 hover:text-white/80 transition">
             ANALYTICS
-          </div>
+          </Link>
 
           {/* RIGHT */}
           <div className="text-white/40">•••</div>

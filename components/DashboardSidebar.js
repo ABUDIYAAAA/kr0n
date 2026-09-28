@@ -17,8 +17,12 @@ import RailUserFooter from "@/components/dashboard/RailUserFooter";
 export default function DashboardSidebar() {
   const path = usePathname();
 
-  const isActiveNav = (href) =>
-    path === href || (href === "/usage" && path.startsWith("/usage"));
+  const isActiveNav = (href) => {
+    if (path === href) return true;
+    if (href === "/usage") return path.startsWith("/usage");
+    if (href !== "/" && href !== "/dashboard") return path.startsWith(href + "/");
+    return false;
+  };
 
   const nav = [
     { name: "Projects", href: "/dashboard/projects", icon: Folder },
@@ -40,13 +44,15 @@ export default function DashboardSidebar() {
   return (
     <aside className="flex h-full min-h-0 w-64 shrink-0 flex-col overflow-hidden border-r border-white/10 bg-[#0b0b0b]">
       <div className="shrink-0 border-b border-white/10 p-6">
-        <div className="flex items-center gap-3">
+        <Link
+          href="/dashboard/settings"
+          className="flex items-center gap-3 transition-opacity hover:opacity-80">
           <div className="w-10 h-10 border border-white/20 bg-white/5" />
           <div>
             <div className="text-sm font-bold">arpittripathi</div>
             <div className="text-[10px] text-white/40 uppercase">Hobby</div>
           </div>
-        </div>
+        </Link>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto overscroll-y-contain p-6 pt-5">

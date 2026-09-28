@@ -1,17 +1,27 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export default function Login() {
+  const router = useRouter();
+
+  const handleLogin = (e) => {
+    e?.preventDefault();
+    router.push("/dashboard/projects");
+  };
+
   return (
     <div className="bg-[#121414] text-[#e3e2e2] min-h-screen flex flex-col">
       <main className="flex-grow flex items-center justify-center p-8">
         <div className="w-full max-w-[420px] space-y-8">
           {/* HEADER */}
           <div className="text-center space-y-2">
-            <h1 className="text-[48px] font-extrabold tracking-tight uppercase text-white">
+            <Link
+              href="/"
+              className="text-[48px] font-extrabold tracking-tight uppercase text-white hover:text-zinc-200 inline-block">
               KRON
-            </h1>
+            </Link>
             <p className="text-[10px] tracking-[0.2em] uppercase text-zinc-500">
               Authenticate to deploy
             </p>
@@ -22,9 +32,13 @@ export default function Login() {
             {/* SOCIAL BUTTONS */}
             <div className="space-y-3">
               {/* GOOGLE */}
-              <button className="w-full flex items-center justify-center gap-3 py-3 border border-white/20 hover:bg-white hover:text-black transition-none active:translate-x-[1px] active:translate-y-[1px] hover:cursor-pointer">
+              <button
+                type="button"
+                onClick={handleLogin}
+                className="w-full flex items-center justify-center gap-3 py-3 border border-white/20 hover:bg-white hover:text-black transition-none active:translate-x-[1px] active:translate-y-[1px] hover:cursor-pointer">
                 <img
                   src="https://www.svgrepo.com/show/475656/google-color.svg"
+                  alt="Google"
                   className="w-5 h-5"
                 />
 
@@ -34,9 +48,13 @@ export default function Login() {
               </button>
 
               {/* GITHUB */}
-              <button className="group w-full flex items-center justify-center gap-3 border border-white/20 py-3 hover:bg-white hover:text-black transition-none">
+              <button
+                type="button"
+                onClick={handleLogin}
+                className="group w-full flex items-center justify-center gap-3 border border-white/20 py-3 hover:bg-white hover:text-black transition-none cursor-pointer">
                 <img
                   src="https://www.svgrepo.com/show/512317/github-142.svg"
+                  alt="GitHub"
                   className="w-5 h-5 invert group-hover:invert-0"
                 />
 
@@ -54,7 +72,7 @@ export default function Login() {
             </div>
 
             {/* FORM */}
-            <form className="space-y-4">
+            <form onSubmit={handleLogin} className="space-y-4">
               <div className="space-y-1">
                 <label className="text-[10px] uppercase text-zinc-500">
                   Email Address
