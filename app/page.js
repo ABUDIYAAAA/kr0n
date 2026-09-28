@@ -64,7 +64,7 @@ export default function Home() {
             <div className="mt-12 flex flex-col md:flex-row max-w-2xl">
               <input
                 className="flex-grow bg-white/5 border border-white/20 px-6 py-5 text-white font-mono outline-none focus:border-white"
-                placeholder="https://github.com/kron/project-alpha"
+                placeholder="Deploy from Github-->"
               />
 
               <Link
