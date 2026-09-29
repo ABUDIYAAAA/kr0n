@@ -4,11 +4,7 @@ import { useState, useEffect } from 'react';
 import SiteHeader from './components/SiteHeader';
 import HeroSection from './components/HeroSection';
 import ManifestoScene from './components/ManifestoScene';
-import ReleaseRailSection from './components/ReleaseRailSection';
-import CodeToRelease from './components/CodeToRelease';
-import CapabilityTypographyScene from './components/CapabilityTypographyScene';
 import OperationalSurface from './components/OperationalSurface';
-import BrandMarkScene from './components/BrandMarkScene';
 import FinalCTA from './components/FinalCTA';
 import SiteFooter from './components/SiteFooter';
 import CommandLayer from './components/CommandLayer';
@@ -40,28 +36,16 @@ export default function HomePage() {
 			<SiteHeader onOpenCommand={() => setCommandOpen(true)} />
 
 			<main className='flex-1'>
-				{/* Section 00: Hero — Editorial + Technical Intro */}
+				{/* Section 00: Hero — Editorial Message + Embedded KR0N Technical Visual */}
 				<HeroSection onOpenCommand={() => setCommandOpen(true)} />
 
-				{/* Section 01: KR0N Brand / Logo Animation Stage */}
-				<BrandMarkScene />
-
-				{/* Section 02: Manifesto / Typographic Interruption (Principle 1) */}
+				{/* Section 01: Manifesto / Typographic Interruption (Principle 1) */}
 				<ManifestoScene />
 
-				{/* Section 03: The Release Rail (Railway-inspired Graphic Instrument with live iteration) */}
-				<ReleaseRailSection />
-
-				{/* Section 04: Code into Motion (Resend-inspired Editorial Code) */}
-				<CodeToRelease />
-
-				{/* Section 05: KR0N Takes the Weight (Asymmetric Typographic Highway) */}
-				<CapabilityTypographyScene />
-
-				{/* Section 06: The Quiet Operating State (Floating Operational Surface) */}
+				{/* Section 02: The Quiet Operating State (Floating Operational Surface) */}
 				<OperationalSurface />
 
-				{/* Section 07: Final CTA / Cinematic Ending */}
+				{/* Section 03: Final CTA / Cinematic Ending */}
 				<FinalCTA onOpenCommand={() => setCommandOpen(true)} />
 			</main>
 
