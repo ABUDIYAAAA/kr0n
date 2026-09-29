@@ -1,196 +1,223 @@
 'use client';
 
-import { useState } from 'react';
-import { RotateCcw, Check, ArrowRight, ShieldCheck, ExternalLink } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { motion } from 'motion/react';
+import { RotateCcw, Check, Radio, Activity } from 'lucide-react';
 
-const AUDIT_ROWS = [
+const RELEASES = [
 	{
 		version: 'v1.8.4',
+		status: 'LIVE',
 		branch: 'main',
 		commit: 'a83f2c1',
-		message: 'feat(cart): implement instant optimistic checkout updates',
-		status: 'LIVE',
+		message: 'feat(cart): instant optimistic checkout updates',
 		time: '2m ago',
 		duration: '31.9s',
-		author: 'gurmehar',
 		isLive: true,
 	},
 	{
 		version: 'v1.8.3',
+		status: 'ROLLED BACK',
 		branch: 'main',
 		commit: '19fe102',
-		message: 'fix(session): resolve intermittent token expiration in middleware',
-		status: 'ROLLED BACK',
+		message: 'fix(session): token expiration in middleware',
 		time: '18m ago',
 		duration: '29.4s',
-		author: 'ci-bot',
 		isLive: false,
 	},
 	{
 		version: 'v1.8.2',
+		status: 'SUPERSEDED',
 		branch: 'feat/search',
 		commit: 'c41d8e0',
-		message: 'perf(catalog): batch elasticsearch queries for product filters',
-		status: 'SUPERSEDED',
+		message: 'perf(catalog): batch query filters for search indexing',
 		time: '42m ago',
 		duration: '35.1s',
-		author: 'alex',
-		isLive: false,
-	},
-	{
-		version: 'v1.8.1',
-		branch: 'fix/auth',
-		commit: '99b21a0',
-		message: 'refactor(auth): migrate to Web Crypto API for zero-dep tokens',
-		status: 'SUPERSEDED',
-		time: '2h ago',
-		duration: '28.0s',
-		author: 'gurmehar',
 		isLive: false,
 	},
 ];
 
 export default function OperationalSurface() {
-	const [selected, setSelected] = useState(AUDIT_ROWS[0]);
+	const [selectedVersion, setSelectedVersion] = useState('v1.8.4');
+	const [pulseTick, setPulseTick] = useState(24);
+
+	// Subtle live latency jitter to make telemetry feel alive
+	useEffect(() => {
+		const interval = setInterval(() => {
+			setPulseTick((prev) => 22 + Math.floor(Math.random() * 5));
+		}, 2000);
+		return () => clearInterval(interval);
+	}, []);
 
 	return (
 		<section
 			id='releases'
-			className='relative py-28 px-6 sm:px-12 max-w-7xl mx-auto border-x border-white/5 bg-[#050607]'
+			className='relative py-20 sm:py-28 px-6 sm:px-12 bg-[#090B0E] border-b border-[#242930] overflow-hidden'
+			data-kr0n-motion='OperationalScene'
 		>
-			<div className='max-w-5xl mx-auto space-y-12'>
+			<div className='max-w-7xl mx-auto space-y-12'>
 				{/* Section Header */}
-				<div className='max-w-2xl space-y-3'>
-					<div className='inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-white/50'>
-						<span className='w-1.5 h-1.5 bg-white' />
-						<span>CALM OPERATIONAL VISIBILITY</span>
+				<div className='flex flex-col sm:flex-row sm:items-end justify-between gap-6 pb-6 border-b border-[#242930]'>
+					<div className='space-y-3 max-w-2xl'>
+						<div className='inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-[#858C95]'>
+							<span className='w-1.5 h-1.5 bg-white' />
+							<span>PRODUCT SURFACE // 06</span>
+							<span className='text-[#363D47] select-none'>|</span>
+							<span className='text-white font-semibold'>CALM OPERATIONAL VISIBILITY</span>
+						</div>
+
+						<h2 className='text-3xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-[#F3F4F6] leading-[1.04]'>
+							Calm operational <br />
+							<span className='text-[#6C7480] font-extrabold'>visibility.</span>
+						</h2>
 					</div>
-					<h2 className='text-3xl sm:text-4xl font-extrabold uppercase tracking-tight text-white leading-tight'>
-						Immutable release history. <br />
-						<span className='text-white/50'>Auditable and instantly reversible.</span>
-					</h2>
-					<p className='text-sm sm:text-base text-zinc-400 font-sans leading-relaxed'>
-						Every release creates a versioned snapshot. If an unexpected runtime error
-						occurs, revert to any previous state in under one second without rebuilding.
-					</p>
+
+					<div className='text-xs font-mono text-[#858C95] text-left sm:text-right space-y-1'>
+						<div>IMMUTABLE RELEASE AUDIT</div>
+						<div className='text-white font-bold'>INSTANT ROLLBACK ARMED</div>
+					</div>
 				</div>
 
-				{/* High-Density Linear-Style Audit Surface */}
-				<div className='border border-white/15 bg-[#0d0e11] shadow-2xl overflow-hidden'>
-					{/* Table Controls Strip */}
-					<div className='px-5 py-3.5 bg-[#111215] border-b border-white/10 flex flex-wrap items-center justify-between gap-3 text-xs font-mono text-white/50'>
-						<div className='flex items-center gap-3'>
-							<span className='w-2 h-2 rounded-full bg-emerald-400' />
-							<span className='text-white font-bold'>storefront / production</span>
-							<span className='text-white/20'>{'//'}</span>
-							<span>4 releases preserved</span>
+				{/* Cinematic Operational Surface */}
+				<div
+					data-kr0n-motion='OperationalSurface'
+					className='bg-[#0D1014] border border-[#242930] p-6 sm:p-8 space-y-8 shadow-2xl'
+				>
+					{/* Top System Context Bar */}
+					<div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#242930]'>
+						<div className='space-y-1'>
+							<div className='text-xl sm:text-2xl font-black font-mono uppercase text-white tracking-tight flex items-center gap-3'>
+								<span>storefront</span>
+								<span className='text-xs px-2 py-0.5 border border-[#363D47] bg-[#15191E] font-normal text-[#C4C8CE]'>
+									production
+								</span>
+							</div>
+							<div className='text-xs font-mono text-[#858C95]'>
+								CANARY CUTOVER MESH ACTIVE // AUTOMATED ROLLBACK POINT PRESERVED
+							</div>
 						</div>
-						<div className='flex items-center gap-4 text-[11px]'>
-							<span>Instant rollback armed</span>
-							<span>•</span>
-							<span>Traffic: Zero packet drop</span>
+
+						<div
+							data-kr0n-live='LiveIndicator'
+							className='inline-flex items-center gap-2.5 border border-emerald-500/40 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-mono text-emerald-400 self-start sm:self-auto'
+						>
+							<span className='w-2 h-2 rounded-full bg-emerald-400 animate-pulse' />
+							<span className='font-bold tracking-wider'>● LIVE // 100% TRAFFIC</span>
 						</div>
 					</div>
 
-					{/* Dense Rows */}
-					<div className='divide-y divide-white/5 overflow-x-auto'>
-						{AUDIT_ROWS.map((row) => {
-							const isSelected = selected.version === row.version;
+					{/* Restrained Release Rows */}
+					<div
+						data-kr0n-motion='ReleaseRows'
+						className='divide-y divide-[#242930] font-mono text-xs sm:text-sm overflow-x-auto'
+					>
+						{RELEASES.map((row) => {
+							const isSelected = selectedVersion === row.version;
 							return (
 								<div
 									key={row.version}
-									onClick={() => setSelected(row)}
-									className={`px-5 sm:px-6 py-4 flex items-center justify-between gap-4 cursor-pointer transition-colors text-xs font-mono min-w-[620px] ${
+									onClick={() => setSelectedVersion(row.version)}
+									className={`py-4 px-3 sm:px-4 flex items-center justify-between gap-6 cursor-pointer transition-colors min-w-[620px] ${
 										isSelected
-											? 'bg-[#16171b] text-white'
-											: 'hover:bg-white/[0.03] text-white/60'
+											? 'bg-[#15191E] text-white'
+											: 'hover:bg-white/[0.03] text-[#C4C8CE]'
 									}`}
 								>
 									{/* Version & Commit */}
-									<div className='flex items-center gap-4 w-64 shrink-0'>
-										<span
-											className={`font-bold ${
-												row.isLive ? 'text-white' : 'text-white/70'
-											}`}
-										>
-											{row.version}
-										</span>
-										<div className='flex items-center gap-1.5 text-white/40'>
-											<span>{row.branch}</span>
-											<span>/</span>
-											<span className='text-white/70'>{row.commit}</span>
-										</div>
+									<div className='flex items-center gap-4 w-44 shrink-0'>
+										<span className='font-bold text-white'>{row.version}</span>
+										<span className='text-[#4E5560]'>/</span>
+										<span className='text-[#858C95] text-xs'>{row.commit}</span>
 									</div>
 
-									{/* Commit Message */}
-									<div className='truncate flex-1 font-sans text-xs text-white/60 font-normal'>
-										{row.message}
-									</div>
-
-									{/* Status Pill */}
+									{/* Status Indicator */}
 									<div className='w-32 shrink-0 flex items-center gap-2'>
 										<span
-											className={`w-1.5 h-1.5 rounded-full ${
+											className={`w-2 h-2 rounded-full ${
 												row.status === 'LIVE'
-													? 'bg-emerald-400'
+													? 'bg-emerald-400 animate-pulse'
 													: row.status === 'ROLLED BACK'
 													? 'bg-amber-400'
 													: 'bg-white/20'
 											}`}
 										/>
 										<span
-											className={`text-[11px] font-bold tracking-wider ${
+											className={`text-xs font-bold tracking-wider ${
 												row.status === 'LIVE'
 													? 'text-emerald-400'
 													: row.status === 'ROLLED BACK'
 													? 'text-amber-400'
-													: 'text-white/40'
+													: 'text-[#858C95]'
 											}`}
 										>
 											{row.status}
 										</span>
 									</div>
 
-									{/* Duration & Age */}
-									<div className='w-28 shrink-0 text-right text-white/40 text-[11px]'>
-										<span>{row.time}</span>
+									{/* Commit Message */}
+									<div className='flex-1 truncate text-xs font-sans text-[#C4C8CE] font-normal'>
+										{row.message}
+									</div>
+
+									{/* Timestamp */}
+									<div className='w-24 shrink-0 text-right text-xs text-[#858C95]'>
+										{row.time}
 									</div>
 								</div>
 							);
 						})}
 					</div>
 
-					{/* Selected Row Drawer */}
-					<div className='p-5 bg-[#090a0c] border-t border-white/10 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs font-mono'>
-						<div className='space-y-1'>
-							<div className='flex items-center gap-2 text-white font-bold'>
-								<span>{selected.version}</span>
-								<span className='text-white/30'>•</span>
-								<span className='text-white/80 font-normal font-sans'>
-									{selected.message}
-								</span>
+					{/* Living Telemetry & Signal Wave Bar */}
+					<div
+						data-kr0n-motion='MetricCluster'
+						className='pt-6 border-t border-[#242930] grid grid-cols-1 md:grid-cols-12 gap-6 items-center font-mono'
+					>
+						{/* Real-time Telemetry Metrics (col-span-8) */}
+						<div className='md:col-span-8 grid grid-cols-3 gap-4'>
+							<div className='p-3 bg-[#111419] border border-[#242930] space-y-1'>
+								<div className='text-[10px] text-[#858C95] uppercase'>EDGE LATENCY (p99)</div>
+								<div className='text-xl sm:text-2xl font-bold text-white flex items-center gap-2'>
+									<span>{pulseTick}ms</span>
+									<span className='w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping' />
+								</div>
+								<div className='text-[10px] text-emerald-400'>Synthetic probe OK</div>
 							</div>
-							<div className='text-[11px] text-white/40'>
-								Author: {selected.author} • Compiled in {selected.duration} • Status:{' '}
-								{selected.status}
+
+							<div className='p-3 bg-[#111419] border border-[#242930] space-y-1'>
+								<div className='text-[10px] text-[#858C95] uppercase'>SYSTEM HEALTH</div>
+								<div className='text-xl sm:text-2xl font-bold text-white'>NOMINAL</div>
+								<div className='text-[10px] text-[#858C95]'>0 errors detected</div>
+							</div>
+
+							<div className='p-3 bg-[#111419] border border-[#242930] space-y-1'>
+								<div className='text-[10px] text-[#858C95] uppercase'>RESTORE SPEED</div>
+								<div className='text-xl sm:text-2xl font-bold text-white'>&lt;1s</div>
+								<div className='text-[10px] text-[#858C95]'>Instant state revert</div>
 							</div>
 						</div>
 
-						<div className='shrink-0'>
-							{selected.isLive ? (
-								<span className='border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 px-3 py-1.5 text-[11px] font-mono'>
-									Currently Serving 100% Traffic
-								</span>
-							) : (
-								<button
-									type='button'
-									onClick={() => alert(`Simulated rollback to ${selected.version}`)}
-									className='flex items-center gap-2 border border-white/20 hover:border-white/40 bg-white/5 hover:bg-white/10 px-3 py-1.5 text-white text-[11px] font-mono transition-colors'
-								>
-									<RotateCcw size={12} />
-									<span>Rollback to {selected.version}</span>
-								</button>
-							)}
+						{/* Real-time Sparkline Graph (col-span-4) */}
+						<div className='md:col-span-4 p-3 bg-[#111419] border border-[#242930] space-y-2'>
+							<div className='flex items-center justify-between text-[10px] text-[#858C95]'>
+								<span>SIGNAL TIMELINE</span>
+								<span className='text-emerald-400'>ACTIVE</span>
+							</div>
+
+							{/* SVG Live Latency Curve */}
+							<div className='h-10 w-full overflow-hidden flex items-end'>
+								<svg viewBox='0 0 100 30' className='w-full h-full stroke-emerald-400 fill-none' preserveAspectRatio='none'>
+									<path
+										d='M0,20 Q15,10 30,18 T60,12 T85,22 T100,15'
+										strokeWidth='1.5'
+										strokeLinecap='round'
+									/>
+								</svg>
+							</div>
+
+							<div className='text-[10px] text-[#858C95] text-right'>
+								ILLUSTRATIVE TELEMETRY STREAM
+							</div>
 						</div>
 					</div>
 				</div>

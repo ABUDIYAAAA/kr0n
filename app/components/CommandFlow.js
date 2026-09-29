@@ -1,18 +1,36 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Terminal, Check, ArrowRight, CornerDownLeft, Play, Radio } from 'lucide-react';
+import { Check, CornerDownLeft, RotateCcw, ArrowRight } from 'lucide-react';
+
+const FULL_COMMAND = 'Deploy storefront to production';
 
 export default function CommandFlow() {
+	const [typedText, setTypedText] = useState('');
 	const [status, setStatus] = useState('idle'); // 'idle' | 'executing' | 'deployed'
+
+	// Automated simulated typing of the command
+	useEffect(() => {
+		let currentIdx = 0;
+		const typingTimer = setInterval(() => {
+			if (currentIdx <= FULL_COMMAND.length) {
+				setTypedText(FULL_COMMAND.slice(0, currentIdx));
+				currentIdx++;
+			} else {
+				clearInterval(typingTimer);
+			}
+		}, 60);
+
+		return () => clearInterval(typingTimer);
+	}, []);
 
 	const handleExecute = () => {
 		if (status === 'executing') return;
 		setStatus('executing');
 		setTimeout(() => {
 			setStatus('deployed');
-		}, 1800);
+		}, 1400);
 	};
 
 	const handleReset = () => {
@@ -21,157 +39,180 @@ export default function CommandFlow() {
 
 	return (
 		<section
-			id='command-flow'
-			className='relative py-28 px-6 sm:px-12 max-w-7xl mx-auto border-x border-white/5 bg-[#090a0c] overflow-hidden'
+			id='command'
+			className='relative py-20 sm:py-28 px-6 sm:px-12 bg-[#0B0E12] border-b border-[#242930] overflow-hidden'
+			data-kr0n-motion='CommandFlowScene'
 		>
 			<div className='max-w-4xl mx-auto space-y-12 text-center'>
-				{/* Editorial Header */}
-				<div className='space-y-4'>
-					<div className='inline-flex items-center gap-2 border border-white/10 bg-white/[0.02] px-3.5 py-1 text-[11px] font-mono tracking-widest uppercase text-white/50'>
-						<span>KEYBOARD-FIRST CONTROL</span>
+				{/* Section Header */}
+				<div className='space-y-3'>
+					<div className='inline-flex items-center gap-2 border border-[#363D47] bg-[#111419] px-3.5 py-1 text-[11px] font-mono tracking-widest uppercase text-[#858C95]'>
+						<span className='w-1.5 h-1.5 rounded-full bg-white/60' />
+						<span>SIGNATURE INTERACTION // 03</span>
+						<span className='text-[#363D47] select-none'>|</span>
+						<span className='text-white font-semibold'>STAY IN THE WORK</span>
 					</div>
-					<h2 className='text-3xl sm:text-5xl font-black uppercase tracking-tight text-white leading-[1.08]'>
-						It’s not about deploying faster. <br />
-						<span className='text-white/40'>It’s about staying in flow.</span>
+
+					<h2 className='text-3xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-[#F3F4F6] leading-[1.04]'>
+						It is not about deploying faster. <br />
+						<span className='text-[#6C7480] font-extrabold'>It is about staying in flow.</span>
 					</h2>
-					<p className='text-sm sm:text-base text-zinc-400 max-w-xl mx-auto font-sans leading-relaxed'>
-						Trigger immutable releases, inspect service state, and execute rollbacks
-						without ever switching context away from your keyboard.
+
+					<p className='text-sm sm:text-base text-[#C4C8CE] max-w-xl mx-auto font-sans leading-relaxed'>
+						Trigger immutable releases, inspect service state, and verify health without ever switching context away from your keyboard.
 					</p>
 				</div>
 
-				{/* The Tactile Command Canvas */}
-				<div className='max-w-2xl mx-auto border border-white/20 bg-[#0d0e11] shadow-2xl text-left overflow-hidden'>
-					{/* Top Terminal Bar */}
-					<div className='px-5 py-3 border-b border-white/10 bg-[#111215] flex items-center justify-between text-xs font-mono text-white/50'>
-						<div className='flex items-center gap-2'>
-							<span className='w-2 h-2 rounded-full bg-white/20' />
-							<span>KR0N COMMAND LAYER</span>
-						</div>
-						<div className='flex items-center gap-2'>
-							<kbd className='border border-white/15 bg-white/5 px-1.5 py-0.5 text-[10px] text-white/60'>
-								⌘ K
-							</kbd>
-						</div>
-					</div>
+				{/* Floating Command Canvas */}
+				<div className='relative max-w-2xl mx-auto'>
+					{/* The Command Palette Surface */}
+					<div
+						data-kr0n-command='CommandPalette'
+						className='relative border border-[#242930] bg-[#111419] shadow-2xl text-left overflow-hidden'
+					>
+						{/* Top Header Strip with Large Keyboard Key */}
+						<div className='px-5 py-3.5 border-b border-[#242930] bg-[#15191E] flex items-center justify-between text-xs font-mono text-[#858C95]'>
+							<div className='flex items-center gap-2.5'>
+								<span className='w-2 h-2 rounded-full bg-emerald-400' />
+								<span className='text-white font-bold tracking-wider'>KR0N COMMAND LAYER</span>
+							</div>
 
-					{/* Command Search Bar */}
-					<div className='p-5 border-b border-white/10 bg-[#090a0c] flex items-center justify-between gap-3'>
-						<div className='flex items-center gap-3 w-full'>
-							<span className='text-white/40 font-mono text-sm'>&gt;</span>
-							<span className='text-sm sm:text-base font-mono text-white font-medium'>
-								Deploy storefront to production
-							</span>
-							<span className='w-2 h-4 bg-white animate-pulse' />
-						</div>
-
-						{status === 'idle' ? (
-							<button
-								type='button'
-								onClick={handleExecute}
-								className='clipped-btn bg-white hover:bg-neutral-200 text-black px-3.5 py-1.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0 transition-colors'
+							<div
+								data-kr0n-command='CommandKey'
+								className='flex items-center gap-2'
 							>
-								<span>Deploy</span>
-								<CornerDownLeft size={12} />
-							</button>
-						) : (
-							<button
-								type='button'
-								onClick={handleReset}
-								className='border border-white/15 hover:border-white/30 text-white/60 hover:text-white px-3 py-1.5 text-xs font-mono uppercase tracking-wider shrink-0 transition-colors'
-							>
-								Reset
-							</button>
-						)}
-					</div>
-
-					{/* Command Results / Contextual State Drawer */}
-					<div className='p-5 bg-[#0d0e11] space-y-4'>
-						<div className='flex items-center justify-between text-xs font-mono text-white/40 pb-2 border-b border-white/5'>
-							<span>TARGET SPECIFICATION</span>
-							<span>REGION // US-EAST-1</span>
-						</div>
-
-						<div className='grid grid-cols-3 gap-3 text-xs font-mono'>
-							<div className='p-3 bg-[#111215] border border-white/10'>
-								<span className='text-white/40 block text-[10px] uppercase'>
-									Service
-								</span>
-								<span className='text-white font-bold mt-0.5 block'>
-									storefront
-								</span>
-							</div>
-							<div className='p-3 bg-[#111215] border border-white/10'>
-								<span className='text-white/40 block text-[10px] uppercase'>
-									Target Env
-								</span>
-								<span className='text-white font-bold mt-0.5 block'>
-									production
-								</span>
-							</div>
-							<div className='p-3 bg-[#111215] border border-white/10'>
-								<span className='text-white/40 block text-[10px] uppercase'>
-									Release
-								</span>
-								<span className='text-white font-bold mt-0.5 block'>v1.8.4</span>
+								<kbd className='border border-[#363D47] bg-[#191D24] px-2 py-0.5 text-xs font-mono font-bold text-white shadow-inner'>
+									⌘ K
+								</kbd>
 							</div>
 						</div>
 
-						{/* Dynamic State Progression */}
-						<AnimatePresence mode='wait'>
-							{status === 'executing' && (
-								<motion.div
-									key='executing'
-									initial={{ opacity: 0, y: 4 }}
-									animate={{ opacity: 1, y: 0 }}
-									exit={{ opacity: 0, y: -4 }}
-									className='p-4 bg-[#111215] border border-white/20 flex items-center justify-between font-mono text-xs'
-								>
-									<div className='flex items-center gap-3'>
-										<span className='w-2 h-2 rounded-full bg-amber-400 animate-ping' />
-										<span className='text-white'>
-											Compiling standalone container & verifying SBOM...
-										</span>
-									</div>
-									<span className='text-white/50 text-[11px]'>18.2s</span>
-								</motion.div>
-							)}
+						{/* Search Input Simulation with Automatic Typing */}
+						<div className='p-5 border-b border-[#242930] bg-[#0D1014] flex items-center justify-between gap-4'>
+							<div className='flex items-center gap-3 flex-1 min-w-0'>
+								<span className='text-[#4E5560] font-mono text-base select-none'>&gt;</span>
+								<span className='text-sm sm:text-base font-mono text-white font-medium truncate'>
+									{typedText}
+								</span>
+								<span
+									data-kr0n-command='CommandCursor'
+									className='w-2 h-4 bg-white animate-pulse shrink-0'
+								/>
+							</div>
 
-							{status === 'deployed' && (
-								<motion.div
-									key='deployed'
-									initial={{ opacity: 0, y: 4 }}
-									animate={{ opacity: 1, y: 0 }}
-									exit={{ opacity: 0, y: -4 }}
-									className='p-4 bg-[#111215] border border-white/20 flex flex-col sm:flex-row sm:items-center justify-between gap-3 font-mono text-xs'
+							{status === 'idle' ? (
+								<button
+									type='button'
+									onClick={handleExecute}
+									className='clipped-btn bg-white hover:bg-neutral-200 text-black px-3.5 py-1.5 text-xs font-mono font-bold uppercase tracking-wider flex items-center gap-1.5 shrink-0 transition-colors shadow-md'
 								>
-									<div className='flex items-center gap-2.5'>
-										<Check size={16} className='text-emerald-400' />
-										<span className='text-white font-bold'>
-											Release v1.8.4 Live: 100% traffic shifted
-										</span>
-									</div>
-									<div className='flex items-center gap-3'>
-										<span className='text-white/50 text-[11px]'>p99: 24ms</span>
-										<a
-											href='https://storefront.kr0n.app'
-											target='_blank'
-											rel='noreferrer'
-											className='text-white underline hover:text-white/80 text-[11px]'
-										>
-											storefront.kr0n.app
-										</a>
-									</div>
-								</motion.div>
+									<span>Deploy</span>
+									<CornerDownLeft size={12} />
+								</button>
+							) : (
+								<button
+									type='button'
+									onClick={handleReset}
+									className='border border-[#363D47] hover:border-white/40 text-[#858C95] hover:text-white px-3 py-1.5 text-xs font-mono uppercase tracking-wider shrink-0 transition-colors flex items-center gap-1.5'
+								>
+									<RotateCcw size={11} />
+									<span>Reset</span>
+								</button>
 							)}
+						</div>
 
-							{status === 'idle' && (
-								<div className='p-3 bg-[#090a0c] border border-white/5 flex items-center justify-between text-[11px] font-mono text-white/40'>
-									<span>Press ↵ or click Deploy to trigger execution</span>
-									<span>Zero Downtime Cutover</span>
+						{/* Target Result Row */}
+						<div
+							data-kr0n-command='CommandResult'
+							className='p-5 bg-[#111419] space-y-4 font-mono text-xs'
+						>
+							<div className='flex items-center justify-between text-[#858C95] pb-2 border-b border-[#242930] text-[11px]'>
+								<span>RESOLVED TARGET ARTIFACT</span>
+								<span>ENVIRONMENT // PRODUCTION</span>
+							</div>
+
+							<div className='grid grid-cols-3 gap-3'>
+								<div className='p-3 bg-[#15191E] border border-[#242930]'>
+									<span className='text-[#858C95] block text-[10px] uppercase'>SERVICE</span>
+									<span className='text-white font-bold text-sm block mt-0.5'>storefront</span>
 								</div>
-							)}
-						</AnimatePresence>
+								<div className='p-3 bg-[#15191E] border border-[#242930]'>
+									<span className='text-[#858C95] block text-[10px] uppercase'>ENVIRONMENT</span>
+									<span className='text-white font-bold text-sm block mt-0.5'>production</span>
+								</div>
+								<div className='p-3 bg-[#15191E] border border-[#242930]'>
+									<span className='text-[#858C95] block text-[10px] uppercase'>RELEASE</span>
+									<span className='text-white font-bold text-sm block mt-0.5'>v1.8.4</span>
+								</div>
+							</div>
+
+							{/* Compact State Progression */}
+							<div className='pt-1'>
+								<AnimatePresence mode='wait'>
+									{status === 'idle' && (
+										<div className='p-3 bg-[#0D1014] border border-[#242930] flex items-center justify-between text-[11px] text-[#858C95]'>
+											<span>Click [Deploy ↵] or press Enter to trigger execution</span>
+											<span className='text-white font-semibold'>Zero-Downtime</span>
+										</div>
+									)}
+
+									{status === 'executing' && (
+										<motion.div
+											key='executing'
+											initial={{ opacity: 0, y: 3 }}
+											animate={{ opacity: 1, y: 0 }}
+											exit={{ opacity: 0, y: -3 }}
+											className='p-3.5 bg-[#15191E] border border-amber-500/30 flex items-center justify-between'
+										>
+											<div className='flex items-center gap-2.5'>
+												<span className='w-2 h-2 rounded-full bg-amber-400 animate-ping' />
+												<span className='text-white font-medium text-xs'>
+													Deploy accepted → Creating release container...
+												</span>
+											</div>
+											<span className='text-[#858C95] text-[11px]'>1.4s</span>
+										</motion.div>
+									)}
+
+									{status === 'deployed' && (
+										<motion.div
+											key='deployed'
+											initial={{ opacity: 0, y: 3 }}
+											animate={{ opacity: 1, y: 0 }}
+											exit={{ opacity: 0, y: -3 }}
+											className='p-3.5 bg-[#15191E] border border-emerald-500/40 flex flex-col sm:flex-row sm:items-center justify-between gap-3'
+										>
+											<div className='space-y-1'>
+												<div className='flex items-center gap-2'>
+													<Check size={14} className='text-emerald-400' />
+													<span className='text-white font-bold text-xs'>
+														Deploy accepted → Release created → Health confirmed
+													</span>
+												</div>
+												<div className='text-emerald-400 text-[11px] pl-5'>
+													100% traffic shifted • Synthetic HTTP probe 200 OK
+												</div>
+											</div>
+											<div className='flex items-center gap-2 self-start sm:self-auto'>
+												<span className='text-[#858C95] text-[11px]'>latency 24ms</span>
+												<span className='px-2 py-0.5 border border-emerald-500/40 bg-emerald-500/10 text-emerald-400 text-[10px] uppercase font-bold'>
+													LIVE
+												</span>
+											</div>
+										</motion.div>
+									)}
+								</AnimatePresence>
+							</div>
+						</div>
+					</div>
+
+					{/* Small Release Marker and Hairline Link to Next Section */}
+					<div
+						data-kr0n-command='CommandReleaseLink'
+						className='flex flex-col items-center mt-6 space-y-2'
+					>
+						<div className='w-2.5 h-2.5 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.7)]' />
+						<div className='w-px h-12 bg-gradient-to-b from-white via-white/20 to-transparent' />
 					</div>
 				</div>
 			</div>

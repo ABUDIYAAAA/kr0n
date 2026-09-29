@@ -1,21 +1,22 @@
 @import "tailwindcss";
 
 @theme {
-  --color-kr0n-black: #000000;
-  --color-kr0n-canvas: #090a0c;
-  --color-kr0n-canvas-raised: #0d0e11;
-  --color-kr0n-surface: #111215;
-  --color-kr0n-surface-2: #16171b;
-  --color-kr0n-surface-3: #1d1e24;
-  --color-kr0n-surface-raised: #16171b;
-  --color-kr0n-line: rgba(255, 255, 255, 0.08);
-  --color-kr0n-line-strong: rgba(255, 255, 255, 0.16);
-  --color-kr0n-text: #ffffff;
-  --color-kr0n-text-secondary: rgba(255, 255, 255, 0.70);
-  --color-kr0n-muted: rgba(255, 255, 255, 0.45);
-  --color-kr0n-faint: rgba(255, 255, 255, 0.25);
+  --color-kr0n-black: #050608;
+  --color-kr0n-canvas: #090B0E;
+  --color-kr0n-canvas-raised: #0D1014;
+  --color-kr0n-surface: #111419;
+  --color-kr0n-surface-2: #15191E;
+  --color-kr0n-surface-3: #191D24;
+  --color-kr0n-surface-raised: #15191E;
+  --color-kr0n-line: #242930;
+  --color-kr0n-line-strong: #363D47;
+  --color-kr0n-line-soft: #1A1E24;
+  --color-kr0n-text: #F3F4F6;
+  --color-kr0n-text-secondary: #C4C8CE;
+  --color-kr0n-muted: #858C95;
+  --color-kr0n-faint: #4E5560;
   --color-kr0n-healthy: #10b981;
-  --color-kr0n-healthy-soft: rgba(16, 185, 129, 0.10);
+  --color-kr0n-healthy-soft: rgba(16, 185, 129, 0.12);
   --color-kr0n-warning: #f59e0b;
   --color-kr0n-error: #ef4444;
 
@@ -35,14 +36,14 @@ html {
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
   scroll-behavior: smooth;
-  background-color: #090a0c;
-  color: #ffffff;
+  background-color: #090B0E;
+  color: #F3F4F6;
 }
 
 body {
   font-family: var(--font-sans);
-  background-color: #090a0c;
-  color: #ffffff;
+  background-color: #090B0E;
+  color: #F3F4F6;
   margin: 0;
   overflow-x: hidden;
 }
@@ -63,19 +64,19 @@ body {
   height: 5px;
 }
 ::-webkit-scrollbar-track {
-  background: transparent;
+  background: #090B0E;
 }
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: #242930;
 }
 ::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.24);
+  background: #363D47;
 }
 
 /* Technical grid background */
 .kr0n-grid-bg {
-  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
-                    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
   background-size: 48px 48px;
 }
 
