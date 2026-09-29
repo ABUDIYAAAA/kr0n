@@ -1,25 +1,68 @@
+'use client';
+
+import { useState, useEffect } from 'react';
+import SiteHeader from './components/SiteHeader';
+import HeroSection from './components/HeroSection';
+import ReleaseRailSection from './components/ReleaseRailSection';
+import CommandFlow from './components/CommandFlow';
+import CodeToRelease from './components/CodeToRelease';
+import CapabilityStory from './components/CapabilityStory';
+import OperationalSurface from './components/OperationalSurface';
+import FinalCTA from './components/FinalCTA';
+import SiteFooter from './components/SiteFooter';
+import CommandLayer from './components/CommandLayer';
+
 export default function HomePage() {
+	const [commandOpen, setCommandOpen] = useState(false);
+
+	useEffect(() => {
+		const handleKeyDown = (e) => {
+			if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+				e.preventDefault();
+				setCommandOpen((prev) => !prev);
+			}
+		};
+
+		window.addEventListener('keydown', handleKeyDown);
+		return () => window.removeEventListener('keydown', handleKeyDown);
+	}, []);
+
 	return (
-		<main className='flex-1 flex flex-col items-center justify-center p-8 bg-[#0b0c10] text-slate-100 min-h-screen'>
-			<div className='max-w-xl w-full text-center space-y-6'>
-				<div className='inline-flex items-center gap-2 px-3 py-1 rounded-full bg-indigo-500/10 border border-indigo-500/20 text-indigo-300 text-xs font-medium'>
-					<span className='w-1.5 h-1.5 rounded-full bg-indigo-400'></span>
-					Developer Workspace Theme
-				</div>
+		<div className='min-h-screen bg-[#090a0c] text-white flex flex-col font-sans selection:bg-white/20 selection:text-white'>
+			{/* Command Layer Modal */}
+			<CommandLayer
+				isOpen={commandOpen}
+				onClose={() => setCommandOpen(false)}
+			/>
 
-				<h1 className='text-3xl font-bold tracking-tight text-white'>
-					kr0n Developer Platform
-				</h1>
+			{/* Low-profile Site Header */}
+			<SiteHeader onOpenCommand={() => setCommandOpen(true)} />
 
-				<p className='text-sm text-slate-400 leading-relaxed max-w-md mx-auto'>
-					Self-owned application deployment and orchestration
-					platform. Refer to{' '}
-					<code className='px-1.5 py-0.5 rounded bg-white/5 border border-white/10 font-mono text-xs text-slate-200'>
-						DESIGN.md
-					</code>{' '}
-					for visual guidelines, spacing, and component patterns.
-				</p>
-			</div>
-		</main>
+			<main className='flex-1'>
+				{/* Section 01: Hero */}
+				<HeroSection onOpenCommand={() => setCommandOpen(true)} />
+
+				{/* Section 02: Release Rail Storytelling Journey */}
+				<ReleaseRailSection />
+
+				{/* Section 04: Raycast-Inspired Command Flow */}
+				<CommandFlow />
+
+				{/* Section 05: Resend-Inspired Code -> Release Surface */}
+				<CodeToRelease />
+
+				{/* Section 06: What KR0N Takes Care Of (4 Operational Pillars) */}
+				<CapabilityStory />
+
+				{/* Section 07: Calm Operation / Release Audit Trail */}
+				<OperationalSurface />
+
+				{/* Section 08: Final Statement & CTA */}
+				<FinalCTA onOpenCommand={() => setCommandOpen(true)} />
+			</main>
+
+			{/* Site Footer */}
+			<SiteFooter onOpenCommand={() => setCommandOpen(true)} />
+		</div>
 	);
 }

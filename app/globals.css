@@ -1,32 +1,100 @@
-@import 'tailwindcss';
+@import "tailwindcss";
 
-:root {
-	--font-sans:
-		-apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue',
-		Arial, sans-serif;
-	--font-mono:
-		ui-monospace, SFMono-Regular, 'SF Mono', Menlo, Monaco, Consolas,
-		'Liberation Mono', 'Courier New', monospace;
+@theme {
+  --color-kr0n-black: #000000;
+  --color-kr0n-canvas: #090a0c;
+  --color-kr0n-canvas-raised: #0d0e11;
+  --color-kr0n-surface: #111215;
+  --color-kr0n-surface-2: #16171b;
+  --color-kr0n-surface-3: #1d1e24;
+  --color-kr0n-surface-raised: #16171b;
+  --color-kr0n-line: rgba(255, 255, 255, 0.08);
+  --color-kr0n-line-strong: rgba(255, 255, 255, 0.16);
+  --color-kr0n-text: #ffffff;
+  --color-kr0n-text-secondary: rgba(255, 255, 255, 0.70);
+  --color-kr0n-muted: rgba(255, 255, 255, 0.45);
+  --color-kr0n-faint: rgba(255, 255, 255, 0.25);
+  --color-kr0n-healthy: #10b981;
+  --color-kr0n-healthy-soft: rgba(16, 185, 129, 0.10);
+  --color-kr0n-warning: #f59e0b;
+  --color-kr0n-error: #ef4444;
+
+  --font-sans: var(--font-sans), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-mono), ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Base resets & document defaults */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  scroll-behavior: smooth;
+  background-color: #090a0c;
+  color: #ffffff;
 }
 
 body {
-	font-family: var(--font-sans);
-	-webkit-font-smoothing: antialiased;
-	-moz-osx-font-smoothing: grayscale;
+  font-family: var(--font-sans);
+  background-color: #090a0c;
+  color: #ffffff;
+  margin: 0;
+  overflow-x: hidden;
 }
 
-/* Custom crisp developer scrollbars */
+::selection {
+  background: rgba(255, 255, 255, 0.25);
+  color: #ffffff;
+}
+
+:focus-visible {
+  outline: 1px solid rgba(255, 255, 255, 0.6);
+  outline-offset: 2px;
+}
+
+/* Custom scrollbars */
 ::-webkit-scrollbar {
-	width: 6px;
-	height: 6px;
+  width: 5px;
+  height: 5px;
 }
 ::-webkit-scrollbar-track {
-	background: transparent;
+  background: transparent;
 }
 ::-webkit-scrollbar-thumb {
-	background: rgba(148, 163, 184, 0.2);
-	border-radius: 3px;
+  background: rgba(255, 255, 255, 0.12);
 }
 ::-webkit-scrollbar-thumb:hover {
-	background: rgba(148, 163, 184, 0.35);
+  background: rgba(255, 255, 255, 0.24);
+}
+
+/* Technical grid background */
+.kr0n-grid-bg {
+  background-image: linear-gradient(to right, rgba(255, 255, 255, 0.04) 1px, transparent 1px),
+                    linear-gradient(to bottom, rgba(255, 255, 255, 0.04) 1px, transparent 1px);
+  background-size: 48px 48px;
+}
+
+/* Clipped button corners (matching docs visual system) */
+.clipped-btn {
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+}
+
+.clipped-corner {
+  clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
