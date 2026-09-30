@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import TechText from '@/components/landing/TechText';
+import DepthText from '@/components/landing/DepthText';
 
 export default function HeroSection({ onOpenCommand }) {
 	return (
@@ -72,29 +72,23 @@ export default function HeroSection({ onOpenCommand }) {
 					</div>
 
 					{/* Right: Animated KR0N Wordmark (col-span-5) */}
-					<div className='lg:col-span-5 flex items-center justify-center lg:justify-end select-none'>
-						<div className='kr0n-hero-wordmark relative w-full max-w-[440px] h-[220px] sm:h-[260px] lg:h-[300px] flex items-center justify-center lg:justify-end'>
-							<TechText
+					<div className='lg:col-span-5 flex items-center justify-center lg:justify-center select-none py-6 lg:py-0'>
+						<div className='kr0n-hero-wordmark relative flex items-center justify-center lg:-translate-x-12 xl:-translate-x-16'>
+							<DepthText
 								text='KR0N'
+								layers={32}
+								depth={2.2}
+								faceColor='#E5E7EB'
+								depthColor='#1F242D'
+								tilt={8}
+								pointerTracking={true}
+								smoothing={0.14}
+								perspective={900}
+								autoOrbit={true}
+								orbitSpeed={0.3}
+								fontSize='clamp(3.5rem, 7.5vw, 6.2rem)'
 								fontWeight={900}
-								fontSize={110}
-								reveal='letter'
-								dashLength={4}
-								dashGap={2}
-								specks={0}
-								color='#9CA3AF'
-								accentColor='#FFFFFF'
-								letterSpacing={-0.03}
-								reach={180}
-								softness={0.7}
-								strokeWidth={1.5}
-								speed={0.8}
-								lineStyle='dashed'
-								selection={false}
-								labels={false}
-								draggable={false}
-								sweep={true}
-								className='w-full h-full'
+								shadow={true}
 							/>
 						</div>
 					</div>

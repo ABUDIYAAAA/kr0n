@@ -2,6 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 
+import './TechText.css';
+
 const LABEL_FONT = '10px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace';
 const FALLOFF_STEPS = 8;
 const SPRING = 320;
@@ -660,14 +662,8 @@ const TechText = ({
   }, []);
 
   return (
-    <div
-      ref={containerRef}
-      className={`relative w-full h-full touch-pan-y select-none ${className}`.trim()}
-      style={style}
-      role="img"
-      aria-label={text}
-    >
-      <canvas ref={canvasRef} className="block w-full h-full" />
+    <div ref={containerRef} className={`tech-text ${className}`.trim()} style={style} role="img" aria-label={text}>
+      <canvas ref={canvasRef} className="tech-text-canvas" />
     </div>
   );
 };
