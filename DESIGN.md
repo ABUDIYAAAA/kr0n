@@ -1,1082 +1,1469 @@
-# KR0N — Design System & Visual Direction
+KR0N — Design System & UI Direction
 
-## 0. Purpose
+Status: Current product-wide visual source of truth
+Scope: Landing page, dashboard, projects, services, deployments, docs, settings, auth, and future KR0N surfaces
+Core identity: Technical luxury × black/white precision × developer software × restrained motion
 
-This document is the visual and interaction source of truth for KR0N.
+1. Purpose
 
-KR0N is a developer workspace for building, shipping, and operating applications without forcing developers to think in terms of Kubernetes, clusters, nodes, pods, namespaces, or other infrastructure machinery.
+This document defines the visual language that every KR0N screen should follow.
 
-The design must feel like serious software with an exceptional product website — not like a marketing template pretending to be a software product.
+KR0N must feel like one coherent product, not a collection of independently designed pages.
 
-Primary qualities:
+The landing page, Docs, Dashboard, Projects, Services, Deployments, Settings, authentication, and future features should share the same:
 
-**calm / technical / precise / editorial / fast / premium / original**
+color language
 
-The four external references used as inspiration are:
+typography
 
-- Railway — product-led infrastructure storytelling, visual architecture, technical canvases, deployment/environment relationships.
-- Cursor — product-as-demonstration, multi-surface interfaces, contextual tooling, state-driven motion, software shown in use.
-- Linear — hierarchy, spacing, restrained surfaces, dense-but-calm information design, thin separators, strong typography, polished interaction states.
-- Raycast — command-oriented interaction, compact search/action surfaces, keyboard-first thinking, sharp micro UI, strong product identity.
+spacing
 
-These are **inspiration sources only**. Do not reproduce their exact layouts, colors, copy, logos, illustrations, DOM structures, or visual identity.
+border treatment
 
----
+control language
 
-## 1. Core Thesis
+interaction behavior
 
-### KR0N should look like this:
+motion philosophy
 
-> A quiet, extremely well-crafted developer instrument for shipping software.
+information hierarchy
 
-Not this:
+Individual pages may have different compositions, but they must clearly belong to KR0N.
 
-> A futuristic SaaS landing page with gradients, floating glass cards, random glow, and generic dashboard mockups.
+The current landing-page direction is the strongest expression of the brand:
 
-The visual personality comes from **composition, typography, information density, product surfaces, and interaction quality**.
+premium black / graphite / white
 
-Effects are secondary.
+editorial typography
 
-### Design equation
+product-led visuals
 
-```text
-Railway product storytelling
-+ Cursor product-as-demo
-+ Linear restraint and hierarchy
-+ Raycast command-layer interaction
-= KR0N
-```
+technical precision
 
-The synthesis must be original rather than visually averaging the four references.
+varied section composition
 
----
+restrained but sophisticated motion
 
-## 2. What We Borrow From Each Reference
+no generic SaaS card-grid aesthetic
 
-### 2.1 Railway — Architecture as Product
+2. KR0N Design Thesis
 
-Use Railway's strongest principle: infrastructure becomes understandable through the product surface itself.
+The product should feel designed, not decorated.
 
-KR0N should communicate relationships visually:
+KR0N is a developer infrastructure platform, but its UI should not look like an infrastructure monitoring console.
 
-```text
-Application
-    ↓
-Service
-    ↓
-Release
-    ↓
-Health
-    ↓
-Live application
-```
+Users should primarily think in terms of:
 
-Borrow:
-
-- architecture/canvas thinking
-- environment and service relationships
-- technical composition
-- visual explanation instead of long prose
-- feature sections that show the product doing the work
-- strong “product is the illustration” philosophy
-
-Do not borrow:
-
-- Railway's visual identity
-- Railway's exact canvas appearance
-- Railway's brand colors
-- Railway's copy or section layouts
-
-### 2.2 Cursor — Product In Use
-
-Use Cursor's current product-site strength: showing believable interfaces and workflows instead of decorating the page with abstract art.
-
-Borrow:
-
-- interactive product demonstrations
-- multi-panel product surfaces
-- contextual actions
-- clear progress/state representation
-- software UI as the main visual object
-- motion that represents a real state transition
-
-Do not borrow:
-
-- editor/IDE aesthetics as KR0N's primary style
-- AI-agent copy patterns
-- Cursor's exact window composition
-- Cursor's product-specific terminology
-
-### 2.3 Linear — Restraint and Information Design
-
-Linear contributes the discipline of making a complex interface feel quiet.
-
-Borrow:
-
-- excellent typography hierarchy
-- generous but deliberate whitespace
-- thin separators
-- restrained borders
-- calm dark surfaces
-- compact information rows
-- contextual navigation
-- clear active and selected states
-- highly polished tiny details
-
-Do not borrow:
-
-- Linear's exact purple/indigo identity
-- Linear's exact page structure
-- issue/project terminology unless KR0N actually uses it
-- the increasingly common “Linear clone” visual pattern
-
-### 2.4 Raycast — Command Layer
-
-Raycast contributes a sense of speed and directness.
-
-Borrow:
-
-- command/search surface as a signature interaction
-- keyboard-first thinking
-- compact action rows
-- strong icon + label relationships
-- highly legible hierarchy at small sizes
-- quick-action affordances
-
-Do not turn KR0N into a launcher clone.
-
-The command surface should be a **KR0N control layer**, not a Raycast imitation.
-
----
-
-## 3. Brand Personality
-
-KR0N should feel:
-
-- composed, not loud
-- technical, not cyberpunk
-- futuristic, not sci-fi themed
-- premium, not glossy
-- dense when information matters, open when communicating an idea
-- confident, not hype-heavy
-- fast, not animated everywhere
-- precise, not sterile
-
-A developer should be able to stare at the interface for hours without feeling visually fatigued.
-
----
-
-## 4. Visual North Star
-
-### “Instrument, not advertisement.”
-
-Every major visual should look as though it belongs to a real KR0N workflow.
-
-The marketing page should repeatedly give the impression:
-
-> “I am seeing the product itself.”
+Organization → Project → Environment → Service → Deployment
 
 not:
 
-> “I am seeing a designer's representation of a cloud platform.”
+cluster → node → pod → controller → infrastructure primitive
 
-This means the landing page should prefer:
+Infrastructure complexity should disappear behind a clear application-centric interface.
 
-- release timelines
-- service lists
-- environment selectors
-- deployment states
-- command surfaces
-- logs
-- metrics summaries
-- service maps
-- domain/status rows
-- real UI density
+3. Visual Personality
 
-over:
+KR0N should feel:
 
-- abstract clouds
-- 3D servers
-- floating planets
-- generic code windows
-- meaningless charts
-- giant decorative gradients
-- stock imagery
+premium
 
----
+technical
 
-## 5. Color System
+precise
 
-### 5.1 Base Palette
+calm
 
-KR0N uses a graphite-black foundation rather than pure black everywhere.
+confident
 
-```text
-Canvas        #090A0C
-Canvas raised #0D0F12
-Surface       #111419
-Surface 2     #15191F
-Surface 3     #1A1F26
-Line          rgba(255,255,255,0.08)
-Line strong   rgba(255,255,255,0.13)
-Text          #F5F7FA
-Text muted    #A4ACB8
-Text faint    #68717E
-```
+modern
 
-### 5.2 Functional Accent
+developer-native
 
-Use a restrained cool “ice” blue as the KR0N interaction accent.
+slightly futuristic
 
-```text
-Signal        #8EAFFF
-Signal soft   rgba(142,175,255,0.12)
-Signal line   rgba(142,175,255,0.32)
-```
+editorial
 
-The accent is functional, not decorative.
+understated
 
-Use it for:
+highly intentional
 
-- primary interactive emphasis
-- focused controls
-- selected navigation
-- links
-- progress/state accents
-- small key UI highlights
+KR0N should NOT feel:
 
-Do not use it as a page-wide wash.
+generic SaaS
 
-### 5.3 Semantic States
+AI-generated
 
-```text
-Healthy       #54D39A
-Warning       #F2C76E
-Error         #F07D87
-Info          #8EAFFF
-Neutral       #8B95A3
-```
+cyberpunk
 
-Status colors should appear next to the object they describe.
+gaming UI
 
-### 5.4 Strict Color Constraints
+crypto UI
 
-Never use:
+neon futuristic
 
-- purple gradients
-- blue/purple gradient backgrounds
-- neon glow as decoration
-- rainbow accents
-- large colored blobs
-- multiple unrelated accent colors
+overly glassy
 
-The page should remain visually coherent if all decorative color is removed.
+overly rounded
 
----
+template-driven
 
-## 6. Typography
+childish
 
-### Primary UI font
+visually noisy
 
-Preferred order:
+4. Inspiration DNA
 
-1. Geist / Geist Sans, if already available in the project
-2. Inter
-3. system sans-serif
+KR0N is informed by the design principles of:
 
-### Technical font
+Railway
 
-Preferred:
+Use for:
 
-- Geist Mono
-- JetBrains Mono
-- ui-monospace / SFMono-Regular / Menlo / monospace
+product storytelling
 
-### Type hierarchy
+deployment/release narratives
 
-Use strong hierarchy without excessively huge marketing type.
+timeline/rail concepts
 
-```text
-Display      64–80px desktop / 44–56px mobile
-H1           48–64px
-H2           32–44px
-H3           20–28px
-Body         15–18px
-UI           13–14px
-Micro        10–11px uppercase, tracked
-Code         12–14px monospace
-```
+infrastructure relationships
 
-Rules:
+visual progression
 
-- headings are compact and confident
-- avoid exaggerated letter spacing on large text
-- body copy stays readable and short
-- technical labels may use uppercase mono styling
-- never use typography merely as decoration
+Do not copy:
 
-A landing-page headline should usually occupy **two or three lines**, not six.
+layouts
 
----
+branding
 
-## 7. Spacing and Rhythm
+exact illustrations
 
-Use a consistent spacing scale and let whitespace create the premium feeling.
+exact components
 
-Preferred Tailwind rhythm:
+Cursor
 
-```text
-4  / micro gap
-6  / control gap
-8  / compact section gap
-10 / content gap
-12 / component gap
-16 / card/section internal gap
-20 / major block gap
-24 / section transition
-32 / large visual gap
-```
+Use for:
 
-Landing-page sections should generally have generous vertical separation, but avoid enormous blank areas that make the product feel unfinished.
+product UI as visual storytelling
 
-A section needs enough whitespace to make its **one central idea** obvious.
+believable developer workflows
 
----
+interactive product demonstrations
 
-## 8. Geometry
+software states as visual material
 
-KR0N should not be built from giant rounded rectangles.
+Do not copy:
 
-Use:
+exact product UI
 
-- `rounded-md` for compact controls
-- `rounded-lg` for standard controls
-- `rounded-xl` for major product frames
-- occasional `rounded-2xl` only for large product surfaces
+exact visual effects
+
+exact composition
+
+Linear
+
+Use for:
+
+restraint
+
+typography
+
+spacing
+
+calm information density
+
+refined dark surfaces
+
+consistency
+
+Do not turn KR0N into a Linear clone.
+
+Raycast
+
+Use for:
+
+command-driven interactions
+
+keyboard-first moments
+
+interaction as branding
+
+polished micro-interactions
+
+Resend
+
+Use for:
+
+black/white technical composition
+
+developer-native presentation
+
+strong dark components
+
+code as visual material
+
+storytelling through scroll
+
+These are references, not templates.
+
+5. Core Visual Rule
+
+Black is the foundation. White is the signal.
+
+The visual system should primarily use:
+
+deep black
+
+near-black
+
+charcoal
+
+graphite
+
+gunmetal
+
+smoke
+
+muted silver
+
+cool off-white
+
+pure white
+
+Avoid building the entire interface out of #000000.
+
+Different dark surfaces should create depth.
+
+Example conceptual hierarchy:
+
+PAGE
+  ↓
+DEEP BLACK
+  ↓
+GRAPHITE SURFACE
+  ↓
+GUNMETAL / INNER SURFACE
+  ↓
+WHITE / OFF-WHITE CONTENT
+  ↓
+PURE WHITE EMPHASIS
+
+The exact values should be defined in the project's Tailwind theme and shared across all pages.
+
+Do not independently invent colors on individual screens.
+
+6. Accent Color Policy
+
+KR0N is primarily monochrome.
+
+Indigo/purple or other accent colors may exist only where they communicate a functional state or existing product requirement.
+
+They must NOT become the visual identity.
 
 Avoid:
 
-- `rounded-3xl` everywhere
-- pill-shaped cards
-- floating blobs
-- excessive circular UI
+purple gradients
 
-Borders should generally be more important than shadows.
+blue gradients
 
----
+neon cyan
 
-## 9. Borders and Surfaces
+rainbow accents
 
-Surface hierarchy should be subtle:
+colorful glowing cards
 
-```text
-Canvas
-  └── Surface
-       └── Raised surface
-            └── Nested surface
-```
+gradient text
 
-Use thin, low-opacity borders to establish hierarchy.
+If an accent is used, it should be:
 
-Preferred Tailwind patterns:
+sparse
 
-```text
-border-white/[0.06]
-border-white/[0.08]
-border-white/[0.10]
-```
+purposeful
 
-Use stronger borders sparingly for selected or focused states.
+low saturation
 
-Shadows should be soft and limited to:
+subordinate to black and white
 
-- floating popovers
-- command surfaces
-- major product frames
+7. Typography
 
-No heavy card shadows.
+Typography is one of KR0N's strongest visual tools.
 
----
+Use the project's existing typography system wherever possible.
 
-## 10. Layout System
+The system should distinguish:
 
-### Global container
+Display
 
-Use a centered content system with a maximum width around 1200–1320px depending on the viewport.
+For:
 
-Default outer padding:
+landing headlines
 
-```text
-mobile   px-5
-small    px-6
-large    px-8
-xl       px-10
-```
+major page statements
 
-### Grid
+major product moments
 
-Use a 12-column mental model on desktop.
+Characteristics:
 
-Do not force every section into an obvious symmetrical grid.
+large
+
+confident
+
+tight but controlled tracking
+
+strong contrast
+
+not excessively bold everywhere
+
+Interface
+
+For:
+
+navigation
+
+controls
+
+cards
+
+labels
+
+forms
+
+application content
+
+Characteristics:
+
+highly readable
+
+neutral
+
+compact
+
+consistent
+
+Technical / Monospace
+
+For:
+
+versions
+
+deployment IDs
+
+commands
+
+code
+
+technical values
+
+timestamps
+
+URLs
+
+system states
+
+Use monospace intentionally, not decoratively.
+
+8. Typography Hierarchy
+
+Avoid making every element bold.
+
+Recommended hierarchy:
+
+DISPLAY
+Large, high-impact statement
+
+TITLE
+Page / section heading
+
+SUBTITLE
+Short explanation
+
+BODY
+Readable product explanation
+
+LABEL
+Small utility information
+
+TECHNICAL
+Version / ID / status / code
+
+Micro labels may use uppercase + tracking, but do not overuse them.
+
+Do not turn entire pages into uppercase text.
+
+9. Spacing
+
+KR0N should feel spacious but not empty.
+
+Use a consistent spacing scale through Tailwind.
+
+Important principle:
+
+Whitespace should create hierarchy, not dead space.
+
+Good whitespace:
+
+separates ideas
+
+frames important visuals
+
+gives typography room
+
+improves scanning
+
+Bad whitespace:
+
+leaves large blank regions with no visual purpose
+
+makes the page feel unfinished
+
+separates related content too far
+
+exists only because the layout was not composed properly
+
+For dense product pages:
+
+use tighter spacing
+
+group related information
+
+prioritize scanability
+
+For marketing pages:
+
+use more breathing room
+
+but maintain visual objects throughout the viewport
+
+10. Layout Philosophy
+
+KR0N does not use one universal page template.
+
+Different pages should have different compositions while sharing the same design language.
 
 Allowed compositions:
 
-- asymmetric text + product surface
-- full-width product frame
-- text-only editorial break
-- split technical detail
-- wide command surface
-- edge-to-edge architecture visualization
-- dense release list
+asymmetric split
 
-### Important principle
+editorial column
 
-**The layout should have rhythm, not repetition.**
+centered statement
 
-Do not build:
+full-width visual
 
-```text
-section = heading + paragraph + 3 cards
-section = heading + paragraph + 3 cards
-section = heading + paragraph + 3 cards
-```
+timeline
 
-That pattern is one of the strongest signals of AI-generated SaaS design.
+technical rail
 
----
+command surface
 
-## 11. Signature KR0N Components
+data table
 
-These components define the product's landing-page visual language.
+product canvas
 
-### 11.1 Release Rail
+side panel
 
-A compact horizontal or vertical representation of a deployment moving through:
+drawer
 
-```text
-Queued → Building → Security → Deploying → Health → Active
-```
+dense operational view
 
-Use fine lines, small state markers, and precise timestamps/labels.
+sticky section
 
-This is a core KR0N pattern.
+full-bleed brand moment
 
-### 11.2 Service Surface
+Do NOT default every page to:
 
-A real-looking service workspace showing:
+heading
+↓
+three cards
+↓
+four cards
+↓
+CTA
 
-- service name
-- environment
-- current release
-- health state
-- domain
-- compact operational metadata
+11. Component Philosophy
 
-It should feel like a real product surface rather than a marketing card.
+Components should be reused at the system level, but not every page should look identical.
 
-### 11.3 Command Layer
+Reusable primitives include:
 
-A KR0N-specific command palette inspired by the interaction model of Raycast.
+Button
 
-Example categories:
+Input
 
-```text
-Deploy service
-Open production
-Inspect release
-View logs
-Switch environment
-Rollback
-```
+Select
 
-The exact actions shown must correspond to real/planned KR0N functionality.
+Tabs
 
-### 11.4 Architecture Field
+Badge
 
-A controlled technical canvas inspired by Railway's architectural visualization.
+Status
 
-Show application-centric relationships, for example:
+Tooltip
 
-```text
-web
- │
- ├── api
- │    │
- │    └── postgres
- │
- └── worker
-```
+Modal
 
-Do not show Kubernetes primitives.
+Drawer
 
-### 11.5 Release List
+Dropdown
 
-Dense Linear-inspired rows for versioned releases.
+Command menu
 
-Each row may contain:
+Table
 
-- release identifier
-- branch/commit
-- state
-- timestamp
-- duration
-- actor/source
+Code block
 
-Keep the rows quiet and readable.
+Breadcrumb
 
-### 11.6 Diagnostic Surface
+Navigation
 
-When showing failure, use plain language:
+Empty state
 
-```text
-Build failed
+Toast
 
-The application could not complete its build.
+Progress / release indicator
 
-Likely cause
-Missing dependency in package.json
+These primitives should share:
 
-Next action
-Add the dependency and redeploy.
+typography
 
-[View build logs]
-```
+border language
 
-No Kubernetes jargon.
+radius
 
----
+focus state
 
-## 12. Landing Page Composition
+spacing
 
-The landing page should feel like a **sequence of product moments**.
+interaction timing
 
-Recommended narrative:
+colors
 
-```text
-1. Contextual navigation
-2. Hero: application + release
-3. Product surface in use
-4. Architecture / service relationship
-5. Release lifecycle
-6. Command layer
-7. Operational visibility
-8. Developer workflow
-9. Compact proof / philosophy
-10. Final CTA
-```
+But larger compositions should be page-specific.
 
-Not every item needs to be a boxed section.
+12. Cards
 
-Some should be almost editorial:
+Cards are NOT the default KR0N visual language.
 
-```text
-small label
-large statement
-short explanation
-```
+Use cards when the content is genuinely a contained object.
 
-Then immediately return to a product surface.
+Good uses:
 
----
+service summary
 
-## 13. Hero Direction
+deployment item
 
-The hero is **not** a giant empty center-aligned billboard.
+configuration group
 
-Preferred composition:
+documentation category
 
-- compact nav
-- asymmetric two-column hero
-- left side: concise product proposition
-- right side: a large KR0N product surface
-- product surface may visually extend beyond the text grid
-- no decorative 3D object
-- no gradient orb
-- no fake floating dashboard in a glass capsule
+settings section
 
-Suggested messaging direction:
+focused product surface
 
-```text
-SHIP SOFTWARE.
-STAY IN THE PRODUCT.
-```
+Avoid:
 
-Supporting direction:
+putting every section inside a rounded card
 
-```text
-KR0N gives developers one workspace to build, release,
-and operate applications without managing the machinery underneath.
-```
+stacking many identical cards
 
-Primary CTA:
+huge rounded rectangles containing simple text
 
-```text
+cards purely for decoration
+
+Prefer raw surfaces, dividers, typography, rails, tables, and composition when appropriate.
+
+13. Border Language
+
+Borders should be:
+
+thin
+
+subtle
+
+precise
+
+low opacity
+
+Use borders to establish structure, not decoration.
+
+Avoid:
+
+thick borders
+
+glowing borders
+
+multiple nested borders
+
+borders around everything
+
+A border should answer:
+
+What relationship or boundary does this line communicate?
+
+14. Radius
+
+Use restrained rounding.
+
+Suggested hierarchy:
+
+page-level surfaces: modest rounding or none
+
+cards: medium radius
+
+controls: small/medium radius
+
+pills: only when semantically appropriate
+
+Avoid excessive rounded-2xl / rounded-3xl usage.
+
+KR0N should feel engineered rather than bubbly.
+
+15. Shadows
+
+Prefer subtle layering over heavy shadows.
+
+Use shadows sparingly.
+
+Depth can come from:
+
+background value changes
+
+borders
+
+surface contrast
+
+overlap
+
+spacing
+
+Avoid:
+
+large black shadows on black
+
+colorful glows
+
+neon shadows
+
+excessive elevation
+
+16. Navigation
+
+Navigation should be calm and highly usable.
+
+Public navigation
+
+Typically:
+
+KR0N
+
+Product
+
+Docs
+
+Pricing if available
+
+Log in
+
 Get started
-```
 
-Secondary:
+Only link to routes that actually exist.
 
-```text
-Explore KR0N
-```
+Application navigation
 
-The exact copy may be refined after implementation if it improves clarity, but it must remain calm and direct.
+Application pages may use:
 
-### Hero product surface
+organization context
 
-The hero surface should show an application-centric workflow:
+project picker
 
-```text
-kr0n / production
+environment picker
 
-storefront
-ACTIVE
+service picker
 
-release 1.8.4
+contextual breadcrumbs
 
-Build           ✓
-Security        ✓
-Deploy          ✓
-Health          ✓
+compact side navigation where needed
 
-https://storefront....
-```
+Do not force a huge permanent sidebar onto every screen.
 
-This is a visual demonstration only unless wired to actual backend state.
+17. Application Information Architecture
 
----
+The primary mental model is:
 
-## 14. Section Design Rules
-
-### Rule A — One idea per section
-
-A section should communicate one product idea.
-
-### Rule B — Show before explaining
-
-Prefer a product surface before a long paragraph.
-
-### Rule C — Vary composition
-
-A page should contain several different composition types.
-
-### Rule D — Do not cardify everything
-
-Cards are for grouping information that genuinely belongs together.
-
-### Rule E — Reuse visual primitives
-
-The same service row, status marker, release rail, and control patterns should recur across the site.
-
-### Rule F — Keep product truth visible
-
-Use the actual KR0N mental model:
-
-```text
 Organization
-→ Project
-→ Environment
-→ Service
-→ Deployment
-```
+    ↓
+Project
+    ↓
+Environment
+    ↓
+Service
+    ↓
+Deployment / Release
 
-Do not replace it with generic “workspace / workflow / intelligence” terminology.
+Use these concepts consistently across the application.
 
----
+Do not randomly rename the same concept between pages.
 
-## 15. Motion
+18. Product Surfaces
 
-Motion should communicate **change**.
+Product UI should feel real.
 
-Good:
+When showing:
 
-- release state progressing along a rail
-- command palette opening
-- selected service changing
-- subtle product surface transitions
-- hover elevation of an interactive product surface
-- status marker changing state
-- content entering with short, restrained movement
+deployments
 
-Avoid:
+services
 
-- parallax everywhere
-- floating particles
-- constant background motion
-- large spring animations for simple UI
-- bouncing badges
-- infinite marquees unless they communicate actual system data
-- scroll-triggered animation on every section
+environments
 
-Motion should generally feel between roughly 120–240ms for local interaction, with slightly longer timing only for product-state transitions.
+releases
 
-Always support reduced motion.
+logs
 
----
+metrics
 
-## 16. Interaction Principles
+domains
 
-The landing page should have a few deliberate interactions rather than dozens of effects.
+configuration
 
-Recommended:
+resources
 
-### Product demo selector
+use believable application states.
 
-A small set of states such as:
+Avoid meaningless fake dashboards.
 
-```text
-Build / Verify / Deploy / Active
-```
+Avoid fabricated metrics unless clearly illustrative.
 
-Switching states changes the product surface.
+Do not invent functionality that the product does not actually have.
 
-### Command layer
+19. Deployment Visual Language
 
-A visually strong command/search interaction that opens from a button or keyboard shortcut.
+Deployment is one of KR0N's strongest visual concepts.
 
-### Service focus
+Use the release lifecycle:
 
-Clicking a service in the architecture field highlights its connections.
+SOURCE
+   ↓
+BUILD
+   ↓
+VERIFY
+   ↓
+RELEASE
+   ↓
+LIVE
 
-### Release inspection
+This may appear as:
 
-Selecting a release row reveals a compact detail state.
+timeline
 
-These interactions should be deterministic on the marketing page and must not pretend to be live backend data.
+rail
 
----
+status sequence
 
-## 17. Icons
+deployment drawer
 
-Use one icon family consistently.
+release history
 
-Icons should be:
+activity visualization
 
-- simple
-- small
-- stroke-based
-- optically aligned
-- supportive rather than decorative
+It should not always be represented in exactly the same way.
 
-Do not mix unrelated icon sets.
+20. Status Language
 
-Do not use oversized icons inside every section.
+Use simple human-readable states.
 
----
+Examples:
 
-## 18. Imagery
+Queued
 
-KR0N should not depend on stock imagery.
+Building
 
-For the landing page, prefer:
+Verifying
 
-- product UI
-- architecture diagrams
-- technical type
-- restrained diagrams
-- carefully cropped application surfaces
+Deploying
 
-Do not use image-generation tools for the core landing page unless the user explicitly requests branded artwork.
+Health checking
 
----
+Active
 
-## 19. Tailwind CSS Requirement
+Failed
 
-### Mandatory
+Rolled back
 
-**The landing page must use Tailwind CSS for styling.**
+Do not expose low-level infrastructure terminology unless the user actually needs it.
 
-Use the project's existing Tailwind version and conventions after inspecting the repository.
+Failure UX should answer:
 
-Preferred approach:
+What happened?
 
-- Tailwind utilities for layout
-- Tailwind utilities for typography
-- Tailwind utilities for spacing
-- Tailwind utilities for borders/surfaces
-- Tailwind utilities for states and responsive behavior
-- Tailwind theme/tokens for KR0N design values
+Why?
 
-Do not introduce a competing CSS styling system.
+What should I do?
 
-Avoid:
+Is the stable version still safe?
 
-- CSS modules for landing components
-- styled-components
-- emotion
-- large hand-authored CSS blocks
-- inline styles for static design values
-- per-component style objects
+21. Landing Page Design Language
 
-A small global stylesheet is acceptable for:
+The landing page is a marketing experience.
 
-- font setup
-- document-level defaults
-- Tailwind base/theme integration
+Its goal is:
 
-But component styling should remain Tailwind-first.
+attraction → understanding → desire → action
 
-### Tailwind token requirement
+It should not attempt to expose every product feature.
 
-Convert the KR0N palette and spacing language into reusable theme tokens rather than scattering arbitrary values across components.
+The landing page should use varied visual scenes.
 
-Prefer semantic names such as:
+Preferred rhythm:
 
-```text
-kr0n-canvas
-kr0n-surface
-kr0n-surface-raised
-kr0n-line
-kr0n-text
-kr0n-muted
-kr0n-signal
-kr0n-healthy
-kr0n-warning
-kr0n-error
-```
+EDITORIAL HERO
+      ↓
+TYPOGRAPHIC STATEMENT
+      ↓
+RELEASE / TIMELINE VISUAL
+      ↓
+COMMAND INTERACTION
+      ↓
+CODE / PRODUCT COMPOSITION
+      ↓
+CAPABILITY TYPOGRAPHY
+      ↓
+OPERATIONAL PRODUCT SURFACE
+      ↓
+BRAND MOMENT
+      ↓
+FINAL CTA
 
----
+Not every future landing page section must follow this exact order, but the principle of visual variation must remain.
 
-## 20. Accessibility
+22. Landing Page Hero
 
-All interactive landing-page elements must support:
+The current KR0N hero uses:
 
-- semantic HTML
-- keyboard navigation
-- visible focus state
-- sufficient contrast
-- meaningful labels
-- correct button/link semantics
-- reduced-motion support
+Left
 
-Command surfaces and demos need proper focus behavior.
+positioning
 
-Never rely on color alone to communicate state.
+large headline
 
----
+supporting text
 
-## 21. Responsive Behavior
+CTA
 
-### Desktop
+Right
 
-Use the full asymmetric composition and larger product surfaces.
+KR0N wordmark / TechText visual
 
-### Laptop
+The KR0N wordmark is a visual object, not a card.
 
-Maintain the visual rhythm but reduce visual width and padding.
+It should not be surrounded by:
 
-### Tablet
+HUD
 
-Collapse asymmetric hero into a readable stacked composition while preserving product-first storytelling.
+particles
 
-### Mobile
+extra labels
 
-The product surface becomes a first-class vertical block.
+fake metrics
 
-Avoid:
+decorative boxes
 
-- horizontal scrolling
-- tiny unreadable product UI
-- desktop canvas squeezed into mobile
-- navigation that becomes an oversized hamburger system
+The current TechText animation may provide the visual movement.
 
-On mobile, simplify the architecture visualization rather than merely shrinking it.
+Future custom logo/text hover animation may be layered on top.
 
----
+23. Animation Philosophy
 
-## 22. Anti-AI Design Rules
+KR0N supports sophisticated motion.
 
-These rules are mandatory.
+Motion should communicate:
 
-Do not use the following generic patterns unless there is a strong product reason:
+state
 
-- centered hero + gradient orb
-- three identical feature cards
-- six feature cards in a grid
-- glassmorphism dashboard floating over a gradient
-- large “trusted by” logo wall immediately after hero for no reason
-- fake analytics chart with meaningless numbers
-- repetitive rounded cards
-- generic “AI / Scale / Security / Speed” section labels
-- oversized glowing CTA
-- excessive blur
-- neon borders
-- decorative particles
-- random technical labels with no product meaning
-- floating badges that do not communicate a state
-- stock/3D cloud illustrations
-- huge continuous scrolling logo marquees
-- every section centered
-- every section inside a bordered container
-- every section entering with the same animation
-- copy written like AI marketing filler
+progression
 
-A useful test:
+focus
 
-> Remove the color, remove the effects, and remove the animation. Does the composition still look intentionally designed?
+hierarchy
 
-If not, redesign it.
+relationship
 
----
+interaction
 
-## 23. Copywriting Direction
+Good examples:
+
+release marker moving through a deployment rail
+
+command result appearing after input
+
+code becoming a release state
+
+active deployment state changing
+
+subtle section transitions
+
+typography responding to scroll
+
+data rows updating
+
+lines drawing between related objects
+
+Motion should not exist merely because animation is possible.
+
+24. Animation Intensity
+
+Use three levels.
+
+Level 1 — Ambient
+
+Slow, subtle:
+
+line movement
+
+background shift
+
+very light field motion
+
+Level 2 — Interactive
+
+Responsive:
+
+hover
+
+focus
+
+press
+
+command selection
+
+status transition
+
+Level 3 — Cinematic
+
+Reserved for:
+
+landing page hero
+
+release storytelling
+
+major brand moments
+
+Even cinematic motion must remain controlled.
+
+25. Reduced Motion
+
+Every animated component must support:
+
+prefers-reduced-motion: reduce
+
+When reduced motion is enabled:
+
+remove continuous movement
+
+reduce scroll-linked motion
+
+preserve state changes
+
+preserve visual hierarchy
+
+keep content fully usable
+
+26. Docs Design
+
+Docs must feel like KR0N, not a generic Markdown renderer.
+
+The Docs page should share:
+
+black/graphite surfaces
+
+white typography
+
+technical monospace
+
+precise borders
+
+restrained radius
+
+quiet navigation
+
+strong code blocks
+
+Docs can be denser than marketing pages.
+
+Prioritize:
+
+readability
+
+scanning
+
+code clarity
+
+navigation
+
+hierarchy
+
+Do not inject landing-page animations into normal documentation content.
+
+27. Dashboard Design
+
+The dashboard is more functional and information-dense than the landing page.
 
 Use:
 
-- short sentences
-- concrete product language
-- technical confidence
-- plain English
-- verbs over adjectives
-- application-level terminology
+clear application hierarchy
+
+project/service/deployment relationships
+
+useful status summaries
+
+recent activity
+
+clear primary actions
+
+The dashboard should still feel premium, but utility comes first.
+
+Do not turn it into a marketing page.
+
+28. Projects Canvas
+
+Projects may use a more visual canvas.
+
+Allowed:
+
+subtle dot/grid background
+
+draggable project cards
+
+service relationships
+
+project navigation
+
+search
+
+Requirements:
+
+cards remain inside the real canvas bounds
+
+no artificial forbidden movement zones
+
+search/navigation layer remains usable
+
+stacking and z-index are intentional
+
+default positions are clean
+
+cards remain compact and readable
+
+The canvas may be visually expressive while retaining application usability.
+
+29. Service Pages
+
+The service is the primary operational object.
+
+A service page may contain:
+
+service identity
+
+environment
+
+current release
+
+deployment status
+
+live URL
+
+domains
+
+logs
+
+configuration
+
+resources
+
+release history
+
+Use contextual navigation rather than excessive chrome.
+
+30. Deployment Pages
+
+Deployment pages should emphasize:
+
+release identity
+
+lifecycle
+
+status
+
+logs
+
+health
+
+rollback
+
+relevant configuration
+
+Use the deployment rail language where useful.
+
+Avoid overwhelming users with raw infrastructure implementation details.
+
+31. Tables
+
+Tables should be clean and technical.
+
+Use:
+
+subtle row dividers
+
+strong column hierarchy
+
+compact metadata
+
+monospace where useful
+
+restrained hover state
 
 Avoid:
 
-- “revolutionary”
-- “next-generation”
-- “unlock”
-- “unleash”
-- “supercharge”
-- “AI-powered” as filler
-- “seamless” as filler
-- “the future of…”
-- vague infrastructure buzzwords
+every row inside its own card
 
-KR0N copy should sound like product documentation written by a very good engineer who also cares about language.
+excessive colored badges
 
----
+heavy shadows
 
-## 24. Product Truth / Terminology
+huge row heights
 
-Use these concepts:
+32. Forms and Settings
 
-```text
-Organization
-Project
-Environment
-Service
-Deployment
-Release
-Domain
-Logs
-Metrics
-Alerts
-Usage
-Billing
-Settings
-```
+Forms should feel calm and precise.
 
-Do not expose these as primary product concepts:
+Use:
 
-```text
-Cluster
-Node
-Pod
-Namespace
-Controller
-Scheduler
-Build worker
-```
+clear labels
 
-These may exist internally, but the customer-facing product should hide that complexity.
+short descriptions
 
----
+grouped settings
 
-## 25. Engineering and Component Architecture
+subtle borders
 
-The design system should produce reusable frontend primitives.
+visible focus
 
-Landing-page examples:
+clear validation
 
-```text
-SiteHeader
-HeroSection
-ProductFrame
-ReleaseRail
-ServiceRow
-StatusMarker
-ArchitectureField
-CommandLayer
-ReleaseList
-DiagnosticSurface
-SectionIntro
-FinalCTA
-SiteFooter
-```
+explicit destructive actions
 
-Do not create one-off versions of the same visual primitive for each section.
+Avoid:
 
-Components should be composable and data-driven.
+oversized inputs
 
----
+excessive rounded containers
 
-## 26. Landing Page Quality Gate
+decorative illustrations inside functional forms
 
-Before declaring the page complete, verify:
+33. Empty States
 
-### Visual
+Empty states should be useful, not decorative.
 
-- Does it immediately look unlike a generic AI SaaS page?
-- Is product UI the dominant visual language?
-- Is the composition varied?
-- Is typography doing meaningful work?
-- Are borders and surfaces restrained?
-- Is the accent color functional rather than decorative?
+Include:
 
-### Product
+what is missing
 
-- Does the page clearly communicate what KR0N does?
-- Does it use Organization → Project → Environment → Service → Deployment terminology?
-- Does it avoid Kubernetes jargon?
-- Do visual demos correspond to actual or planned KR0N concepts?
+why it matters
 
-### Interaction
+one clear next action
 
-- Do interactive demos behave deterministically?
-- Is focus visible?
-- Does keyboard interaction work?
-- Does reduced motion work?
+Avoid giant empty illustrations.
 
-### Engineering
+A small technical visual may be used if it communicates the product state.
 
-- Is styling Tailwind-first?
-- Are design tokens centralized?
-- Are components reusable?
-- Are there console errors?
-- Are there broken links?
-- Is there horizontal overflow?
-- Does the page work on mobile?
+34. Error States
 
----
+Errors must be written in plain English.
 
-## 27. Reference Interpretation Summary
+Structure:
 
-| Reference | Use as inspiration for | Do not copy |
-|---|---|---|
-| Railway | architecture, canvas, product-led storytelling, environment/service relationships | exact canvas, branding, colors, page composition |
-| Cursor | product-as-demo, contextual UI, stateful interaction, multi-surface composition | editor aesthetic, agent copy, exact interface |
-| Linear | typography, spacing, hierarchy, dense information design, restrained surfaces | Linear clone styling, exact purple identity, exact layout |
-| Raycast | command layer, compact action rows, keyboard-first interaction, product personality | launcher aesthetic, exact palette, exact command UI |
+What happened
+Why it happened
+What you can do
 
-The result must feel **KR0N**, not “Railway + Cursor + Linear + Raycast.”
+Where applicable:
 
----
+Your previous version is still serving traffic.
 
-## 28. Final Visual Definition
+Avoid exposing implementation jargon unless necessary.
 
-KR0N is:
+35. Accessibility
 
-**GRAPHITE**
-**PRECISE**
-**APPLICATION-FIRST**
-**PRODUCT-LED**
-**COMMAND-ORIENTED**
-**TECHNICAL**
-**CALM**
-**FAST**
-**PREMIUM**
-**ORIGINAL**
+All KR0N pages must have:
 
-The website should feel like the product has already existed for years and has been refined by people who care about every interaction.
+semantic HTML
 
-That is the standard.
+correct button/link semantics
+
+keyboard navigation
+
+visible focus states
+
+accessible labels
+
+adequate contrast
+
+reduced-motion support
+
+responsive layouts
+
+Do not sacrifice usability for visual effects.
+
+36. Responsive Design
+
+Do not simply shrink desktop layouts.
+
+Desktop
+
+Full art direction.
+
+Tablet
+
+Preserve hierarchy while simplifying composition.
+
+Mobile
+
+Recompose intentionally.
+
+Examples:
+
+horizontal release rails may become vertical
+
+asymmetric hero may stack
+
+dense operational surfaces may simplify
+
+side navigation may become contextual navigation
+
+large typography must remain readable
+
+decorative motion should reduce
+
+Avoid page-level horizontal overflow.
+
+37. Tailwind CSS
+
+Tailwind is the standard styling system.
+
+Use:
+
+shared Tailwind tokens
+
+reusable utility patterns
+
+semantic component classes where appropriate
+
+consistent responsive breakpoints
+
+Do not create separate styling systems for individual pages.
+
+Do not scatter arbitrary values when a shared token should exist.
+
+38. Component Architecture
+
+Prefer:
+
+components/
+├── ui/
+├── navigation/
+├── landing/
+├── deployment/
+├── services/
+└── ...
+
+Routes belong in:
+
+app/
+
+Shared components belong in:
+
+components/
+
+Business logic/utilities belong in:
+
+lib/
+
+Do not create duplicate versions of the same shared component.
+
+39. Design Token Principle
+
+All major visual decisions should be centralized.
+
+At minimum, define shared tokens for:
+
+page background
+
+surface
+
+elevated surface
+
+text primary
+
+text secondary
+
+text muted
+
+border
+
+focus
+
+success
+
+warning
+
+error
+
+spacing
+
+radius
+
+typography
+
+motion duration
+
+A page should not independently invent:
+
+background: #111
+border: #222
+text: #eee
+
+if those values already exist as system tokens.
+
+40. Anti-Pattern Checklist
+
+Never let KR0N drift into:
+
+generic AI SaaS
+
+purple gradient hero
+
+neon cyberpunk
+
+glassmorphism everywhere
+
+giant floating dashboard
+
+repeated feature-card grids
+
+identical rounded boxes
+
+decorative fake metrics
+
+meaningless graphs
+
+random particles
+
+constant parallax
+
+excessive blur
+
+huge empty black sections
+
+excessive empty whitespace without purpose
+
+fake infrastructure jargon
+
+fabricated product capabilities
+
+over-animated application UI
+
+inconsistent page-specific colors
+
+inconsistent radius
+
+inconsistent typography
+
+41. Quality Test For Every New Page
+
+Before shipping a new screen, ask:
+
+Brand
+
+Does it immediately feel like KR0N?
+
+Visual
+
+Does it use the black/graphite/white system correctly?
+
+Composition
+
+Is the page visually composed, or just assembled from components?
+
+Repetition
+
+Are cards being used because they are appropriate, or because they are easy?
+
+Product
+
+Does the UI represent a real product state?
+
+Typography
+
+Is hierarchy clear?
+
+Spacing
+
+Is whitespace intentional?
+
+Motion
+
+Does animation communicate something?
+
+Engineering
+
+Are shared components and tokens being reused?
+
+Accessibility
+
+Can the interface be used without relying on animation?
+
+Responsive
+
+Does it remain intentional on smaller screens?
+
+42. Final KR0N Design Principle
+
+KR0N should feel like:
+
+serious software with a distinct visual identity.
+
+Not a marketing template.
+
+Not a dashboard template.
+
+Not an AI-generated SaaS interface.
+
+The design should consistently combine:
+
+BLACK
++
+WHITE
++
+GRAPHITE
++
+PRECISION
++
+TYPOGRAPHY
++
+REAL PRODUCT SURFACES
++
+TECHNICAL MOTION
++
+RESTRAINT
+
+The landing page may be cinematic.
+
+The dashboard may be dense.
+
+The Docs may be editorial.
+
+The Projects page may be spatial.
+
+The Service page may be operational.
+
+But they must all feel like they were designed by the same product team for the same product.
