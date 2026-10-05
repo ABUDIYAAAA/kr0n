@@ -89,6 +89,41 @@ body {
   clip-path: polygon(0 0, calc(100% - 8px) 0, 100% 8px, 100% 100%, 0 100%);
 }
 
+/* Luminous Flow & Shimmer Keyframes */
+@keyframes flowBeamDash {
+  0% {
+    stroke-dashoffset: 240;
+  }
+  100% {
+    stroke-dashoffset: 0;
+  }
+}
+
+@keyframes linkGlowSweep {
+  0% {
+    transform: translateX(-100%);
+    opacity: 0;
+  }
+  30% {
+    opacity: 0.8;
+  }
+  70% {
+    opacity: 0.8;
+  }
+  100% {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+}
+
+.animate-flow-beam {
+  animation: flowBeamDash 2.6s linear infinite;
+}
+
+.animate-link-glow {
+  animation: linkGlowSweep 3.2s ease-in-out infinite;
+}
+
 @media (prefers-reduced-motion: reduce) {
   *,
   *::before,
@@ -99,3 +134,4 @@ body {
     scroll-behavior: auto !important;
   }
 }
+
