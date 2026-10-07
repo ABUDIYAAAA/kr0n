@@ -14,6 +14,8 @@ import {
   Menu,
   X,
   Home,
+  Gauge,
+  HeartPulse,
 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { APP_NAV_ITEMS } from '@/lib/projects-data';
@@ -26,6 +28,8 @@ const ICON_MAP = {
   activity: Activity,
   'credit-card': CreditCard,
   settings: Settings,
+  gauge: Gauge,
+  'heart-pulse': HeartPulse,
 };
 
 export default function AppShell({ children }) {
