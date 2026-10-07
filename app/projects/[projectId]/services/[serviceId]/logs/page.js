@@ -103,16 +103,16 @@ export default function LogsPage({ params }) {
         <div className='flex items-center gap-3 text-xs font-mono'>
           <Link
             href={`/projects/${projectId}`}
-            className='flex items-center gap-1 text-kr0n-muted hover:text-white transition-colors uppercase tracking-wider'
+            className='flex items-center gap-1 text-kr0n-text-secondary hover:text-white transition-colors uppercase tracking-wider font-medium'
           >
             <ArrowLeft size={12} />
             <span className='hidden sm:inline'>Project</span>
           </Link>
-          <span className='text-kr0n-faint'>/</span>
+          <span className='text-kr0n-muted'>/</span>
           <span className='text-white font-bold uppercase tracking-wider'>
             {MOCK_SERVICE.serviceName}
           </span>
-          <span className='px-1.5 py-0.5 border border-kr0n-line text-[10px] text-kr0n-faint uppercase'>
+          <span className='px-1.5 py-0.5 border border-kr0n-line text-[10px] text-kr0n-text-secondary uppercase font-bold'>
             {MOCK_SERVICE.environment}
           </span>
         </div>
@@ -130,10 +130,10 @@ export default function LogsPage({ params }) {
               <Link
                 key={tab.label}
                 href={tab.href}
-                className={`px-3 py-3 border-b-2 transition-colors ${
+                className={`px-3 py-3 border-b-2 transition-colors font-medium ${
                   tab.active
-                    ? 'border-white text-white'
-                    : 'border-transparent text-kr0n-faint hover:text-kr0n-muted'
+                    ? 'border-white text-white font-bold'
+                    : 'border-transparent text-kr0n-text-secondary hover:text-white'
                 }`}
               >
                 {tab.label}
@@ -147,11 +147,11 @@ export default function LogsPage({ params }) {
       <div className='px-4 sm:px-6 py-4 border-b border-kr0n-line-soft bg-kr0n-black/30 shrink-0'>
         <div className='flex items-center justify-between gap-4'>
           <div className='flex items-center gap-3'>
-            <Terminal size={16} className='text-kr0n-faint' />
+            <Terminal size={16} className='text-kr0n-muted' />
             <h1 className='text-sm font-bold text-white tracking-wide'>Logs</h1>
             <div className='flex items-center gap-1.5'>
-              <span className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-emerald-400 animate-pulse' : 'bg-kr0n-faint'}`} />
-              <span className={`text-[11px] font-mono ${isLive ? 'text-emerald-400' : 'text-kr0n-faint'}`}>
+              <span className={`w-1.5 h-1.5 rounded-full ${isLive ? 'bg-emerald-400 animate-pulse' : 'bg-kr0n-muted'}`} />
+              <span className={`text-[11px] font-mono font-medium ${isLive ? 'text-emerald-400' : 'text-kr0n-muted'}`}>
                 {isLive ? 'Live' : 'Paused'}
               </span>
             </div>
@@ -161,7 +161,7 @@ export default function LogsPage({ params }) {
             <button
               type='button'
               onClick={() => setIsLive(!isLive)}
-              className='flex items-center gap-1.5 px-2.5 py-1.5 border border-kr0n-line text-[11px] font-mono text-kr0n-muted hover:text-white hover:border-kr0n-line-strong transition-colors'
+              className='flex items-center gap-1.5 px-2.5 py-1.5 border border-kr0n-line text-[11px] font-mono text-kr0n-text-secondary hover:text-white hover:border-kr0n-line-strong transition-colors font-medium'
             >
               {isLive ? <Pause size={11} /> : <Play size={11} />}
               <span>{isLive ? 'Pause' : 'Resume'}</span>
@@ -169,7 +169,7 @@ export default function LogsPage({ params }) {
             <button
               type='button'
               onClick={handleDownload}
-              className='flex items-center gap-1.5 px-2.5 py-1.5 border border-kr0n-line text-[11px] font-mono text-kr0n-muted hover:text-white hover:border-kr0n-line-strong transition-colors'
+              className='flex items-center gap-1.5 px-2.5 py-1.5 border border-kr0n-line text-[11px] font-mono text-kr0n-text-secondary hover:text-white hover:border-kr0n-line-strong transition-colors font-medium'
               title='Export logs'
             >
               <Download size={11} />
@@ -183,19 +183,19 @@ export default function LogsPage({ params }) {
         <div className='flex items-center gap-2 flex-wrap'>
           {/* Search */}
           <div className='relative flex-1 min-w-[180px] max-w-sm'>
-            <Search size={12} className='absolute left-2.5 top-1/2 -translate-y-1/2 text-kr0n-faint' />
+            <Search size={12} className='absolute left-2.5 top-1/2 -translate-y-1/2 text-kr0n-muted' />
             <input
               type='text'
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder='Search logs...'
-              className='w-full bg-kr0n-black/60 border border-kr0n-line text-xs font-mono text-kr0n-text pl-7 pr-3 py-1.5 placeholder:text-kr0n-faint focus:border-kr0n-line-strong focus:outline-none transition-colors'
+              className='w-full bg-kr0n-black/60 border border-kr0n-line text-xs font-mono text-white pl-7 pr-3 py-1.5 placeholder:text-kr0n-muted focus:border-kr0n-line-strong focus:outline-none transition-colors'
             />
             {searchQuery && (
               <button
                 type='button'
                 onClick={() => setSearchQuery('')}
-                className='absolute right-2 top-1/2 -translate-y-1/2 text-kr0n-faint hover:text-white'
+                className='absolute right-2 top-1/2 -translate-y-1/2 text-kr0n-muted hover:text-white'
               >
                 <X size={11} />
               </button>
@@ -207,10 +207,10 @@ export default function LogsPage({ params }) {
             <button
               type='button'
               onClick={() => { setShowLevelDropdown(!showLevelDropdown); setShowDeployDropdown(false); setShowInstanceDropdown(false); }}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 border text-[11px] font-mono transition-colors ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 border text-[11px] font-mono transition-colors font-medium ${
                 levelFilter !== 'all'
                   ? 'border-kr0n-line-strong text-white bg-white/[0.04]'
-                  : 'border-kr0n-line text-kr0n-muted hover:text-white hover:border-kr0n-line-strong'
+                  : 'border-kr0n-line text-kr0n-text-secondary hover:text-white hover:border-kr0n-line-strong'
               }`}
             >
               <span>Level{levelFilter !== 'all' ? `: ${levelFilter}` : ''}</span>
@@ -223,8 +223,8 @@ export default function LogsPage({ params }) {
                     key={level}
                     type='button'
                     onClick={() => { setLevelFilter(level); setShowLevelDropdown(false); }}
-                    className={`w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors ${
-                      levelFilter === level ? 'text-white bg-white/[0.06]' : 'text-kr0n-muted hover:text-white hover:bg-white/[0.03]'
+                    className={`w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors font-medium ${
+                      levelFilter === level ? 'text-white bg-white/[0.08]' : 'text-kr0n-text-secondary hover:text-white hover:bg-white/[0.03]'
                     }`}
                   >
                     {level === 'all' ? 'All Levels' : level}
@@ -239,10 +239,10 @@ export default function LogsPage({ params }) {
             <button
               type='button'
               onClick={() => { setShowDeployDropdown(!showDeployDropdown); setShowLevelDropdown(false); setShowInstanceDropdown(false); }}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 border text-[11px] font-mono transition-colors ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 border text-[11px] font-mono transition-colors font-medium ${
                 deploymentFilter !== 'all'
                   ? 'border-kr0n-line-strong text-white bg-white/[0.04]'
-                  : 'border-kr0n-line text-kr0n-muted hover:text-white hover:border-kr0n-line-strong'
+                  : 'border-kr0n-line text-kr0n-text-secondary hover:text-white hover:border-kr0n-line-strong'
               }`}
             >
               <span>Deployment{deploymentFilter !== 'all' ? `: ${deploymentFilter}` : ''}</span>
@@ -253,8 +253,8 @@ export default function LogsPage({ params }) {
                 <button
                   type='button'
                   onClick={() => { setDeploymentFilter('all'); setShowDeployDropdown(false); }}
-                  className={`w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors ${
-                    deploymentFilter === 'all' ? 'text-white bg-white/[0.06]' : 'text-kr0n-muted hover:text-white hover:bg-white/[0.03]'
+                  className={`w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors font-medium ${
+                    deploymentFilter === 'all' ? 'text-white bg-white/[0.08]' : 'text-kr0n-text-secondary hover:text-white hover:bg-white/[0.03]'
                   }`}
                 >
                   All Deployments
@@ -264,8 +264,8 @@ export default function LogsPage({ params }) {
                     key={dep.id}
                     type='button'
                     onClick={() => { setDeploymentFilter(dep.version); setShowDeployDropdown(false); }}
-                    className={`w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors ${
-                      deploymentFilter === dep.version ? 'text-white bg-white/[0.06]' : 'text-kr0n-muted hover:text-white hover:bg-white/[0.03]'
+                    className={`w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors font-medium ${
+                      deploymentFilter === dep.version ? 'text-white bg-white/[0.08]' : 'text-kr0n-text-secondary hover:text-white hover:bg-white/[0.03]'
                     }`}
                   >
                     {dep.version}
@@ -280,10 +280,10 @@ export default function LogsPage({ params }) {
             <button
               type='button'
               onClick={() => { setShowInstanceDropdown(!showInstanceDropdown); setShowLevelDropdown(false); setShowDeployDropdown(false); }}
-              className={`flex items-center gap-1.5 px-2.5 py-1.5 border text-[11px] font-mono transition-colors ${
+              className={`flex items-center gap-1.5 px-2.5 py-1.5 border text-[11px] font-mono transition-colors font-medium ${
                 instanceFilter !== 'all'
                   ? 'border-kr0n-line-strong text-white bg-white/[0.04]'
-                  : 'border-kr0n-line text-kr0n-muted hover:text-white hover:border-kr0n-line-strong'
+                  : 'border-kr0n-line text-kr0n-text-secondary hover:text-white hover:border-kr0n-line-strong'
               }`}
             >
               <span>Instance{instanceFilter !== 'all' ? `: ${instanceFilter.split('-').pop()}` : ''}</span>
@@ -294,8 +294,8 @@ export default function LogsPage({ params }) {
                 <button
                   type='button'
                   onClick={() => { setInstanceFilter('all'); setShowInstanceDropdown(false); }}
-                  className={`w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors ${
-                    instanceFilter === 'all' ? 'text-white bg-white/[0.06]' : 'text-kr0n-muted hover:text-white hover:bg-white/[0.03]'
+                  className={`w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors font-medium ${
+                    instanceFilter === 'all' ? 'text-white bg-white/[0.08]' : 'text-kr0n-text-secondary hover:text-white hover:bg-white/[0.03]'
                   }`}
                 >
                   All Instances
@@ -305,8 +305,8 @@ export default function LogsPage({ params }) {
                     key={inst.id}
                     type='button'
                     onClick={() => { setInstanceFilter(inst.name); setShowInstanceDropdown(false); }}
-                    className={`w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors ${
-                      instanceFilter === inst.name ? 'text-white bg-white/[0.06]' : 'text-kr0n-muted hover:text-white hover:bg-white/[0.03]'
+                    className={`w-full text-left px-3 py-1.5 text-[11px] font-mono transition-colors font-medium ${
+                      instanceFilter === inst.name ? 'text-white bg-white/[0.08]' : 'text-kr0n-text-secondary hover:text-white hover:bg-white/[0.03]'
                     }`}
                   >
                     {inst.name}
@@ -321,7 +321,7 @@ export default function LogsPage({ params }) {
             <button
               type='button'
               onClick={() => { setLevelFilter('all'); setDeploymentFilter('all'); setInstanceFilter('all'); setSearchQuery(''); }}
-              className='flex items-center gap-1 px-2 py-1.5 text-[11px] font-mono text-kr0n-muted hover:text-white transition-colors'
+              className='flex items-center gap-1 px-2 py-1.5 text-[11px] font-mono text-kr0n-text-secondary hover:text-white transition-colors font-medium'
             >
               <X size={10} />
               Clear filters
@@ -350,7 +350,7 @@ export default function LogsPage({ params }) {
                   className='flex items-start border-b border-white/[0.03] hover:bg-white/[0.02] px-4 sm:px-6 py-[3px] group transition-colors'
                 >
                   {/* Timestamp */}
-                  <span className='text-kr0n-faint shrink-0 w-[96px] select-all tabular-nums'>
+                  <span className='text-kr0n-muted shrink-0 w-[96px] select-all tabular-nums font-medium'>
                     {log.time}
                   </span>
 
@@ -363,20 +363,20 @@ export default function LogsPage({ params }) {
                   <span className='flex-1 min-w-0'>
                     {log.method ? (
                       <>
-                        <span className='text-kr0n-text-secondary font-medium'>{log.method}</span>
-                        <span className='text-kr0n-muted mx-1.5'>{log.path}</span>
-                        <span className={`${log.status >= 400 ? 'text-red-400' : log.status >= 300 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        <span className='text-white font-bold'>{log.method}</span>
+                        <span className='text-kr0n-text-secondary mx-1.5'>{log.path}</span>
+                        <span className={`font-bold ${log.status >= 400 ? 'text-red-400' : log.status >= 300 ? 'text-amber-400' : 'text-emerald-400'}`}>
                           {log.status}
                         </span>
-                        <span className='text-kr0n-faint ml-1.5'>{log.latency}ms</span>
+                        <span className='text-kr0n-muted ml-1.5 font-mono'>{log.latency}ms</span>
                       </>
                     ) : (
-                      <span className='text-kr0n-text-secondary'>{log.message}</span>
+                      <span className='text-kr0n-text-secondary font-mono'>{log.message}</span>
                     )}
                   </span>
 
                   {/* Instance (on hover) */}
-                  <span className='hidden sm:inline text-kr0n-faint text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-3'>
+                  <span className='hidden sm:inline text-kr0n-muted text-[10px] opacity-0 group-hover:opacity-100 transition-opacity shrink-0 ml-3 font-medium'>
                     {log.instance}
                   </span>
                 </motion.div>
@@ -394,29 +394,29 @@ export default function LogsPage({ params }) {
             {isLive ? (
               <Radio size={9} className='text-emerald-400' />
             ) : (
-              <Pause size={9} className='text-kr0n-faint' />
+              <Pause size={9} className='text-kr0n-muted' />
             )}
-            <span className={isLive ? 'text-emerald-400' : 'text-kr0n-faint'}>
+            <span className={isLive ? 'text-emerald-400 font-bold' : 'text-kr0n-muted font-bold'}>
               {isLive ? 'STREAMING' : 'PAUSED'}
             </span>
           </div>
           <span className='text-kr0n-line-strong'>|</span>
-          <span className='text-kr0n-faint'>
+          <span className='text-kr0n-text-secondary font-medium'>
             {filteredLogs.length.toLocaleString()} lines
           </span>
           {(levelFilter !== 'all' || deploymentFilter !== 'all' || instanceFilter !== 'all' || searchQuery) && (
             <>
               <span className='text-kr0n-line-strong'>|</span>
-              <span className='text-kr0n-faint'>filtered</span>
+              <span className='text-kr0n-muted font-medium'>filtered</span>
             </>
           )}
         </div>
         <div className='flex items-center gap-3'>
-          <span className='text-kr0n-faint'>
+          <span className='text-kr0n-text-secondary font-medium'>
             {MOCK_SERVICE.serviceName} · {MOCK_SERVICE.environment}
           </span>
           <span className='text-kr0n-line-strong'>|</span>
-          <span className='text-kr0n-faint'>
+          <span className='text-kr0n-text-secondary font-mono font-medium'>
             {MOCK_SERVICE.currentDeployment.version}
           </span>
         </div>

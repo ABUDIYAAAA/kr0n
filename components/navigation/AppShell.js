@@ -88,17 +88,17 @@ export default function AppShell({ children }) {
             <span>KR0N</span>
           </Link>
 
-          <span className='text-kr0n-faint select-none hidden sm:inline'>/</span>
+          <span className='text-kr0n-muted select-none hidden sm:inline'>/</span>
 
           {/* Breadcrumb context */}
-          <nav className='hidden sm:flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-kr0n-muted'>
-            <Link href='/projects' className='hover:text-white transition-colors'>
+          <nav className='hidden sm:flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-kr0n-text-secondary'>
+            <Link href='/projects' className='hover:text-white transition-colors font-medium'>
               Dashboard
             </Link>
             {pathname.startsWith('/projects') && pathname !== '/projects' && (
               <>
-                <ChevronRight size={12} className='text-kr0n-faint' />
-                <span className='text-white'>Projects</span>
+                <ChevronRight size={12} className='text-kr0n-muted' />
+                <span className='text-white font-bold'>Projects</span>
               </>
             )}
           </nav>
@@ -110,12 +110,12 @@ export default function AppShell({ children }) {
           <button
             type='button'
             onClick={() => setCommandPaletteOpen(true)}
-            className='flex items-center gap-2.5 border border-kr0n-line bg-white/[0.02] hover:border-kr0n-line-strong hover:bg-white/[0.04] px-3 py-1.5 text-xs text-kr0n-muted hover:text-white transition-all'
+            className='flex items-center gap-2.5 border border-kr0n-line bg-white/[0.02] hover:border-kr0n-line-strong hover:bg-white/[0.04] px-3 py-1.5 text-xs text-kr0n-text-secondary hover:text-white transition-all font-medium'
             aria-label='Search projects'
           >
-            <Search size={13} />
+            <Search size={13} className='text-kr0n-muted' />
             <span className='hidden sm:inline text-[11px] font-mono'>Search</span>
-            <kbd className='hidden sm:inline border border-kr0n-line bg-white/[0.03] px-1.5 py-0.5 text-[9px] font-mono text-kr0n-faint'>
+            <kbd className='hidden sm:inline border border-kr0n-line bg-white/[0.04] px-1.5 py-0.5 text-[9px] font-mono text-kr0n-muted font-semibold'>
               ⌘K
             </kbd>
           </button>
@@ -149,19 +149,19 @@ export default function AppShell({ children }) {
                 <Link
                   key={item.id}
                   href={item.href}
-                  className={`flex items-center gap-3 px-3 py-2.5 text-xs font-mono uppercase tracking-wider transition-all ${
+                  className={`flex items-center gap-3 px-3 py-2.5 text-xs font-mono uppercase tracking-wider transition-all font-medium ${
                     active
                       ? 'bg-kr0n-surface text-white border-l-2 border-white'
-                      : 'text-kr0n-muted hover:text-white hover:bg-white/[0.02] border-l-2 border-transparent'
+                      : 'text-kr0n-text-secondary hover:text-white hover:bg-white/[0.03] border-l-2 border-transparent'
                   }`}
                   title={sidebarCollapsed ? item.label : undefined}
                 >
-                  <Icon size={15} className={active ? 'text-white' : 'text-kr0n-faint'} />
+                  <Icon size={15} className={active ? 'text-white' : 'text-kr0n-muted'} />
                   {!sidebarCollapsed && (
                     <span className='flex-1 flex items-center justify-between'>
                       <span>{item.label}</span>
                       {item.badge && (
-                        <span className='bg-amber-500/20 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 leading-none'>
+                        <span className='bg-amber-500/20 text-amber-300 text-[10px] font-bold px-1.5 py-0.5 leading-none'>
                           {item.badge}
                         </span>
                       )}
@@ -178,11 +178,11 @@ export default function AppShell({ children }) {
           {/* Sidebar footer */}
           <div className='p-3 border-t border-kr0n-line'>
             {!sidebarCollapsed && (
-              <div className='text-[10px] font-mono text-kr0n-faint flex items-center justify-between'>
+              <div className='text-[10px] font-mono text-kr0n-muted font-bold flex items-center justify-between tracking-wider'>
                 <span>WORKSPACE</span>
                 <span className='flex items-center gap-1.5'>
                   <span className='w-1.5 h-1.5 rounded-full bg-emerald-400' />
-                  <span className='text-emerald-400'>ONLINE</span>
+                  <span className='text-emerald-400 font-bold'>ONLINE</span>
                 </span>
               </div>
             )}
@@ -206,17 +206,17 @@ export default function AppShell({ children }) {
                     <Link
                       key={item.id}
                       href={item.href}
-                      className={`flex items-center gap-3 px-3 py-2.5 text-xs font-mono uppercase tracking-wider transition-all ${
+                      className={`flex items-center gap-3 px-3 py-2.5 text-xs font-mono uppercase tracking-wider transition-all font-medium ${
                         active
                           ? 'bg-kr0n-surface text-white border-l-2 border-white'
-                          : 'text-kr0n-muted hover:text-white hover:bg-white/[0.02] border-l-2 border-transparent'
+                          : 'text-kr0n-text-secondary hover:text-white hover:bg-white/[0.03] border-l-2 border-transparent'
                       }`}
                     >
-                      <Icon size={15} className={active ? 'text-white' : 'text-kr0n-faint'} />
+                      <Icon size={15} className={active ? 'text-white' : 'text-kr0n-muted'} />
                       <span className='flex-1 flex items-center justify-between'>
                         <span>{item.label}</span>
                         {item.badge && (
-                          <span className='bg-amber-500/20 text-amber-400 text-[10px] font-bold px-1.5 py-0.5 leading-none'>
+                          <span className='bg-amber-500/20 text-amber-300 text-[10px] font-bold px-1.5 py-0.5 leading-none'>
                             {item.badge}
                           </span>
                         )}

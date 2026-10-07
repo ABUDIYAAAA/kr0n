@@ -194,12 +194,12 @@ export default function ProjectCard({
       >
         {/* Linked project subtle rail header */}
         {project.linkedTo && (
-          <div className='px-3 py-1 bg-kr0n-black/75 border-b border-kr0n-line-soft flex items-center justify-between text-[8px] font-mono tracking-widest text-kr0n-faint'>
+          <div className='px-3 py-1 bg-kr0n-black/75 border-b border-kr0n-line-soft flex items-center justify-between text-[8px] font-mono tracking-widest text-kr0n-muted font-bold'>
             <span className='flex items-center gap-1'>
               <Share2 size={9} />
               <span>{project.group || 'LINKED'}</span>
             </span>
-            <span className='text-kr0n-muted font-bold'>
+            <span className='text-white font-bold'>
               {project.environment === 'production' ? 'PROD' : 'STAGE'}
             </span>
           </div>
@@ -211,7 +211,7 @@ export default function ProjectCard({
           <div className='flex items-center justify-between'>
             <div className='flex items-center gap-2 min-w-0'>
               {/* Technical Index */}
-              <span className='text-[10px] font-mono text-kr0n-faint font-semibold shrink-0'>
+              <span className='text-[10px] font-mono text-kr0n-text-secondary font-bold shrink-0'>
                 {project.index || '01'}
               </span>
 
@@ -290,17 +290,17 @@ export default function ProjectCard({
 
           {/* Minimal State & Context Metadata */}
           <div className='flex items-center justify-between text-[10px] font-mono'>
-            <div className='flex items-center gap-1.5 text-kr0n-muted'>
-              <span className='uppercase font-semibold text-kr0n-text-secondary'>
+            <div className='flex items-center gap-1.5 text-kr0n-text-secondary'>
+              <span className='uppercase font-bold text-white'>
                 {project.environment}
               </span>
-              <span className='text-kr0n-faint'>·</span>
-              <span className='text-kr0n-faint'>{project.services.length} services</span>
+              <span className='text-kr0n-muted font-bold'>·</span>
+              <span className='text-kr0n-text-secondary font-medium'>{project.services.length} services</span>
             </div>
 
             <div className='flex items-center gap-1 text-[10px] font-mono'>
               <span
-                className={`font-medium ${
+                className={`font-semibold ${
                   status.color === 'emerald'
                     ? 'text-emerald-400'
                     : status.color === 'amber'
@@ -330,7 +330,7 @@ export default function ProjectCard({
               <div className='p-3.5 space-y-3 font-mono text-[10px]'>
                 {/* Project Description */}
                 {project.description && (
-                  <p className='text-kr0n-muted leading-relaxed text-[11px] font-sans'>
+                  <p className='text-kr0n-text-secondary leading-relaxed text-[11px] font-sans'>
                     {project.description}
                   </p>
                 )}
@@ -340,23 +340,23 @@ export default function ProjectCard({
 
                 {/* Release & Deployment */}
                 <div className='space-y-1.5'>
-                  <div className='flex items-center justify-between text-kr0n-faint uppercase tracking-wider text-[9px]'>
+                  <div className='flex items-center justify-between text-kr0n-muted uppercase tracking-wider text-[9px] font-bold'>
                     <span>Release</span>
                     <span className={deployStatus.textClass}>{deployStatus.label}</span>
                   </div>
                   <div className='flex items-center justify-between text-white font-medium'>
-                    <span>{project.currentDeployment.version}</span>
-                    <span className='text-kr0n-faint text-[9px]'>
+                    <span className='font-bold'>{project.currentDeployment.version}</span>
+                    <span className='text-kr0n-muted font-mono text-[9px] font-medium'>
                       {project.currentDeployment.timestamp}
                     </span>
                   </div>
-                  <div className='flex items-center gap-2 text-kr0n-faint text-[9px]'>
+                  <div className='flex items-center gap-2 text-kr0n-text-secondary text-[9px] font-medium'>
                     <span className='flex items-center gap-1'>
-                      <GitBranch size={9} />
+                      <GitBranch size={9} className='text-kr0n-muted' />
                       {project.currentDeployment.branch}
                     </span>
-                    <span>|</span>
-                    <span className='text-kr0n-muted'>{project.currentDeployment.commit}</span>
+                    <span className='text-kr0n-muted'>|</span>
+                    <span className='text-white font-mono'>{project.currentDeployment.commit}</span>
                   </div>
                 </div>
 
@@ -365,16 +365,16 @@ export default function ProjectCard({
 
                 {/* Resource Telemetry */}
                 <div className='space-y-1.5'>
-                  <div className='text-kr0n-faint uppercase tracking-wider text-[9px]'>
+                  <div className='text-kr0n-muted uppercase tracking-wider text-[9px] font-bold'>
                     Telemetry & Resources
                   </div>
-                  <div className='grid grid-cols-2 gap-2 text-kr0n-muted'>
+                  <div className='grid grid-cols-2 gap-2 text-kr0n-text-secondary font-medium'>
                     <div className='flex items-center gap-1.5 bg-white/[0.02] p-1.5 border border-kr0n-line-soft'>
-                      <Cpu size={10} className='text-kr0n-faint' />
+                      <Cpu size={10} className='text-kr0n-muted' />
                       <span>CPU {project.resources.cpu}%</span>
                     </div>
                     <div className='flex items-center gap-1.5 bg-white/[0.02] p-1.5 border border-kr0n-line-soft'>
-                      <HardDrive size={10} className='text-kr0n-faint' />
+                      <HardDrive size={10} className='text-kr0n-muted' />
                       <span>MEM {project.resources.memory}</span>
                     </div>
                   </div>
@@ -382,14 +382,14 @@ export default function ProjectCard({
 
                 {/* Services Tags */}
                 <div className='space-y-1.5'>
-                  <div className='text-kr0n-faint uppercase tracking-wider text-[9px]'>
+                  <div className='text-kr0n-muted uppercase tracking-wider text-[9px] font-bold'>
                     Services ({project.services.length})
                   </div>
                   <div className='flex flex-wrap gap-1'>
                     {project.services.map((s) => (
                       <span
                         key={s.id}
-                        className='px-1.5 py-0.5 border border-kr0n-line text-kr0n-text-secondary text-[9px] bg-kr0n-surface'
+                        className='px-1.5 py-0.5 border border-kr0n-line-strong text-kr0n-text-secondary text-[9px] bg-kr0n-surface font-medium'
                       >
                         {s.name}
                       </span>
@@ -401,7 +401,7 @@ export default function ProjectCard({
                 <div className='pt-2 border-t border-kr0n-line-soft flex items-center justify-between'>
                   <Link
                     href={`/projects/${project.id}`}
-                    className='text-[10px] uppercase tracking-wider font-bold text-kr0n-muted hover:text-white transition-colors flex items-center gap-1'
+                    className='text-[10px] uppercase tracking-wider font-bold text-kr0n-text-secondary hover:text-white transition-colors flex items-center gap-1'
                   >
                     <span>Inspect</span>
                     <ExternalLink size={9} />

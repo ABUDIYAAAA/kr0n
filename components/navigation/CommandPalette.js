@@ -32,8 +32,12 @@ export default function CommandPalette({ isOpen, onClose }) {
   const staticActions = [
     { id: 'dash', label: 'Go to Dashboard', icon: Home, href: '/dashboard', category: 'Navigation' },
     { id: 'proj', label: 'Open Projects Workspace', icon: LayoutGrid, href: '/projects', category: 'Navigation' },
+    { id: 'logs', label: 'View Service Logs (Orvea API)', desc: 'Live stdout/stderr stream & filters', icon: Activity, href: '/projects/proj_orvea_prod/services/svc_api/logs', category: 'Observability' },
+    { id: 'metrics', label: 'View Service Metrics (Orvea API)', desc: 'Latency, throughput, resources & traces', icon: Activity, href: '/projects/proj_orvea_prod/services/svc_api/metrics', category: 'Observability' },
+    { id: 'usage', label: 'View Cluster Usage', icon: Activity, href: '/usage', category: 'Observability' },
+    { id: 'capacity', label: 'View Resource Capacity', icon: Activity, href: '/capacity', category: 'Observability' },
+    { id: 'status', label: 'System Status & History', icon: Activity, href: '/status', category: 'Observability' },
     { id: 'new', label: 'Create New Project', icon: Plus, href: '/projects', category: 'Actions' },
-    { id: 'usage', label: 'View Cluster Usage', icon: Activity, href: '/usage', category: 'Navigation' },
     { id: 'bill', label: 'Billing & Invoices', icon: CreditCard, href: '/billing', category: 'Navigation' },
     { id: 'docs', label: 'Platform Documentation', icon: BookOpen, href: '/docs', category: 'Resources' },
   ];
@@ -94,7 +98,7 @@ export default function CommandPalette({ isOpen, onClose }) {
       >
         {/* Search Input Bar */}
         <div className='flex items-center gap-3 px-4 py-3.5 border-b border-kr0n-line bg-kr0n-canvas-raised'>
-          <Search size={16} className='text-kr0n-faint shrink-0' />
+          <Search size={16} className='text-kr0n-muted shrink-0' />
           <input
             autoFocus
             type='text'
@@ -102,9 +106,9 @@ export default function CommandPalette({ isOpen, onClose }) {
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder='Type a command or search projects...'
-            className='w-full bg-transparent text-sm font-mono text-white placeholder-kr0n-faint outline-none'
+            className='w-full bg-transparent text-sm font-mono text-white placeholder-kr0n-muted outline-none'
           />
-          <kbd className='px-1.5 py-0.5 border border-kr0n-line text-[10px] font-mono text-kr0n-faint bg-kr0n-black'>
+          <kbd className='px-1.5 py-0.5 border border-kr0n-line text-[10px] font-mono text-kr0n-muted bg-kr0n-surface-2 font-medium'>
             ESC
           </kbd>
         </div>
@@ -112,7 +116,7 @@ export default function CommandPalette({ isOpen, onClose }) {
         {/* Results List */}
         <div className='max-h-80 overflow-y-auto p-2 divide-y divide-kr0n-line-soft font-mono'>
           {filteredItems.length === 0 ? (
-            <div className='p-6 text-center text-xs text-kr0n-faint'>
+            <div className='p-6 text-center text-xs text-kr0n-muted'>
               No commands or projects match &quot;{query}&quot;
             </div>
           ) : (
@@ -128,21 +132,21 @@ export default function CommandPalette({ isOpen, onClose }) {
                   className={`w-full flex items-center justify-between px-3 py-2 text-left text-xs transition-colors ${
                     isSelected
                       ? 'bg-white/10 text-white font-bold'
-                      : 'text-kr0n-muted hover:text-white'
+                      : 'text-kr0n-text-secondary hover:text-white'
                   }`}
                 >
                   <div className='flex items-center gap-3 min-w-0'>
-                    <Icon size={14} className={isSelected ? 'text-white' : 'text-kr0n-faint'} />
+                    <Icon size={14} className={isSelected ? 'text-white' : 'text-kr0n-muted'} />
                     <div className='truncate'>
-                      <span>{item.label}</span>
+                      <span className={isSelected ? 'text-white' : 'text-kr0n-text'}>{item.label}</span>
                       {item.desc && (
-                        <span className='text-[10px] text-kr0n-faint ml-2 truncate hidden sm:inline'>
+                        <span className='text-[10px] text-kr0n-muted ml-2 truncate hidden sm:inline'>
                           — {item.desc}
                         </span>
                       )}
                     </div>
                   </div>
-                  <span className='text-[10px] uppercase tracking-wider text-kr0n-faint shrink-0 ml-3'>
+                  <span className='text-[10px] uppercase tracking-wider text-kr0n-muted shrink-0 ml-3 font-semibold'>
                     {item.category}
                   </span>
                 </button>
@@ -152,13 +156,13 @@ export default function CommandPalette({ isOpen, onClose }) {
         </div>
 
         {/* Footer shortcuts */}
-        <div className='px-4 py-2 border-t border-kr0n-line bg-kr0n-black/50 flex items-center justify-between text-[10px] font-mono text-kr0n-faint'>
+        <div className='px-4 py-2.5 border-t border-kr0n-line bg-kr0n-surface-2 flex items-center justify-between text-[10px] font-mono text-kr0n-muted'>
           <div className='flex items-center gap-3'>
             <span>↑↓ Navigate</span>
             <span>↵ Select</span>
             <span>ESC Close</span>
           </div>
-          <span className='font-bold text-white'>KR0N COMMAND LAYER</span>
+          <span className='font-bold text-white tracking-wider'>KR0N COMMAND LAYER</span>
         </div>
       </motion.div>
     </div>

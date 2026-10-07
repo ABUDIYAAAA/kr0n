@@ -45,7 +45,7 @@ export default function ProjectEndpoint({ url, status = 'live', compact = false 
           <span className='relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(16,185,129,0.9)]' />
         </span>
 
-        <span className='text-[10px] font-mono text-kr0n-muted group-hover/endpoint:text-white transition-colors truncate tracking-wide'>
+        <span className='text-[10px] font-mono text-kr0n-text-secondary font-medium group-hover/endpoint:text-white transition-colors truncate tracking-wide'>
           {url}
         </span>
       </a>
@@ -55,7 +55,7 @@ export default function ProjectEndpoint({ url, status = 'live', compact = false 
         <button
           type='button'
           onClick={handleCopy}
-          className='p-1 text-kr0n-faint hover:text-white transition-colors'
+          className='p-1 text-kr0n-muted hover:text-white transition-colors'
           title='Copy URL'
           aria-label='Copy URL'
         >
@@ -72,7 +72,7 @@ export default function ProjectEndpoint({ url, status = 'live', compact = false 
           target='_blank'
           rel='noopener noreferrer'
           onClick={handleOpen}
-          className='p-1 text-kr0n-faint group-hover/endpoint:text-white transition-colors'
+          className='p-1 text-kr0n-muted group-hover/endpoint:text-white transition-colors'
           title='Open in new tab'
           aria-label='Open in new tab'
         >

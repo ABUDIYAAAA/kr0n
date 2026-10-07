@@ -85,16 +85,16 @@ export default function MetricsPage({ params }) {
         <div className='flex items-center gap-3 text-xs font-mono'>
           <Link
             href={`/projects/${projectId}`}
-            className='flex items-center gap-1 text-kr0n-muted hover:text-white transition-colors uppercase tracking-wider'
+            className='flex items-center gap-1 text-kr0n-text-secondary hover:text-white transition-colors uppercase tracking-wider font-medium'
           >
             <ArrowLeft size={12} />
             <span className='hidden sm:inline'>Project</span>
           </Link>
-          <span className='text-kr0n-faint'>/</span>
+          <span className='text-kr0n-muted'>/</span>
           <span className='text-white font-bold uppercase tracking-wider'>
             {MOCK_SERVICE.serviceName}
           </span>
-          <span className='px-1.5 py-0.5 border border-kr0n-line text-[10px] text-kr0n-faint uppercase'>
+          <span className='px-1.5 py-0.5 border border-kr0n-line text-[10px] text-kr0n-text-secondary uppercase font-bold'>
             {MOCK_SERVICE.environment}
           </span>
         </div>
@@ -110,10 +110,10 @@ export default function MetricsPage({ params }) {
             <Link
               key={tab.label}
               href={tab.href}
-              className={`px-3 py-3 border-b-2 transition-colors ${
+              className={`px-3 py-3 border-b-2 transition-colors font-medium ${
                 tab.active
-                  ? 'border-white text-white'
-                  : 'border-transparent text-kr0n-faint hover:text-kr0n-muted'
+                  ? 'border-white text-white font-bold'
+                  : 'border-transparent text-kr0n-text-secondary hover:text-white'
               }`}
             >
               {tab.label}
@@ -128,12 +128,12 @@ export default function MetricsPage({ params }) {
           <div className='flex flex-col sm:flex-row sm:items-end justify-between gap-4'>
             <div>
               <h1 className='text-xl font-bold text-white tracking-wide'>Metrics</h1>
-              <div className='flex items-center gap-3 mt-2 text-xs font-mono text-kr0n-muted'>
+              <div className='flex items-center gap-3 mt-2 text-xs font-mono text-kr0n-text-secondary font-medium'>
                 <span>Last deployment · {MOCK_SERVICE.currentDeployment.relativeTime}</span>
-                <span className='text-kr0n-faint'>·</span>
+                <span className='text-kr0n-muted font-bold'>·</span>
                 <div className='flex items-center gap-1'>
                   <span className='w-1.5 h-1.5 rounded-full bg-emerald-400' />
-                  <span className='text-emerald-400'>Healthy</span>
+                  <span className='text-emerald-400 font-bold'>Healthy</span>
                 </div>
               </div>
             </div>
@@ -147,10 +147,10 @@ export default function MetricsPage({ params }) {
                     key={tab}
                     type='button'
                     onClick={() => setActiveTab(tab)}
-                    className={`px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider transition-colors ${
+                    className={`px-3 py-1.5 text-[11px] font-mono uppercase tracking-wider transition-colors font-medium ${
                       activeTab === tab
-                        ? 'bg-white/[0.08] text-white'
-                        : 'text-kr0n-faint hover:text-kr0n-muted'
+                        ? 'bg-white/[0.12] text-white font-bold'
+                        : 'text-kr0n-text-secondary hover:text-white'
                     }`}
                   >
                     {tab}
@@ -166,10 +166,10 @@ export default function MetricsPage({ params }) {
                       key={range}
                       type='button'
                       onClick={() => setTimeRange(range)}
-                      className={`px-2.5 py-1.5 text-[11px] font-mono transition-colors ${
+                      className={`px-2.5 py-1.5 text-[11px] font-mono transition-colors font-medium ${
                         timeRange === range
-                          ? 'bg-white/[0.08] text-white'
-                          : 'text-kr0n-faint hover:text-kr0n-muted'
+                          ? 'bg-white/[0.12] text-white font-bold'
+                          : 'text-kr0n-text-secondary hover:text-white'
                       }`}
                     >
                       {range}
@@ -194,19 +194,19 @@ export default function MetricsPage({ params }) {
             >
               <div className='px-5 pt-5 pb-3 flex items-start justify-between'>
                 <div>
-                  <div className='text-[10px] font-mono text-kr0n-faint uppercase tracking-widest'>
+                  <div className='text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-widest font-bold'>
                     {MOCK_METRICS.requests.label}
                   </div>
                   <div className='flex items-baseline gap-3 mt-1'>
                     <span className='text-3xl font-bold text-white tabular-nums'>
                       {MOCK_METRICS.requests.total}
                     </span>
-                    <span className='text-xs font-mono text-kr0n-muted'>
+                    <span className='text-xs font-mono text-kr0n-text-secondary font-medium'>
                       {MOCK_METRICS.requests.unit}
                     </span>
                   </div>
                 </div>
-                <div className='flex items-center gap-1 text-xs font-mono'>
+                <div className='flex items-center gap-1 text-xs font-mono font-bold'>
                   <TrendingUp size={12} className='text-emerald-400' />
                   <span className='text-emerald-400'>{MOCK_METRICS.requests.change}</span>
                 </div>
@@ -221,18 +221,18 @@ export default function MetricsPage({ params }) {
                 />
               </div>
               {/* Deployment markers legend */}
-              <div className='px-5 pb-4 flex items-center gap-4 text-[10px] font-mono text-kr0n-faint'>
+              <div className='px-5 pb-4 flex items-center gap-4 text-[10px] font-mono text-kr0n-text-secondary font-medium'>
                 {DEPLOYMENT_MARKERS.slice(0, 3).map((m, i) => (
                   <div
                     key={i}
-                    className='flex items-center gap-1.5 hover:text-kr0n-muted cursor-default'
+                    className='flex items-center gap-1.5 hover:text-white cursor-default transition-colors'
                     onMouseEnter={() => setHoveredDeployment(m)}
                     onMouseLeave={() => setHoveredDeployment(null)}
                   >
-                    <Rocket size={9} />
-                    <span>{m.version}</span>
-                    <span className='text-kr0n-line-strong'>·</span>
-                    <span>{m.commit}</span>
+                    <Rocket size={9} className='text-kr0n-muted' />
+                    <span className='text-white font-bold'>{m.version}</span>
+                    <span className='text-kr0n-muted'>·</span>
+                    <span className='text-kr0n-text-secondary'>{m.commit}</span>
                   </div>
                 ))}
               </div>
@@ -250,7 +250,7 @@ export default function MetricsPage({ params }) {
                 >
                   <div className='px-5 pt-5 pb-3 flex items-start justify-between'>
                     <div>
-                      <div className='text-[10px] font-mono text-kr0n-faint uppercase tracking-widest'>
+                      <div className='text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-widest font-bold'>
                         {metric.label}
                       </div>
                       <div className='flex items-baseline gap-2 mt-1'>
@@ -258,18 +258,18 @@ export default function MetricsPage({ params }) {
                           {metric.total}
                         </span>
                         {metric.sublabel && (
-                          <span className='text-[10px] font-mono text-kr0n-faint uppercase'>
+                          <span className='text-[10px] font-mono text-kr0n-muted uppercase font-bold'>
                             {metric.sublabel}
                           </span>
                         )}
                       </div>
                       {metric.p99 && (
-                        <div className='text-[11px] font-mono text-kr0n-muted mt-1'>
+                        <div className='text-[11px] font-mono text-kr0n-text-secondary mt-1 font-medium'>
                           p99: {metric.p99}
                         </div>
                       )}
                     </div>
-                    <div className='flex items-center gap-1 text-xs font-mono'>
+                    <div className='flex items-center gap-1 text-xs font-mono font-bold'>
                       {metric.changeDirection === 'down' ? (
                         <TrendingDown size={12} className='text-emerald-400' />
                       ) : (
@@ -304,7 +304,7 @@ export default function MetricsPage({ params }) {
                 >
                   <div className='px-4 pt-4 pb-2 flex items-start justify-between'>
                     <div>
-                      <div className='text-[10px] font-mono text-kr0n-faint uppercase tracking-widest'>
+                      <div className='text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-widest font-bold'>
                         {metric.label}
                       </div>
                       <div className='flex items-baseline gap-2 mt-1'>
@@ -313,13 +313,13 @@ export default function MetricsPage({ params }) {
                         </span>
                       </div>
                     </div>
-                    <div className='flex items-center gap-1 text-[11px] font-mono'>
+                    <div className='flex items-center gap-1 text-[11px] font-mono font-medium'>
                       {metric.changeDirection === 'down' ? (
                         <TrendingDown size={10} className='text-emerald-400' />
                       ) : (
-                        <TrendingUp size={10} className='text-kr0n-muted' />
+                        <TrendingUp size={10} className='text-kr0n-text-secondary' />
                       )}
-                      <span className={metric.changeDirection === 'down' ? 'text-emerald-400' : 'text-kr0n-muted'}>
+                      <span className={metric.changeDirection === 'down' ? 'text-emerald-400' : 'text-kr0n-text-secondary'}>
                         {metric.change}
                       </span>
                     </div>
@@ -328,7 +328,7 @@ export default function MetricsPage({ params }) {
                     <SparkChart
                       data={metric.data}
                       height={60}
-                      color='#858C95'
+                      color='#A3A8B2'
                       className='h-[60px]'
                     />
                   </div>
@@ -341,7 +341,7 @@ export default function MetricsPage({ params }) {
         /* ─── Traces Tab ─── */
         <div className='px-4 sm:px-6 lg:px-8 py-6'>
           <div className='max-w-6xl mx-auto space-y-4'>
-            <div className='text-[10px] font-mono text-kr0n-faint uppercase tracking-widest'>
+            <div className='text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-widest font-bold'>
               Recent Traces
             </div>
 
@@ -359,19 +359,19 @@ export default function MetricsPage({ params }) {
                       trace.status === 'ok' ? 'bg-emerald-400' : 'bg-red-400'
                     }`} />
                     <div>
-                      <div className='text-xs font-mono text-white font-medium'>
+                      <div className='text-xs font-mono text-white font-bold'>
                         {trace.name}
                       </div>
-                      <div className='flex items-center gap-2 mt-1 text-[10px] font-mono text-kr0n-faint'>
+                      <div className='flex items-center gap-2 mt-1 text-[10px] font-mono text-kr0n-text-secondary font-medium'>
                         <span>{trace.spans} spans</span>
-                        <span className='text-kr0n-line-strong'>·</span>
+                        <span className='text-kr0n-muted'>·</span>
                         <span>{trace.services.join(' → ')}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className='flex items-center gap-4 text-xs font-mono'>
-                    <span className='text-kr0n-faint'>{trace.timestamp}</span>
+                    <span className='text-kr0n-muted font-medium'>{trace.timestamp}</span>
                     <span className={`font-bold tabular-nums ${
                       trace.status === 'ok' ? 'text-white' : 'text-red-400'
                     }`}>
@@ -382,7 +382,7 @@ export default function MetricsPage({ params }) {
               ))}
             </div>
 
-            <div className='text-[10px] font-mono text-kr0n-faint text-center py-3'>
+            <div className='text-[10px] font-mono text-kr0n-text-secondary text-center py-3 font-medium'>
               Showing recent traces · {MOCK_TRACES.length} captured
             </div>
           </div>
@@ -393,13 +393,13 @@ export default function MetricsPage({ params }) {
       {hoveredDeployment && (
         <div className='fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-kr0n-surface border border-kr0n-line px-4 py-3 shadow-xl'>
           <div className='flex items-center gap-3 text-xs font-mono'>
-            <Rocket size={12} className='text-kr0n-faint' />
+            <Rocket size={12} className='text-kr0n-muted' />
             <span className='text-white font-bold'>{hoveredDeployment.version}</span>
-            <span className='text-kr0n-faint'>{hoveredDeployment.commit}</span>
-            <span className='text-kr0n-line-strong'>·</span>
-            <span className='text-emerald-400'>{hoveredDeployment.status}</span>
-            <span className='text-kr0n-line-strong'>·</span>
-            <span className='text-kr0n-faint'>by {hoveredDeployment.author}</span>
+            <span className='text-kr0n-text-secondary font-mono'>{hoveredDeployment.commit}</span>
+            <span className='text-kr0n-muted'>·</span>
+            <span className='text-emerald-400 font-bold'>{hoveredDeployment.status}</span>
+            <span className='text-kr0n-muted'>·</span>
+            <span className='text-kr0n-text-secondary'>by {hoveredDeployment.author}</span>
           </div>
         </div>
       )}

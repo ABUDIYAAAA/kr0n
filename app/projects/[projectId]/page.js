@@ -84,16 +84,16 @@ export default function ProjectDetailPage({ params }) {
         <div className='flex items-center gap-3 text-xs font-mono'>
           <Link
             href='/projects'
-            className='flex items-center gap-1 text-kr0n-muted hover:text-white transition-colors uppercase tracking-wider'
+            className='flex items-center gap-1 text-kr0n-text-secondary hover:text-white transition-colors uppercase tracking-wider font-medium'
           >
             <ArrowLeft size={12} />
             <span>Projects</span>
           </Link>
-          <span className='text-kr0n-faint'>/</span>
+          <span className='text-kr0n-muted'>/</span>
           <span className='text-white font-bold uppercase tracking-wider'>
             {project.name}
           </span>
-          <span className='px-1.5 py-0.5 border border-kr0n-line text-[10px] text-kr0n-faint uppercase'>
+          <span className='px-1.5 py-0.5 border border-kr0n-line text-[10px] text-kr0n-text-secondary uppercase font-bold'>
             {project.environment}
           </span>
         </div>
@@ -104,7 +104,7 @@ export default function ProjectDetailPage({ params }) {
               href={`https://${project.url}`}
               target='_blank'
               rel='noopener noreferrer'
-              className='hidden sm:flex items-center gap-1.5 text-xs font-mono text-kr0n-muted hover:text-white transition-colors'
+              className='hidden sm:flex items-center gap-1.5 text-xs font-mono text-kr0n-text-secondary hover:text-white transition-colors font-medium'
             >
               <span>{project.url}</span>
               <ExternalLink size={11} />
@@ -144,11 +144,11 @@ export default function ProjectDetailPage({ params }) {
               <h1 className='text-2xl sm:text-3xl font-black font-mono tracking-wider text-white uppercase'>
                 {project.name}
               </h1>
-              <span className='px-2 py-0.5 border border-kr0n-line bg-kr0n-surface text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-widest'>
+              <span className='px-2 py-0.5 border border-kr0n-line bg-kr0n-surface text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-widest font-bold'>
                 {project.environment}
               </span>
             </div>
-            <p className='text-sm text-kr0n-muted max-w-xl'>
+            <p className='text-sm text-kr0n-text-secondary max-w-xl'>
               {project.description}
             </p>
           </div>
@@ -156,19 +156,19 @@ export default function ProjectDetailPage({ params }) {
           {/* Quick Metrics Cards */}
           <div className='grid grid-cols-3 gap-3 font-mono text-xs'>
             <div className='border border-kr0n-line bg-kr0n-surface p-3 min-w-28'>
-              <div className='text-[10px] text-kr0n-faint uppercase'>Services</div>
+              <div className='text-[10px] text-kr0n-muted uppercase font-bold tracking-wider'>Services</div>
               <div className='text-base font-bold text-white mt-1'>
                 {project.services.length} active
               </div>
             </div>
             <div className='border border-kr0n-line bg-kr0n-surface p-3 min-w-28'>
-              <div className='text-[10px] text-kr0n-faint uppercase'>CPU Usage</div>
+              <div className='text-[10px] text-kr0n-muted uppercase font-bold tracking-wider'>CPU Usage</div>
               <div className='text-base font-bold text-white mt-1'>
                 {project.resources.cpu}%
               </div>
             </div>
             <div className='border border-kr0n-line bg-kr0n-surface p-3 min-w-28'>
-              <div className='text-[10px] text-kr0n-faint uppercase'>Memory</div>
+              <div className='text-[10px] text-kr0n-muted uppercase font-bold tracking-wider'>Memory</div>
               <div className='text-base font-bold text-white mt-1'>
                 {project.resources.memory}
               </div>
@@ -186,7 +186,7 @@ export default function ProjectDetailPage({ params }) {
               className={`pb-3 border-b-2 transition-colors ${
                 activeTab === tab
                   ? 'border-white text-white font-bold'
-                  : 'border-transparent text-kr0n-muted hover:text-white'
+                  : 'border-transparent text-kr0n-text-secondary hover:text-white font-medium'
               }`}
             >
               {tab}
@@ -201,10 +201,10 @@ export default function ProjectDetailPage({ params }) {
         {(activeTab === 'overview' || activeTab === 'services') && (
           <div className='space-y-4'>
             <div className='flex items-center justify-between'>
-              <h2 className='text-xs font-mono uppercase tracking-widest text-kr0n-faint'>
+              <h2 className='text-xs font-mono uppercase tracking-widest text-kr0n-text-secondary font-bold'>
                 Registered Services
               </h2>
-              <span className='text-[11px] font-mono text-kr0n-muted'>
+              <span className='text-[11px] font-mono text-kr0n-text-secondary'>
                 {project.services.length} Microservices running on KR0N Edge
               </span>
             </div>
@@ -222,24 +222,40 @@ export default function ProjectDetailPage({ params }) {
                         {svc.name}
                       </span>
                     </div>
-                    <span className='text-[10px] font-mono px-2 py-0.5 border border-kr0n-line text-kr0n-faint uppercase'>
+                    <span className='text-[10px] font-mono px-2 py-0.5 border border-kr0n-line text-kr0n-text-secondary uppercase font-bold'>
                       {svc.type}
                     </span>
                   </div>
 
-                  <div className='space-y-2 text-xs font-mono text-kr0n-muted'>
+                  <div className='space-y-2 text-xs font-mono text-kr0n-text-secondary'>
                     <div className='flex justify-between'>
-                      <span className='text-kr0n-faint'>Runtime:</span>
-                      <span className='text-kr0n-text-secondary'>KR0N V8 Edge Worker</span>
+                      <span className='text-kr0n-muted font-medium'>Runtime:</span>
+                      <span className='text-white font-medium'>KR0N V8 Edge Worker</span>
                     </div>
                     <div className='flex justify-between'>
-                      <span className='text-kr0n-faint'>Instances:</span>
-                      <span className='text-kr0n-text-secondary'>3 auto-scaled</span>
+                      <span className='text-kr0n-muted font-medium'>Instances:</span>
+                      <span className='text-white font-medium'>3 auto-scaled</span>
                     </div>
                     <div className='flex justify-between'>
-                      <span className='text-kr0n-faint'>Health:</span>
-                      <span className='text-emerald-400'>100% Passing</span>
+                      <span className='text-kr0n-muted font-medium'>Health:</span>
+                      <span className='text-emerald-400 font-bold'>100% Passing</span>
                     </div>
+                  </div>
+
+                  {/* Observability quick links */}
+                  <div className='pt-2 border-t border-kr0n-line-soft flex items-center justify-between text-[11px] font-mono'>
+                    <Link
+                      href={`/projects/${project.id}/services/${svc.id}/logs`}
+                      className='text-kr0n-text-secondary hover:text-white transition-colors font-medium'
+                    >
+                      Logs →
+                    </Link>
+                    <Link
+                      href={`/projects/${project.id}/services/${svc.id}/metrics`}
+                      className='text-kr0n-text-secondary hover:text-white transition-colors font-medium'
+                    >
+                      Metrics →
+                    </Link>
                   </div>
                 </div>
               ))}
@@ -251,10 +267,10 @@ export default function ProjectDetailPage({ params }) {
         {(activeTab === 'overview' || activeTab === 'deployments') && (
           <div className='space-y-4'>
             <div className='flex items-center justify-between'>
-              <h2 className='text-xs font-mono uppercase tracking-widest text-kr0n-faint'>
+              <h2 className='text-xs font-mono uppercase tracking-widest text-kr0n-text-secondary font-bold'>
                 Deployment Release Rail
               </h2>
-              <span className='text-[11px] font-mono text-kr0n-muted'>
+              <span className='text-[11px] font-mono text-kr0n-text-secondary'>
                 Showing recent revisions
               </span>
             </div>
@@ -300,36 +316,35 @@ export default function ProjectDetailPage({ params }) {
                     <div className='space-y-1'>
                       <div className='flex items-center gap-2 text-xs'>
                         <span className='text-white font-bold'>{dep.version}</span>
-                        <span className='text-kr0n-faint'>·</span>
-                        <span className='text-kr0n-muted'>{dep.commit}</span>
-                        <span className='text-kr0n-faint'>·</span>
-                        <span className='text-emerald-400 bg-emerald-400/10 px-1.5 py-0.2 text-[10px]'>
+                        <span className='text-kr0n-muted font-bold'>·</span>
+                        <span className='text-kr0n-text-secondary font-mono'>{dep.commit}</span>
+                        <span className='text-kr0n-muted font-bold'>·</span>
+                        <span className='text-emerald-400 bg-emerald-400/10 px-1.5 py-0.2 text-[10px] font-bold'>
                           {dep.status}
                         </span>
                       </div>
                       <p className='text-xs text-kr0n-text-secondary'>{dep.msg}</p>
-                      <div className='text-[10px] text-kr0n-faint flex items-center gap-2'>
+                      <div className='text-[10px] text-kr0n-text-secondary flex items-center gap-2'>
                         <span>by {dep.author}</span>
-                        <span>|</span>
+                        <span className='text-kr0n-muted'>|</span>
                         <span>{dep.branch}</span>
-                        <span>|</span>
+                        <span className='text-kr0n-muted'>|</span>
                         <span>{dep.time}</span>
                       </div>
                     </div>
                   </div>
 
                   <div className='flex items-center gap-2 self-end sm:self-center'>
-                    <button
-                      type='button'
-                      onClick={() => setActiveTab('logs')}
-                      className='px-2.5 py-1 border border-kr0n-line text-[11px] text-kr0n-muted hover:text-white hover:border-kr0n-line-strong transition-colors'
+                    <Link
+                      href={`/projects/${projectId}/services/${project.services[0]?.id || 'svc_api'}/logs`}
+                      className='px-2.5 py-1 border border-kr0n-line text-[11px] text-kr0n-text-secondary hover:text-white hover:border-kr0n-line-strong transition-colors font-medium'
                     >
                       Logs
-                    </button>
+                    </Link>
                     {idx > 0 && (
                       <button
                         type='button'
-                        className='px-2.5 py-1 border border-kr0n-line text-[11px] text-kr0n-muted hover:text-amber-400 hover:border-amber-400/40 transition-colors'
+                        className='px-2.5 py-1 border border-kr0n-line text-[11px] text-kr0n-text-secondary hover:text-amber-400 hover:border-amber-400/40 transition-colors font-medium'
                       >
                         Rollback
                       </button>
@@ -346,8 +361,8 @@ export default function ProjectDetailPage({ params }) {
           <div className='space-y-4'>
             <div className='flex items-center justify-between'>
               <div className='flex items-center gap-2'>
-                <Terminal size={14} className='text-kr0n-faint' />
-                <h2 className='text-xs font-mono uppercase tracking-widest text-kr0n-faint'>
+                <Terminal size={14} className='text-kr0n-muted' />
+                <h2 className='text-xs font-mono uppercase tracking-widest text-kr0n-text-secondary font-bold'>
                   Edge Runtime Logs (Live)
                 </h2>
               </div>
@@ -355,7 +370,7 @@ export default function ProjectDetailPage({ params }) {
                 <button
                   type='button'
                   onClick={() => setLogsPaused(!logsPaused)}
-                  className='flex items-center gap-1.5 px-2 py-1 border border-kr0n-line text-kr0n-muted hover:text-white transition-colors'
+                  className='flex items-center gap-1.5 px-2 py-1 border border-kr0n-line text-kr0n-text-secondary hover:text-white transition-colors font-medium'
                 >
                   {logsPaused ? <Play size={10} /> : <Pause size={10} />}
                   <span>{logsPaused ? 'Resume' : 'Pause'}</span>
@@ -367,7 +382,7 @@ export default function ProjectDetailPage({ params }) {
                     setCopiedKey(true);
                     setTimeout(() => setCopiedKey(false), 2000);
                   }}
-                  className='flex items-center gap-1.5 px-2 py-1 border border-kr0n-line text-kr0n-muted hover:text-white transition-colors'
+                  className='flex items-center gap-1.5 px-2 py-1 border border-kr0n-line text-kr0n-text-secondary hover:text-white transition-colors font-medium'
                 >
                   <Copy size={10} />
                   <span>{copiedKey ? 'Copied' : 'Copy'}</span>
@@ -377,8 +392,8 @@ export default function ProjectDetailPage({ params }) {
 
             <div className='border border-kr0n-line bg-kr0n-black p-4 font-mono text-xs leading-relaxed space-y-1 overflow-x-auto max-h-72 select-text'>
               {logs.map((log) => (
-                <div key={log.id} className='flex items-start gap-3 text-kr0n-muted'>
-                  <span className='text-kr0n-faint shrink-0 select-none'>{log.time}</span>
+                <div key={log.id} className='flex items-start gap-3 text-kr0n-text-secondary'>
+                  <span className='text-kr0n-muted shrink-0 select-none font-mono tabular-nums'>{log.time}</span>
                   <span
                     className={`shrink-0 font-bold ${
                       log.level === 'INFO'
@@ -390,7 +405,7 @@ export default function ProjectDetailPage({ params }) {
                   >
                     [{log.level}]
                   </span>
-                  <span className='text-kr0n-text-secondary'>{log.msg}</span>
+                  <span className='text-white font-mono'>{log.msg}</span>
                 </div>
               ))}
             </div>
@@ -401,12 +416,12 @@ export default function ProjectDetailPage({ params }) {
         {activeTab === 'environment' && (
           <div className='space-y-4 font-mono'>
             <div className='flex items-center justify-between'>
-              <h2 className='text-xs uppercase tracking-widest text-kr0n-faint'>
+              <h2 className='text-xs uppercase tracking-widest text-kr0n-text-secondary font-bold'>
                 Environment Variables & Secrets
               </h2>
               <button
                 type='button'
-                className='px-3 py-1 border border-kr0n-line bg-white/5 text-white text-xs hover:border-white transition-colors'
+                className='px-3 py-1 border border-kr0n-line bg-white/5 text-white text-xs hover:border-white transition-colors font-bold'
               >
                 + Add Variable
               </button>
@@ -421,7 +436,7 @@ export default function ProjectDetailPage({ params }) {
               ].map((item) => (
                 <div key={item.key} className='p-4 flex items-center justify-between'>
                   <span className='font-bold text-white'>{item.key}</span>
-                  <span className='text-kr0n-muted'>{item.val}</span>
+                  <span className='text-kr0n-text-secondary font-mono'>{item.val}</span>
                 </div>
               ))}
             </div>

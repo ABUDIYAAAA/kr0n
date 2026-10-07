@@ -25,16 +25,16 @@ function UsageBar({ used, quota, unit, pressure }) {
           animate={{ width: `${percentage}%` }}
           transition={{ duration: 0.8, ease: 'easeOut' }}
           className={`h-full ${
-            isHigh ? 'bg-red-400' : isWarning ? 'bg-amber-400' : 'bg-white/70'
+            isHigh ? 'bg-red-400' : isWarning ? 'bg-amber-400' : 'bg-white/80'
           }`}
         />
       </div>
       <div className='flex items-center justify-between text-[10px] font-mono'>
-        <span className='text-kr0n-faint'>
+        <span className='text-kr0n-text-secondary font-medium'>
           {used} / {quota} {unit}
         </span>
         <span className={`font-bold tabular-nums ${
-          isHigh ? 'text-red-400' : isWarning ? 'text-amber-400' : 'text-kr0n-muted'
+          isHigh ? 'text-red-400' : isWarning ? 'text-amber-400' : 'text-white'
         }`}>
           {percentage.toFixed(0)}%
         </span>
@@ -66,14 +66,14 @@ export default function UsagePage() {
               Usage
             </h1>
             <div className='flex items-center gap-4 mt-3'>
-              <span className='text-sm text-kr0n-muted'>
+              <span className='text-sm text-kr0n-text-secondary font-medium'>
                 {MOCK_USAGE.period}
               </span>
               <div className='relative'>
                 <button
                   type='button'
                   onClick={() => setShowPeriodDropdown(!showPeriodDropdown)}
-                  className='flex items-center gap-1.5 px-2.5 py-1 border border-kr0n-line text-[11px] font-mono text-kr0n-muted hover:text-white hover:border-kr0n-line-strong transition-colors'
+                  className='flex items-center gap-1.5 px-2.5 py-1 border border-kr0n-line text-[11px] font-mono text-kr0n-text-secondary hover:text-white hover:border-kr0n-line-strong transition-colors font-medium'
                 >
                   <span>This month</span>
                   <ChevronDown size={10} />
@@ -85,7 +85,7 @@ export default function UsagePage() {
                         key={p}
                         type='button'
                         onClick={() => { setSelectedPeriod(p); setShowPeriodDropdown(false); }}
-                        className='w-full text-left px-3 py-1.5 text-[11px] font-mono text-kr0n-muted hover:text-white hover:bg-white/[0.03] transition-colors'
+                        className='w-full text-left px-3 py-1.5 text-[11px] font-mono text-kr0n-text-secondary hover:text-white hover:bg-white/[0.04] transition-colors font-medium'
                       >
                         {p}
                       </button>
@@ -112,26 +112,26 @@ export default function UsagePage() {
               <div className='text-xs font-mono text-amber-400 font-bold uppercase tracking-wider'>
                 Deployment Blocked
               </div>
-              <p className='text-sm text-kr0n-text-secondary'>
+              <p className='text-sm text-kr0n-text-secondary font-medium'>
                 {MOCK_QUOTA_WARNING.message}
               </p>
-              <div className='flex items-center gap-4 text-xs font-mono text-kr0n-muted'>
-                <span>Current: {MOCK_QUOTA_WARNING.current}</span>
-                <span className='text-kr0n-faint'>·</span>
-                <span>Limit: {MOCK_QUOTA_WARNING.limit}</span>
-                <span className='text-kr0n-faint'>·</span>
-                <span>Required: {MOCK_QUOTA_WARNING.required}</span>
+              <div className='flex items-center gap-4 text-xs font-mono text-kr0n-text-secondary'>
+                <span>Current: <strong className='text-white'>{MOCK_QUOTA_WARNING.current}</strong></span>
+                <span className='text-kr0n-muted'>·</span>
+                <span>Limit: <strong className='text-white'>{MOCK_QUOTA_WARNING.limit}</strong></span>
+                <span className='text-kr0n-muted'>·</span>
+                <span>Required: <strong className='text-amber-400'>{MOCK_QUOTA_WARNING.required}</strong></span>
               </div>
               <div className='flex items-center gap-3 mt-2'>
                 <Link
                   href='/usage'
-                  className='text-[11px] font-mono text-white hover:text-kr0n-text-secondary transition-colors flex items-center gap-1'
+                  className='text-[11px] font-mono text-white hover:text-kr0n-text-secondary transition-colors flex items-center gap-1 font-bold'
                 >
                   Review Usage <ArrowRight size={10} />
                 </Link>
                 <Link
                   href='/billing'
-                  className='text-[11px] font-mono text-kr0n-muted hover:text-white transition-colors flex items-center gap-1'
+                  className='text-[11px] font-mono text-kr0n-text-secondary hover:text-white transition-colors flex items-center gap-1 font-medium'
                 >
                   Manage Plan <ArrowRight size={10} />
                 </Link>
@@ -162,7 +162,7 @@ export default function UsagePage() {
                 <button
                   type='button'
                   onClick={() => toggleExpand(resource.id)}
-                  className='w-full text-left py-6 group hover:bg-white/[0.01] transition-colors'
+                  className='w-full text-left py-6 group hover:bg-white/[0.015] transition-colors'
                   aria-expanded={isExpanded}
                 >
                   <div className='flex items-start justify-between gap-6'>
@@ -170,11 +170,11 @@ export default function UsagePage() {
                       <div className='flex items-center gap-2'>
                         <ChevronRight
                           size={12}
-                          className={`text-kr0n-faint transition-transform duration-200 ${
+                          className={`text-kr0n-muted group-hover:text-white transition-transform duration-200 ${
                             isExpanded ? 'rotate-90' : ''
                           }`}
                         />
-                        <span className='text-[10px] font-mono text-kr0n-faint uppercase tracking-widest'>
+                        <span className='text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-widest font-bold'>
                           {resource.label}
                         </span>
                       </div>
@@ -183,7 +183,7 @@ export default function UsagePage() {
                         <span className='text-xl font-bold text-white tabular-nums'>
                           {resource.used}
                         </span>
-                        <span className='text-sm text-kr0n-faint'>
+                        <span className='text-sm text-kr0n-muted font-medium'>
                           / {resource.quota} {resource.unit}
                         </span>
                       </div>
@@ -203,7 +203,7 @@ export default function UsagePage() {
                       }`}>
                         {percentage.toFixed(0)}%
                       </div>
-                      <div className='flex items-center gap-1 text-[10px] font-mono text-kr0n-faint mt-1 justify-end'>
+                      <div className='flex items-center gap-1 text-[10px] font-mono text-kr0n-muted mt-1 justify-end font-medium'>
                         <TrendingUp size={9} className={prevChange > 0 ? 'text-kr0n-muted' : 'text-emerald-400'} />
                         <span>{prevChange > 0 ? '+' : ''}{prevChangePercent}% vs last period</span>
                       </div>
@@ -224,7 +224,7 @@ export default function UsagePage() {
                       <div className='pb-6 pl-5 pr-0'>
                         <div className='grid grid-cols-1 sm:grid-cols-3 gap-6 mb-5'>
                           <div>
-                            <div className='text-[10px] font-mono text-kr0n-faint uppercase tracking-wider'>
+                            <div className='text-[10px] font-mono text-kr0n-muted uppercase tracking-wider font-bold'>
                               Current
                             </div>
                             <div className='text-sm font-bold text-white mt-1 tabular-nums'>
@@ -232,25 +232,25 @@ export default function UsagePage() {
                             </div>
                           </div>
                           <div>
-                            <div className='text-[10px] font-mono text-kr0n-faint uppercase tracking-wider'>
+                            <div className='text-[10px] font-mono text-kr0n-muted uppercase tracking-wider font-bold'>
                               Remaining
                             </div>
-                            <div className='text-sm font-bold text-white mt-1 tabular-nums'>
+                            <div className='text-sm font-bold text-kr0n-text-secondary mt-1 tabular-nums'>
                               {(resource.quota - resource.used).toFixed(1)} {resource.unit}
                             </div>
                           </div>
                           <div>
-                            <div className='text-[10px] font-mono text-kr0n-faint uppercase tracking-wider'>
+                            <div className='text-[10px] font-mono text-kr0n-muted uppercase tracking-wider font-bold'>
                               Previous Period
                             </div>
-                            <div className='text-sm font-bold text-kr0n-muted mt-1 tabular-nums'>
+                            <div className='text-sm font-bold text-kr0n-text-secondary mt-1 tabular-nums'>
                               {resource.previousPeriod} {resource.unit}
                             </div>
                           </div>
                         </div>
 
                         {/* Project breakdown */}
-                        <div className='text-[10px] font-mono text-kr0n-faint uppercase tracking-wider mb-3'>
+                        <div className='text-[10px] font-mono text-kr0n-muted uppercase tracking-wider mb-3 font-bold'>
                           By Project
                         </div>
                         <div className='space-y-2'>
@@ -258,19 +258,19 @@ export default function UsagePage() {
                             const projPercent = (proj.usage / resource.used) * 100;
                             return (
                               <div key={proj.name} className='flex items-center gap-3'>
-                                <span className='text-xs font-mono text-kr0n-text-secondary w-20 shrink-0'>
+                                <span className='text-xs font-mono text-white w-20 shrink-0 font-medium'>
                                   {proj.name}
                                 </span>
                                 <div className='flex-1 h-[3px] bg-kr0n-black overflow-hidden max-w-xs'>
                                   <div
-                                    className='h-full bg-white/40'
+                                    className='h-full bg-white/60'
                                     style={{ width: `${projPercent}%` }}
                                   />
                                 </div>
-                                <span className='text-[10px] font-mono text-kr0n-faint tabular-nums w-16 text-right'>
+                                <span className='text-[10px] font-mono text-kr0n-text-secondary tabular-nums w-16 text-right font-medium'>
                                   {proj.usage} {resource.unit}
                                 </span>
-                                <span className='text-[10px] font-mono text-kr0n-faint tabular-nums w-10 text-right'>
+                                <span className='text-[10px] font-mono text-kr0n-muted tabular-nums w-10 text-right'>
                                   {projPercent.toFixed(0)}%
                                 </span>
                               </div>
@@ -293,7 +293,7 @@ export default function UsagePage() {
           transition={{ duration: 0.4, delay: 0.4 }}
           className='max-w-3xl mt-8 border border-kr0n-line-soft bg-kr0n-black/20 p-5'
         >
-          <div className='text-[10px] font-mono text-kr0n-faint uppercase tracking-widest mb-4'>
+          <div className='text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-widest mb-4 font-bold'>
             This Period Summary
           </div>
           <div className='grid grid-cols-2 sm:grid-cols-5 gap-6 font-mono'>
@@ -302,7 +302,7 @@ export default function UsagePage() {
                 <div className='text-base font-bold text-white tabular-nums'>
                   {r.used}
                 </div>
-                <div className='text-[10px] text-kr0n-faint mt-0.5'>
+                <div className='text-[10px] text-kr0n-muted mt-0.5 font-medium'>
                   {r.unit === 'minutes' ? 'build min' : r.unit}
                 </div>
               </div>

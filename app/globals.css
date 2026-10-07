@@ -11,10 +11,10 @@
   --color-kr0n-line: #242930;
   --color-kr0n-line-strong: #363D47;
   --color-kr0n-line-soft: #1A1E24;
-  --color-kr0n-text: #F3F4F6;
-  --color-kr0n-text-secondary: #C4C8CE;
-  --color-kr0n-muted: #858C95;
-  --color-kr0n-faint: #4E5560;
+  --color-kr0n-text: #FFFFFF;
+  --color-kr0n-text-secondary: #D4D8DE;
+  --color-kr0n-muted: #A3A8B2;
+  --color-kr0n-faint: #848C9A;
   --color-kr0n-healthy: #10b981;
   --color-kr0n-healthy-soft: rgba(16, 185, 129, 0.12);
   --color-kr0n-warning: #f59e0b;
@@ -56,6 +56,12 @@ body {
 :focus-visible {
   outline: 1px solid rgba(255, 255, 255, 0.6);
   outline-offset: 2px;
+}
+
+input::placeholder,
+textarea::placeholder {
+  color: #848C9A;
+  opacity: 1;
 }
 
 /* Custom scrollbars */

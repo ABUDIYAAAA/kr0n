@@ -45,10 +45,10 @@ export default function StatusPage() {
           <h1 className='text-2xl sm:text-3xl font-bold text-white tracking-wide'>
             All systems operational.
           </h1>
-          <p className='text-sm text-kr0n-muted mt-3'>
+          <p className='text-sm text-kr0n-text-secondary mt-3'>
             Everything is running normally.
           </p>
-          <div className='text-[10px] font-mono text-kr0n-faint mt-4 uppercase tracking-wider'>
+          <div className='text-[10px] font-mono text-kr0n-muted mt-4 uppercase tracking-wider font-medium'>
             Last updated · {new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}
           </div>
         </motion.div>
@@ -62,7 +62,7 @@ export default function StatusPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.1 }}
           >
-            <div className='text-[10px] font-mono text-kr0n-faint uppercase tracking-widest mb-4'>
+            <div className='text-[10px] font-mono text-kr0n-muted uppercase tracking-wider font-semibold mb-4'>
               Systems
             </div>
 
@@ -79,13 +79,13 @@ export default function StatusPage() {
                   >
                     <div className='flex items-center gap-3'>
                       <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
-                      <span className='text-sm text-white'>{system.name}</span>
+                      <span className='text-sm text-white font-medium'>{system.name}</span>
                     </div>
                     <div className='flex items-center gap-4 text-xs font-mono'>
-                      <span className='text-kr0n-faint tabular-nums hidden sm:inline'>
+                      <span className='text-kr0n-muted tabular-nums hidden sm:inline font-medium'>
                         {system.uptime} uptime
                       </span>
-                      <span className={`${config.color}`}>
+                      <span className={`font-semibold ${config.color}`}>
                         {config.label}
                       </span>
                     </div>
@@ -102,10 +102,10 @@ export default function StatusPage() {
             transition={{ duration: 0.4, delay: 0.3 }}
           >
             <div className='flex items-center justify-between mb-4'>
-              <div className='text-[10px] font-mono text-kr0n-faint uppercase tracking-widest'>
+              <div className='text-[10px] font-mono text-kr0n-muted uppercase tracking-wider font-semibold'>
                 90-Day History
               </div>
-              <div className='text-[10px] font-mono text-kr0n-faint'>
+              <div className='text-[10px] font-mono text-kr0n-muted font-medium'>
                 {incidentCount} incident{incidentCount !== 1 ? 's' : ''} in the last 90 days
               </div>
             </div>
@@ -131,7 +131,7 @@ export default function StatusPage() {
                       className={`w-full h-full rounded-[1px] transition-all duration-150 ${
                         config.bar
                       } ${
-                        isSelected ? 'opacity-100' : day.incident ? 'opacity-80' : 'opacity-30 hover:opacity-50'
+                        isSelected ? 'opacity-100' : day.incident ? 'opacity-95' : 'opacity-45 hover:opacity-75'
                       }`}
                     />
                   </button>
@@ -140,7 +140,7 @@ export default function StatusPage() {
             </div>
 
             {/* Timeline labels */}
-            <div className='flex items-center justify-between mt-2 text-[9px] font-mono text-kr0n-faint'>
+            <div className='flex items-center justify-between mt-2 text-[10px] font-mono text-kr0n-muted font-medium'>
               <span>{last90[last90.length - 1]?.dateLabel}</span>
               <span>Today</span>
             </div>
@@ -158,12 +158,12 @@ export default function StatusPage() {
                   <div className='mt-4 border border-kr0n-line bg-kr0n-surface p-4'>
                     <div className='flex items-start justify-between'>
                       <div>
-                        <div className='text-xs font-mono text-white'>
+                        <div className='text-xs font-mono text-white font-medium'>
                           {last90[selectedDay].dateLabel}
                         </div>
                         <div className='flex items-center gap-2 mt-1'>
                           <span className={`w-1.5 h-1.5 rounded-full ${STATUS_STATE_CONFIG[last90[selectedDay].status].dot}`} />
-                          <span className={`text-[11px] font-mono ${STATUS_STATE_CONFIG[last90[selectedDay].status].color}`}>
+                          <span className={`text-[11px] font-mono font-semibold ${STATUS_STATE_CONFIG[last90[selectedDay].status].color}`}>
                             {STATUS_STATE_CONFIG[last90[selectedDay].status].label}
                           </span>
                         </div>
@@ -171,7 +171,7 @@ export default function StatusPage() {
                       <button
                         type='button'
                         onClick={() => setSelectedDay(null)}
-                        className='text-kr0n-faint hover:text-white transition-colors'
+                        className='text-kr0n-muted hover:text-white transition-colors p-1'
                       >
                         <X size={14} />
                       </button>
@@ -179,14 +179,14 @@ export default function StatusPage() {
 
                     {last90[selectedDay].incident ? (
                       <div className='mt-3 space-y-2'>
-                        <div className='text-sm text-white font-medium'>
+                        <div className='text-sm text-white font-semibold'>
                           {last90[selectedDay].incident.title}
                         </div>
-                        <p className='text-xs text-kr0n-muted'>
+                        <p className='text-xs text-kr0n-text-secondary leading-relaxed'>
                           {last90[selectedDay].incident.description}
                         </p>
-                        <div className='flex items-center gap-3 text-[10px] font-mono text-kr0n-faint'>
-                          <span>{last90[selectedDay].incident.system}</span>
+                        <div className='flex items-center gap-3 text-[10px] font-mono text-kr0n-muted'>
+                          <span className='text-kr0n-text-secondary font-medium'>{last90[selectedDay].incident.system}</span>
                           <span className='text-kr0n-line-strong'>·</span>
                           <span>{last90[selectedDay].incident.startTime} — {last90[selectedDay].incident.endTime}</span>
                           <span className='text-kr0n-line-strong'>·</span>
@@ -194,7 +194,7 @@ export default function StatusPage() {
                         </div>
                       </div>
                     ) : (
-                      <div className='mt-3 text-xs text-kr0n-muted'>
+                      <div className='mt-3 text-xs text-kr0n-text-secondary'>
                         No incidents reported. All systems operated normally.
                       </div>
                     )}
@@ -210,7 +210,7 @@ export default function StatusPage() {
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.4, delay: 0.5 }}
           >
-            <div className='text-[10px] font-mono text-kr0n-faint uppercase tracking-widest mb-4'>
+            <div className='text-[10px] font-mono text-kr0n-muted uppercase tracking-wider font-semibold mb-4'>
               Recent Incidents
             </div>
 
@@ -223,27 +223,27 @@ export default function StatusPage() {
                     return (
                       <div
                         key={day.incident.id}
-                        className='border border-kr0n-line-soft bg-kr0n-black/20 p-4'
+                        className='border border-kr0n-line-soft bg-kr0n-surface/40 p-4'
                       >
                         <div className='flex items-start justify-between gap-4'>
                           <div>
                             <div className='flex items-center gap-2'>
                               <span className={`w-1.5 h-1.5 rounded-full ${config.dot}`} />
-                              <span className='text-sm text-white font-medium'>
+                              <span className='text-sm text-white font-semibold'>
                                 {day.incident.title}
                               </span>
                             </div>
-                            <p className='text-xs text-kr0n-muted mt-1.5'>
+                            <p className='text-xs text-kr0n-text-secondary mt-1.5 leading-relaxed'>
                               {day.incident.description}
                             </p>
-                            <div className='flex items-center gap-3 mt-2 text-[10px] font-mono text-kr0n-faint'>
-                              <span>{day.dateLabel}</span>
+                            <div className='flex items-center gap-3 mt-2 text-[10px] font-mono text-kr0n-muted'>
+                              <span className='text-kr0n-text-secondary font-medium'>{day.dateLabel}</span>
                               <span className='text-kr0n-line-strong'>·</span>
                               <span>{day.incident.system}</span>
                               <span className='text-kr0n-line-strong'>·</span>
                               <span>{day.incident.duration}</span>
                               <span className='text-kr0n-line-strong'>·</span>
-                              <span className={`capitalize ${
+                              <span className={`capitalize font-semibold ${
                                 day.incident.severity === 'major' ? 'text-red-400' : 'text-amber-400'
                               }`}>
                                 {day.incident.severity}
@@ -256,7 +256,7 @@ export default function StatusPage() {
                   })}
               </div>
             ) : (
-              <div className='text-xs text-kr0n-faint text-center py-6 border border-kr0n-line-soft'>
+              <div className='text-xs text-kr0n-muted text-center py-6 border border-kr0n-line-soft'>
                 No incidents in the last 90 days.
               </div>
             )}
@@ -267,13 +267,13 @@ export default function StatusPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ duration: 0.4, delay: 0.7 }}
-            className='pt-4 flex items-center gap-4 text-[10px] font-mono text-kr0n-faint'
+            className='pt-4 flex items-center gap-4 text-[11px] font-mono text-kr0n-text-secondary'
           >
             <Link
               href='/alerts'
-              className='hover:text-white transition-colors flex items-center gap-1 uppercase tracking-wider'
+              className='hover:text-white transition-colors flex items-center gap-1.5 uppercase tracking-wider font-medium'
             >
-              View all alerts <ArrowRight size={9} />
+              View all alerts <ArrowRight size={11} />
             </Link>
           </motion.div>
         </div>

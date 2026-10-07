@@ -107,19 +107,19 @@ export default function DashboardOverview() {
           className='grid grid-cols-2 md:grid-cols-4 gap-4'
         >
           <div className='bg-kr0n-surface border border-kr0n-line p-4 space-y-1'>
-            <div className='text-[10px] font-mono text-kr0n-faint uppercase tracking-wider'>
+            <div className='text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-wider font-bold'>
               Projects
             </div>
             <div className='text-2xl font-bold text-white'>{PROJECTS.length}</div>
           </div>
           <div className='bg-kr0n-surface border border-kr0n-line p-4 space-y-1'>
-            <div className='text-[10px] font-mono text-kr0n-faint uppercase tracking-wider'>
+            <div className='text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-wider font-bold'>
               Services
             </div>
             <div className='text-2xl font-bold text-white'>{totalServices}</div>
           </div>
           <div className='bg-kr0n-surface border border-kr0n-line p-4 space-y-1'>
-            <div className='text-[10px] font-mono text-kr0n-faint uppercase tracking-wider'>
+            <div className='text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-wider font-bold'>
               Healthy
             </div>
             <div className='text-2xl font-bold text-emerald-400 flex items-center gap-2'>
@@ -128,7 +128,7 @@ export default function DashboardOverview() {
             </div>
           </div>
           <div className='bg-kr0n-surface border border-kr0n-line p-4 space-y-1'>
-            <div className='text-[10px] font-mono text-kr0n-faint uppercase tracking-wider'>
+            <div className='text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-wider font-bold'>
               Attention
             </div>
             <div
@@ -155,12 +155,12 @@ export default function DashboardOverview() {
           className='space-y-3'
         >
           <div className='flex items-center justify-between'>
-            <h2 className='text-xs font-mono uppercase tracking-widest text-kr0n-faint'>
+            <h2 className='text-xs font-mono uppercase tracking-widest text-kr0n-text-secondary font-bold'>
               Recent Activity
             </h2>
             <Link
               href='/projects'
-              className='text-[11px] font-mono text-kr0n-muted hover:text-white transition-colors flex items-center gap-1 uppercase tracking-wider'
+              className='text-[11px] font-mono text-kr0n-text-secondary hover:text-white transition-colors flex items-center gap-1 uppercase tracking-wider font-bold'
             >
               View all
               <ArrowRight size={11} />
@@ -187,18 +187,18 @@ export default function DashboardOverview() {
                   />
                   <div className='min-w-0'>
                     <div className='text-xs text-white truncate'>
-                      <span className='font-medium'>{act.project}</span>
-                      <span className='text-kr0n-faint mx-1.5'>·</span>
+                      <span className='font-bold'>{act.project}</span>
+                      <span className='text-kr0n-muted mx-1.5'>·</span>
                       <span className='text-kr0n-text-secondary'>{act.action}</span>
                     </div>
-                    <div className='text-[11px] font-mono text-kr0n-faint flex items-center gap-2 mt-0.5'>
-                      <span>{act.version}</span>
+                    <div className='text-[11px] font-mono text-kr0n-muted flex items-center gap-2 mt-0.5 font-medium'>
+                      <span className='text-kr0n-text-secondary font-mono'>{act.version}</span>
                       <span className='text-kr0n-line-strong'>|</span>
                       <span>{act.environment}</span>
                     </div>
                   </div>
                 </div>
-                <span className='text-[11px] font-mono text-kr0n-faint shrink-0 ml-4'>
+                <span className='text-[11px] font-mono text-kr0n-muted shrink-0 ml-4 font-medium'>
                   {act.time}
                 </span>
               </div>
@@ -214,12 +214,12 @@ export default function DashboardOverview() {
           className='space-y-3'
         >
           <div className='flex items-center justify-between'>
-            <h2 className='text-xs font-mono uppercase tracking-widest text-kr0n-faint'>
+            <h2 className='text-xs font-mono uppercase tracking-widest text-kr0n-text-secondary font-bold'>
               Projects
             </h2>
             <Link
               href='/projects'
-              className='text-[11px] font-mono text-kr0n-muted hover:text-white transition-colors flex items-center gap-1 uppercase tracking-wider'
+              className='text-[11px] font-mono text-kr0n-text-secondary hover:text-white transition-colors flex items-center gap-1 uppercase tracking-wider font-bold'
             >
               Open workspace
               <ArrowRight size={11} />
@@ -259,16 +259,16 @@ export default function DashboardOverview() {
                       </div>
                       <ArrowRight
                         size={13}
-                        className='text-kr0n-faint group-hover:text-white transition-colors'
+                        className='text-kr0n-muted group-hover:text-white transition-colors'
                       />
                     </div>
-                    <p className='text-xs text-kr0n-muted'>{project.description}</p>
-                    <div className='flex items-center gap-3 text-[11px] font-mono text-kr0n-faint'>
+                    <p className='text-xs text-kr0n-text-secondary'>{project.description}</p>
+                    <div className='flex items-center gap-3 text-[11px] font-mono text-kr0n-text-secondary font-medium'>
                       <span>{project.services.length} services</span>
                       <span className='text-kr0n-line-strong'>|</span>
                       <span>{project.environment}</span>
                       <span className='text-kr0n-line-strong'>|</span>
-                      <span>{project.currentDeployment.version}</span>
+                      <span className='text-white font-mono'>{project.currentDeployment.version}</span>
                     </div>
                   </Link>
                 </motion.div>
