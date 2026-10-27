@@ -140,7 +140,7 @@ export default function CapabilityTypographyScene() {
 						{/* Left: Pillar Mechanics (col-span-7) */}
 						<div className='lg:col-span-7 space-y-4'>
 							<div className='flex items-center gap-3 text-xs font-mono text-[#858C95]'>
-								<span className='text-white font-bold'>{activePillar.index} //</span>
+								<span className='text-white font-bold'>{activePillar.index} {'//'}</span>
 								<span className='tracking-wider text-white font-semibold'>{activePillar.tag}</span>
 								<span className='text-[#363D47]'>—</span>
 								<span className='text-emerald-400'>MANAGED INTERNALLY</span>

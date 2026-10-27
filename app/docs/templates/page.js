@@ -63,7 +63,7 @@ export default function TemplatesDocsPage() {
           <p className="text-sm text-zinc-300 leading-relaxed">
             Each template is pre-configured with the kr0n build harness, including AST optimization
             rules and edge caching headers. You can deploy any of these starters in one click from
-            the <Link href="/dashboard/projects/importrepo" className="text-white underline underline-offset-4">Import Repository</Link> screen
+            the <Link href="/projects/proj_orvea_prod?action=add-service" className="text-white underline underline-offset-4">Add Service</Link> screen
             or clone them via the CLI.
           </p>
 

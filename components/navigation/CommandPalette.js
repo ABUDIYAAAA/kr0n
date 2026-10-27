@@ -13,6 +13,7 @@ import {
   Activity,
   CreditCard,
   Settings,
+  Bell,
   ArrowRight,
   ExternalLink,
 } from 'lucide-react';
@@ -23,15 +24,20 @@ export default function CommandPalette({ isOpen, onClose }) {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
 
-  useEffect(() => {
+  const [prevQuery, setPrevQuery] = useState(query);
+  if (prevQuery !== query) {
+    setPrevQuery(query);
     setSelectedIndex(0);
-  }, [query]);
+  }
 
   if (!isOpen) return null;
 
   const staticActions = [
     { id: 'dash', label: 'Go to Dashboard', icon: Home, href: '/dashboard', category: 'Navigation' },
     { id: 'proj', label: 'Open Projects Workspace', icon: LayoutGrid, href: '/projects', category: 'Navigation' },
+    { id: 'alerts', label: 'Operational Alerts Inbox', desc: 'Active firing alerts and conditions', icon: Bell, href: '/alerts', category: 'Observability' },
+    { id: 'svc_overview', label: 'Service Overview (Orvea API)', desc: 'Microservice status, runtime & URL', icon: Rocket, href: '/projects/proj_orvea_prod/services/svc_api', category: 'Services' },
+    { id: 'deployments', label: 'Deployment History (Orvea API)', desc: 'Release timeline, rollbacks & artifacts', icon: Rocket, href: '/projects/proj_orvea_prod/services/svc_api/deployments', category: 'Services' },
     { id: 'logs', label: 'View Service Logs (Orvea API)', desc: 'Live stdout/stderr stream & filters', icon: Activity, href: '/projects/proj_orvea_prod/services/svc_api/logs', category: 'Observability' },
     { id: 'metrics', label: 'View Service Metrics (Orvea API)', desc: 'Latency, throughput, resources & traces', icon: Activity, href: '/projects/proj_orvea_prod/services/svc_api/metrics', category: 'Observability' },
     { id: 'usage', label: 'View Cluster Usage', icon: Activity, href: '/usage', category: 'Observability' },
@@ -39,6 +45,7 @@ export default function CommandPalette({ isOpen, onClose }) {
     { id: 'status', label: 'System Status & History', icon: Activity, href: '/status', category: 'Observability' },
     { id: 'new', label: 'Create New Project', icon: Plus, href: '/projects', category: 'Actions' },
     { id: 'bill', label: 'Billing & Invoices', icon: CreditCard, href: '/billing', category: 'Navigation' },
+    { id: 'settings', label: 'Organization & Security Settings', icon: Settings, href: '/settings', category: 'Navigation' },
     { id: 'docs', label: 'Platform Documentation', icon: BookOpen, href: '/docs', category: 'Resources' },
   ];
 

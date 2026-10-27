@@ -39,9 +39,11 @@ export default function AppShell({ children }) {
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
 
   // Close mobile nav on route change
-  useEffect(() => {
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
     setMobileNavOpen(false);
-  }, [pathname]);
+  }
 
   // Keyboard shortcut Cmd+K
   useEffect(() => {

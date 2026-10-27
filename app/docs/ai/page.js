@@ -219,7 +219,7 @@ export default function AiDocsPage() {
 
           <p className="text-sm text-zinc-400">
             View active logs and filter by severity level (<code className="text-white font-mono text-xs">ALL</code>, <code className="text-white font-mono text-xs">STDOUT</code>, <code className="text-white font-mono text-xs">STDERR</code>)
-            on the <Link href="/dashboard/logs" className="text-white underline underline-offset-4">/dashboard/logs</Link> screen.
+            on the <Link href="/projects/proj_orvea_prod/services/svc_api/logs" className="text-white underline underline-offset-4">Service Logs</Link> screen.
           </p>
         </section>
 

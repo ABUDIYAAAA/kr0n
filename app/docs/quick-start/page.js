@@ -85,7 +85,7 @@ export default function QuickStartPage() {
           </p>
           <ul className="space-y-2 text-sm text-zinc-400 font-sans list-disc list-inside">
             <li>A Git repository containing a standard framework manifest (<code className="text-white font-mono text-xs">package.json</code>, <code className="text-white font-mono text-xs">kron.config.json</code>).</li>
-            <li>A verified kr0n account (authenticated via <Link href="/authentication/login" className="text-white underline underline-offset-4">Login</Link>).</li>
+            <li>A verified kr0n account (authenticated via <Link href="/login" className="text-white underline underline-offset-4">Login</Link>).</li>
             <li>Optional: Node.js 18+ if deploying via the terminal CLI (<code className="text-white font-mono text-xs">kron</code>).</li>
           </ul>
         </section>
@@ -107,7 +107,7 @@ export default function QuickStartPage() {
                 <span>Web Console</span>
               </div>
               <p className="text-xs text-zinc-400 leading-relaxed">
-                Navigate to <Link href="/dashboard/projects/importrepo" className="text-white underline underline-offset-2">Import Repository</Link>.
+                Navigate to <Link href="/projects/proj_orvea_prod?action=add-service" className="text-white underline underline-offset-2">Add Service Wizard</Link>.
                 Select an authorized account (e.g. <span className="font-mono text-white">arpittripathi</span>),
                 browse available git branches, and click <strong>Import</strong>.
               </p>
@@ -135,8 +135,8 @@ export default function QuickStartPage() {
             Step 2: Configure Environment Variables
           </h2>
           <p className="text-sm text-zinc-300 leading-relaxed">
-            Define encrypted secrets and application configuration via the Environment Variables dashboard
-            at <Link href="/dashboard/evariables" className="text-white underline underline-offset-4">/dashboard/evariables</Link>.
+            Define encrypted secrets and application configuration via the Environment Variables section
+            at <Link href="/projects/proj_orvea_prod/services/svc_api/settings#env" className="text-white underline underline-offset-4">Service Settings</Link>.
           </p>
 
           <CodeBlock
@@ -176,7 +176,7 @@ SESSION_SECRET="e9b28fa48c21e69b0f47e248b991"`}
           </div>
 
           <p className="text-sm text-zinc-400">
-            You can monitor this live stream in your dashboard at <Link href="/dashboard/deployments" className="text-white underline underline-offset-4">/dashboard/deployments</Link> or
+            You can monitor this live stream in your dashboard at <Link href="/projects/proj_orvea_prod/services/svc_api/deployments" className="text-white underline underline-offset-4">Deployment History</Link> or
             in your terminal using <code className="font-mono text-white text-xs">kron logs --tail</code>.
           </p>
         </section>
@@ -212,7 +212,7 @@ https://engine.io/watch-wise-edge-v2.preview.kron.app`}
             Spatial Canvas Workspace
           </h2>
           <p className="text-sm text-zinc-300 leading-relaxed">
-            The kr0n Projects interface (<Link href="/dashboard/projects" className="text-white underline underline-offset-4">/dashboard/projects</Link>)
+            The kr0n Projects interface (<Link href="/projects" className="text-white underline underline-offset-4">/projects</Link>)
             features an interactive spatial canvas workspace. You can drag and organize your deployed service cards
             (<code className="font-mono text-white text-xs">nucleus-engine</code>, <code className="font-mono text-white text-xs">quantum-web</code>,
             <code className="font-mono text-white text-xs">auth-service</code>, <code className="font-mono text-white text-xs">legacy-dash</code>)

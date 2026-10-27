@@ -1,4 +1,5 @@
 import DocsHeader from "@/components/docs/DocsHeader";
+import Link from "next/link";
 
 export const metadata = {
   title: "Documentation — kr0n Edge Platform",
@@ -26,9 +27,9 @@ export default function DocsRootLayout({ children }) {
             <span className="hidden sm:inline">EDGE RUNTIME ENGINE</span>
           </div>
           <div className="flex items-center gap-6">
-            <a href="/dashboard/projects" className="hover:text-white transition">Dashboard</a>
-            <a href="/usage" className="hover:text-white transition">Usage</a>
-            <a href="/dashboard/support" className="hover:text-white transition">Support</a>
+            <Link href="/projects" className="hover:text-white transition">Dashboard</Link>
+            <Link href="/usage" className="hover:text-white transition">Usage</Link>
+            <Link href="/status" className="hover:text-white transition">Status</Link>
           </div>
         </div>
       </footer>

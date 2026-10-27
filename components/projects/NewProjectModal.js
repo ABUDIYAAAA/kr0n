@@ -4,6 +4,43 @@ import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Plus, Terminal, Layers, Globe, GitBranch } from 'lucide-react';
 
+function buildProjectData({ name, description, environment, selectedServices, serviceOptions }) {
+  const ts = Date.now().toString(36);
+  const hash = Math.random().toString(16).substring(2, 9);
+  const id = `proj_${name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${ts}`;
+  return {
+    id,
+    name: name.trim(),
+    description: description.trim() || 'Edge runtime application workspace',
+    environment,
+    status: 'healthy',
+    services: selectedServices.map((sid) => {
+      const opt = serviceOptions.find((o) => o.id === sid);
+      return {
+        id: `svc_${sid}_${ts}`,
+        name: opt ? opt.id : sid,
+        type: opt ? opt.type : 'web',
+      };
+    }),
+    currentDeployment: {
+      version: 'v1.0.0',
+      commit: hash,
+      status: 'live',
+      timestamp: 'Just now',
+      branch: 'main',
+    },
+    url: `${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}.kr0n.dev`,
+    resources: { cpu: Math.floor(Math.random() * 25) + 5, memory: '0.8 GB' },
+    deploymentCount: 1,
+    updatedAt: 'Just now',
+    position: {
+      x: 180 + (Math.random() * 300),
+      y: 120 + (Math.random() * 200),
+    },
+    linkedTo: null,
+  };
+}
+
 export default function NewProjectModal({ isOpen, onClose, onCreateProject }) {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -32,39 +69,7 @@ export default function NewProjectModal({ isOpen, onClose, onCreateProject }) {
     if (!name.trim()) return;
 
     setIsSubmitting(true);
-
-    const id = `proj_${name.toLowerCase().replace(/[^a-z0-9]/g, '_')}_${Date.now().toString(36)}`;
-    const newProj = {
-      id,
-      name: name.trim(),
-      description: description.trim() || 'Edge runtime application workspace',
-      environment,
-      status: 'healthy',
-      services: selectedServices.map((sid) => {
-        const opt = serviceOptions.find((o) => o.id === sid);
-        return {
-          id: `svc_${sid}_${Date.now().toString(36)}`,
-          name: opt ? opt.id : sid,
-          type: opt ? opt.type : 'web',
-        };
-      }),
-      currentDeployment: {
-        version: 'v1.0.0',
-        commit: Math.random().toString(16).substring(2, 9),
-        status: 'live',
-        timestamp: 'Just now',
-        branch: 'main',
-      },
-      url: `${name.toLowerCase().replace(/[^a-z0-9]/g, '-')}.kr0n.dev`,
-      resources: { cpu: Math.floor(Math.random() * 25) + 5, memory: '0.8 GB' },
-      deploymentCount: 1,
-      updatedAt: 'Just now',
-      position: {
-        x: 180 + (Math.random() * 300),
-        y: 120 + (Math.random() * 200),
-      },
-      linkedTo: null,
-    };
+    const newProj = buildProjectData({ name, description, environment, selectedServices, serviceOptions });
 
     setTimeout(() => {
       onCreateProject(newProj);

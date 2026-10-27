@@ -2,7 +2,6 @@
 
 import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { notFound } from 'next/navigation';
 import {
   ArrowLeft,
   Rocket,
@@ -22,19 +21,38 @@ import {
   Copy,
   Pause,
   Play,
+  Plus,
 } from 'lucide-react';
-import { PROJECTS, STATUS_CONFIG, DEPLOYMENT_STATUS_CONFIG } from '@/lib/projects-data';
+import { STATUS_CONFIG, DEPLOYMENT_STATUS_CONFIG } from '@/lib/projects-data';
+import { useKr0nStore } from '@/lib/kr0n-state';
+import AddServiceWizardModal from '@/components/services/AddServiceWizardModal';
+import BrandedNotFound from '@/components/common/BrandedNotFound';
 
 export default function ProjectDetailPage({ params }) {
   const unwrappedParams = use(params);
   const { projectId } = unwrappedParams;
 
-  const project = PROJECTS.find((p) => p.id === projectId) || PROJECTS[0];
+  const {
+    projects,
+    addService,
+    createEnvironment,
+    triggerDeploy: storeTriggerDeploy,
+  } = useKr0nStore();
+
+  const project = projects.find((p) => p.id === projectId);
 
   const [activeTab, setActiveTab] = useState('overview');
   const [isDeploying, setIsDeploying] = useState(false);
   const [logsPaused, setLogsPaused] = useState(false);
   const [copiedKey, setCopiedKey] = useState(false);
+  const [showAddServiceModal, setShowAddServiceModal] = useState(() => {
+    if (typeof window !== 'undefined') {
+      return new URLSearchParams(window.location.search).get('action') === 'add-service';
+    }
+    return false;
+  });
+  const [showAddEnvModal, setShowAddEnvModal] = useState(false);
+  const [newEnvName, setNewEnvName] = useState('');
 
   const [logs, setLogs] = useState([
     { id: 1, time: '14:22:01.102', level: 'INFO', msg: '[kr0n-edge] Router initialized on cluster us-east-1' },
@@ -68,11 +86,33 @@ export default function ProjectDetailPage({ params }) {
     return () => clearInterval(interval);
   }, [logsPaused]);
 
+  if (!project) {
+    return (
+      <BrandedNotFound
+        type='Project'
+        id={projectId}
+        backHref='/projects'
+        backLabel='Back to Projects'
+      />
+    );
+  }
+
   const handleTriggerDeploy = () => {
     setIsDeploying(true);
     setTimeout(() => {
+      if (project.services.length > 0) {
+        storeTriggerDeploy(project.services[0].id, 'Manual release from project overview');
+      }
       setIsDeploying(false);
-    }, 3000);
+    }, 2500);
+  };
+
+  const handleAddEnvSubmit = (e) => {
+    e.preventDefault();
+    if (!newEnvName.trim()) return;
+    createEnvironment(projectId, newEnvName.trim());
+    setNewEnvName('');
+    setShowAddEnvModal(false);
   };
 
   const status = STATUS_CONFIG[project.status] || STATUS_CONFIG.healthy;
@@ -177,13 +217,13 @@ export default function ProjectDetailPage({ params }) {
         </div>
 
         {/* Navigation Tabs */}
-        <div className='max-w-6xl mx-auto flex items-center gap-6 mt-8 border-b border-kr0n-line-soft font-mono text-xs uppercase tracking-wider'>
+        <div className='max-w-6xl mx-auto flex items-center gap-6 mt-8 border-b border-kr0n-line-soft font-mono text-xs uppercase tracking-wider overflow-x-auto'>
           {['overview', 'services', 'deployments', 'logs', 'environment'].map((tab) => (
             <button
               key={tab}
               type='button'
               onClick={() => setActiveTab(tab)}
-              className={`pb-3 border-b-2 transition-colors ${
+              className={`pb-3 border-b-2 transition-colors whitespace-nowrap ${
                 activeTab === tab
                   ? 'border-white text-white font-bold'
                   : 'border-transparent text-kr0n-text-secondary hover:text-white font-medium'
@@ -192,6 +232,13 @@ export default function ProjectDetailPage({ params }) {
               {tab}
             </button>
           ))}
+          <Link
+            href={`/projects/${project.id}/settings`}
+            className='pb-3 border-b-2 border-transparent text-kr0n-text-secondary hover:text-white font-medium whitespace-nowrap flex items-center gap-1.5'
+          >
+            <SettingsIcon size={12} />
+            <span>Settings</span>
+          </Link>
         </div>
       </div>
 
@@ -204,9 +251,19 @@ export default function ProjectDetailPage({ params }) {
               <h2 className='text-xs font-mono uppercase tracking-widest text-kr0n-text-secondary font-bold'>
                 Registered Services
               </h2>
-              <span className='text-[11px] font-mono text-kr0n-text-secondary'>
-                {project.services.length} Microservices running on KR0N Edge
-              </span>
+              <div className='flex items-center gap-3'>
+                <span className='hidden sm:inline text-[11px] font-mono text-kr0n-text-secondary'>
+                  {project.services.length} Microservices running on KR0N Edge
+                </span>
+                <button
+                  type='button'
+                  onClick={() => setShowAddServiceModal(true)}
+                  className='clipped-btn inline-flex items-center gap-1.5 bg-white hover:bg-neutral-200 text-black px-3 py-1.5 text-xs font-mono uppercase font-bold tracking-wider transition-colors'
+                >
+                  <Plus size={12} />
+                  <span>Add Service</span>
+                </button>
+              </div>
             </div>
 
             <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
@@ -216,12 +273,15 @@ export default function ProjectDetailPage({ params }) {
                   className='border border-kr0n-line bg-kr0n-surface hover:border-kr0n-line-strong p-5 space-y-4 transition-colors'
                 >
                   <div className='flex items-center justify-between'>
-                    <div className='flex items-center gap-2'>
+                    <Link
+                      href={`/projects/${project.id}/services/${svc.id}`}
+                      className='flex items-center gap-2 group'
+                    >
                       <span className='w-2 h-2 rounded-full bg-emerald-400' />
-                      <span className='font-mono font-bold text-white text-sm uppercase'>
+                      <span className='font-mono font-bold text-white text-sm uppercase group-hover:underline'>
                         {svc.name}
                       </span>
-                    </div>
+                    </Link>
                     <span className='text-[10px] font-mono px-2 py-0.5 border border-kr0n-line text-kr0n-text-secondary uppercase font-bold'>
                       {svc.type}
                     </span>
@@ -230,11 +290,11 @@ export default function ProjectDetailPage({ params }) {
                   <div className='space-y-2 text-xs font-mono text-kr0n-text-secondary'>
                     <div className='flex justify-between'>
                       <span className='text-kr0n-muted font-medium'>Runtime:</span>
-                      <span className='text-white font-medium'>KR0N V8 Edge Worker</span>
+                      <span className='text-white font-medium'>{svc.runtimeLabel || 'KR0N V8 Edge Worker'}</span>
                     </div>
                     <div className='flex justify-between'>
                       <span className='text-kr0n-muted font-medium'>Instances:</span>
-                      <span className='text-white font-medium'>3 auto-scaled</span>
+                      <span className='text-white font-medium'>{svc.resources?.instances || 3} auto-scaled</span>
                     </div>
                     <div className='flex justify-between'>
                       <span className='text-kr0n-muted font-medium'>Health:</span>
@@ -242,20 +302,29 @@ export default function ProjectDetailPage({ params }) {
                     </div>
                   </div>
 
-                  {/* Observability quick links */}
+                  {/* Service actions */}
                   <div className='pt-2 border-t border-kr0n-line-soft flex items-center justify-between text-[11px] font-mono'>
                     <Link
-                      href={`/projects/${project.id}/services/${svc.id}/logs`}
-                      className='text-kr0n-text-secondary hover:text-white transition-colors font-medium'
+                      href={`/projects/${project.id}/services/${svc.id}`}
+                      className='text-white font-bold hover:underline'
                     >
-                      Logs →
+                      Overview →
                     </Link>
-                    <Link
-                      href={`/projects/${project.id}/services/${svc.id}/metrics`}
-                      className='text-kr0n-text-secondary hover:text-white transition-colors font-medium'
-                    >
-                      Metrics →
-                    </Link>
+                    <div className='flex items-center gap-2'>
+                      <Link
+                        href={`/projects/${project.id}/services/${svc.id}/deployments`}
+                        className='text-kr0n-text-secondary hover:text-white transition-colors font-medium'
+                      >
+                        Deployments
+                      </Link>
+                      <span className='text-kr0n-muted'>·</span>
+                      <Link
+                        href={`/projects/${project.id}/services/${svc.id}/logs`}
+                        className='text-kr0n-text-secondary hover:text-white transition-colors font-medium'
+                      >
+                        Logs
+                      </Link>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -270,21 +339,26 @@ export default function ProjectDetailPage({ params }) {
               <h2 className='text-xs font-mono uppercase tracking-widest text-kr0n-text-secondary font-bold'>
                 Deployment Release Rail
               </h2>
-              <span className='text-[11px] font-mono text-kr0n-text-secondary'>
-                Showing recent revisions
-              </span>
+              {project.services[0] && (
+                <Link
+                  href={`/projects/${projectId}/services/${project.services[0].id}/deployments`}
+                  className='text-[11px] font-mono text-kr0n-text-secondary hover:text-white'
+                >
+                  History details →
+                </Link>
+              )}
             </div>
 
             <div className='border border-kr0n-line bg-kr0n-surface divide-y divide-kr0n-line-soft font-mono'>
               {[
                 {
-                  version: project.currentDeployment.version,
-                  commit: project.currentDeployment.commit,
-                  branch: project.currentDeployment.branch,
-                  time: project.currentDeployment.timestamp,
+                  version: project.currentDeployment?.version || 'v1.8.4',
+                  commit: project.currentDeployment?.commit || 'a83f2c1',
+                  branch: project.currentDeployment?.branch || 'main',
+                  time: project.currentDeployment?.timestamp || '2m ago',
                   author: 'alex.chen',
                   msg: 'optimize edge routing and streaming response headers',
-                  status: project.currentDeployment.status,
+                  status: project.currentDeployment?.status || 'live',
                 },
                 {
                   version: 'v1.8.3',
@@ -341,14 +415,12 @@ export default function ProjectDetailPage({ params }) {
                     >
                       Logs
                     </Link>
-                    {idx > 0 && (
-                      <button
-                        type='button'
-                        className='px-2.5 py-1 border border-kr0n-line text-[11px] text-kr0n-text-secondary hover:text-amber-400 hover:border-amber-400/40 transition-colors font-medium'
-                      >
-                        Rollback
-                      </button>
-                    )}
+                    <Link
+                      href={`/projects/${projectId}/services/${project.services[0]?.id || 'svc_api'}/deployments`}
+                      className='px-2.5 py-1 border border-kr0n-line text-[11px] text-kr0n-text-secondary hover:text-white transition-colors font-medium'
+                    >
+                      Inspect
+                    </Link>
                   </div>
                 </div>
               ))}
@@ -417,32 +489,78 @@ export default function ProjectDetailPage({ params }) {
           <div className='space-y-4 font-mono'>
             <div className='flex items-center justify-between'>
               <h2 className='text-xs uppercase tracking-widest text-kr0n-text-secondary font-bold'>
-                Environment Variables & Secrets
+                Project Environments
               </h2>
               <button
                 type='button'
+                onClick={() => setShowAddEnvModal(true)}
                 className='px-3 py-1 border border-kr0n-line bg-white/5 text-white text-xs hover:border-white transition-colors font-bold'
               >
-                + Add Variable
+                + Create Environment
               </button>
             </div>
 
             <div className='border border-kr0n-line bg-kr0n-surface divide-y divide-kr0n-line-soft text-xs'>
-              {[
-                { key: 'DATABASE_URL', val: 'postgresql://kr0n_admin:••••••••@edge.db:5432/main' },
-                { key: 'KR0N_SIGNING_SECRET', val: 'kr0n_sec_••••••••••••••••••••••••' },
-                { key: 'REDIS_CACHE_URL', val: 'redis://default:••••••••@cache.kr0n.internal:6379' },
-                { key: 'NODE_ENV', val: 'production' },
-              ].map((item) => (
-                <div key={item.key} className='p-4 flex items-center justify-between'>
-                  <span className='font-bold text-white'>{item.key}</span>
-                  <span className='text-kr0n-text-secondary font-mono'>{item.val}</span>
+              {(project.environments || ['production', 'staging']).map((env) => (
+                <div key={env} className='p-4 flex items-center justify-between'>
+                  <div className='flex items-center gap-3'>
+                    <span className={`w-2 h-2 rounded-full ${env === 'production' ? 'bg-emerald-400' : 'bg-blue-400'}`} />
+                    <span className='font-bold text-white uppercase'>{env}</span>
+                  </div>
+                  <span className='px-2 py-0.5 border border-kr0n-line text-[10px] text-kr0n-text-secondary uppercase font-bold'>
+                    {env === project.environment ? 'Selected' : 'Active'}
+                  </span>
                 </div>
               ))}
             </div>
           </div>
         )}
       </div>
+
+      {/* ─── Add Service Wizard Modal ─── */}
+      <AddServiceWizardModal
+        isOpen={showAddServiceModal}
+        onClose={() => setShowAddServiceModal(false)}
+        projectId={projectId}
+        onServiceCreated={(serviceData) => addService(projectId, serviceData)}
+      />
+
+      {/* ─── Create Environment Modal ─── */}
+      {showAddEnvModal && (
+        <div className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm font-mono text-xs'>
+          <div className='max-w-md w-full border border-kr0n-line bg-kr0n-surface p-6 space-y-4 shadow-2xl'>
+            <h3 className='text-sm font-bold text-white uppercase'>Create Environment</h3>
+            <p className='text-kr0n-text-secondary font-sans'>
+              Provision a new isolated branch environment (e.g. preview, canary, test).
+            </p>
+            <form onSubmit={handleAddEnvSubmit} className='space-y-4'>
+              <input
+                type='text'
+                required
+                value={newEnvName}
+                onChange={(e) => setNewEnvName(e.target.value)}
+                placeholder='Environment name'
+                className='w-full bg-kr0n-black border border-kr0n-line px-3 py-2 text-white outline-none focus:border-white'
+              />
+              <div className='flex items-center justify-end gap-3'>
+                <button
+                  type='button'
+                  onClick={() => setShowAddEnvModal(false)}
+                  className='px-3 py-1.5 border border-kr0n-line text-kr0n-text-secondary hover:text-white'
+                >
+                  Cancel
+                </button>
+                <button
+                  type='submit'
+                  className='clipped-btn bg-white hover:bg-neutral-200 text-black px-4 py-1.5 font-bold uppercase'
+                >
+                  Create
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

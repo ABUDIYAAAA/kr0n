@@ -90,7 +90,7 @@ npx @kr0n/cli --help`}
           </h2>
           <p className="text-sm text-zinc-300 leading-relaxed">
             Authenticate your local developer machine with your kr0n workspace. This launches
-            a browser handshake with <Link href="/authentication/login" className="text-white underline underline-offset-4">/authentication/login</Link> and
+            a browser handshake with <Link href="/login" className="text-white underline underline-offset-4">/login</Link> and
             stores an encrypted session token in <code className="text-white font-mono text-xs">~/.kron/auth.json</code>:
           </p>
 
@@ -109,7 +109,7 @@ npx @kr0n/cli --help`}
             Local Project Import (kron import --local)
           </h2>
           <p className="text-sm text-zinc-300 leading-relaxed">
-            As referenced in the New Project dashboard (<Link href="/dashboard/projects/importrepo" className="text-white underline underline-offset-4">/dashboard/projects/importrepo</Link>),
+            As referenced in the New Service workflow (<Link href="/projects/proj_orvea_prod?action=add-service" className="text-white underline underline-offset-4">Add Service Wizard</Link>),
             you can import any local codebase without connecting through the web interface:
           </p>
 

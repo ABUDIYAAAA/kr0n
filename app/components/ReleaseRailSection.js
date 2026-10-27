@@ -249,7 +249,7 @@ export default function ReleaseRailSection() {
 						{/* Left: Stage Description (col-span-5) */}
 						<div className='lg:col-span-5 space-y-4'>
 							<div className='flex items-center gap-3 text-xs font-mono text-[#858C95]'>
-								<span className='text-white font-bold'>{activeNode.index} //</span>
+								<span className='text-white font-bold'>{activeNode.index} {'//'}</span>
 								<span className='uppercase tracking-widest text-white font-bold'>{activeNode.name}</span>
 								<span className='text-[#363D47]'>—</span>
 								<span className='text-[10px] px-2 py-0.5 border border-[#363D47] bg-[#15191E] font-mono text-[#C4C8CE]'>

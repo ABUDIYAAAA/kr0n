@@ -80,7 +80,7 @@ export default function CodeToRelease() {
 
 						{/* Editorial Code Block with Active Pulse on Execution Line */}
 						<div className='py-6 font-mono text-xs sm:text-sm leading-relaxed text-[#C4C8CE] space-y-1 overflow-x-auto'>
-							<div className='text-[#4E5560] text-xs pb-2 select-none'>// 01: Declare service configuration</div>
+							<div className='text-[#4E5560] text-xs pb-2 select-none'>{'// 01: Declare service configuration'}</div>
 							<div>
 								<span className='text-[#858C95]'>import</span> &#123; deploy &#125;{' '}
 								<span className='text-[#858C95]'>from</span>{' '}

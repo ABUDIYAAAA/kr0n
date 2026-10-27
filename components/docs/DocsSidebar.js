@@ -110,13 +110,13 @@ export default function DocsSidebar({ activeSectionId = null, currentSubsections
           </div>
 
           <Link
-            href="/dashboard/projects"
+            href="/projects"
             className="flex items-center justify-between px-3 py-2 text-xs text-white/40 hover:text-white transition">
             <span>Spatial Workspace</span>
             <span className="text-[9px] font-mono text-white/20">CANVAS</span>
           </Link>
           <Link
-            href="/dashboard/deployments"
+            href="/projects/proj_orvea_prod/services/svc_api/deployments"
             className="flex items-center justify-between px-3 py-2 text-xs text-white/40 hover:text-white transition">
             <span>Deployment Stream</span>
             <span className="text-[9px] font-mono text-white/20">LOGS_V1</span>

@@ -89,7 +89,7 @@ export default function DocsHeader() {
 
             {/* DASHBOARD LINK */}
             <Link
-              href="/dashboard/projects"
+              href="/projects"
               className="bg-white text-black px-4 py-1.5 text-xs font-bold uppercase tracking-wider clipped-button hover:bg-zinc-200 transition-colors inline-flex items-center gap-1.5">
               <span>Console</span>
               <ArrowUpRight size={13} />
