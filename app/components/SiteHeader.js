@@ -50,7 +50,8 @@ export default function SiteHeader({ onOpenCommand }) {
 
 				{/* Right Affordances */}
 				<div className='flex items-center gap-3 sm:gap-4'>
-					{/* Search Trigger Button */}
+					<Link href='/dashboard' className='border border-white/25 px-3 py-2 text-xs font-mono uppercase text-white hover:bg-white/10'>Dashboard</Link>
+                    {/* Search Trigger Button */}
 					<button
 						type='button'
 						onClick={onOpenCommand}

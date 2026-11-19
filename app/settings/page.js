@@ -47,8 +47,7 @@ export default function GlobalSettingsPage() {
   const [generatedToken, setGeneratedToken] = useState(null);
   const [copiedToken, setCopiedToken] = useState(false);
 
-  // GitHub connection simulation
-  const [githubConnected, setGithubConnected] = useState(settings.github.connected);
+
 
   // Profile fields
   const [profileName, setProfileName] = useState(settings.profile.fullName);
@@ -304,48 +303,11 @@ export default function GlobalSettingsPage() {
 
         {/* ─── TAB 4: GITHUB APP ─── */}
         {activeTab === 'github' && (
-          <div className='space-y-6 font-mono text-xs'>
-            <div className='border-b border-kr0n-line-soft pb-2'>
-              <h2 className='text-sm font-bold text-white uppercase'>GitHub App Integration</h2>
-              <p className='text-kr0n-text-secondary font-sans text-xs mt-0.5'>
-                Webhook triggers, commit status checks, and automated preview deployments.
-              </p>
-            </div>
-
-            <div className='p-5 border border-kr0n-line bg-kr0n-surface space-y-4 max-w-2xl'>
-              <div className='flex items-center justify-between'>
-                <div className='flex items-center gap-3'>
-                  <div className='w-9 h-9 border border-kr0n-line bg-kr0n-black flex items-center justify-center text-white'>
-                    <GitBranch size={16} />
-                  </div>
-                  <div>
-                    <span className='text-white font-bold block text-sm'>
-                      {githubConnected ? 'Connected to GitHub' : 'Disconnected'}
-                    </span>
-                    <span className='text-kr0n-text-secondary text-[11px] block mt-0.5'>
-                      {githubConnected ? `@${settings.github.account} · 14 repositories authorized` : 'No GitHub account linked'}
-                    </span>
-                  </div>
-                </div>
-
-                <button
-                  type='button'
-                  onClick={() => setGithubConnected(!githubConnected)}
-                  className={`px-3 py-1.5 border text-xs font-bold uppercase tracking-wider transition-colors ${
-                    githubConnected
-                      ? 'border-kr0n-line text-kr0n-text-secondary hover:text-red-400 hover:border-red-400/40'
-                      : 'bg-white text-black hover:bg-neutral-200'
-                  }`}
-                >
-                  {githubConnected ? 'Disconnect' : 'Connect Account'}
-                </button>
-              </div>
-
-              <div className='pt-3 border-t border-kr0n-line-soft text-[11px] text-kr0n-text-secondary space-y-1 font-sans leading-relaxed'>
-                <p>kr0n accesses repository contents hermetically to build container artifacts. No code is permanently retained outside the ephemeral BuildKit cache.</p>
-              </div>
-            </div>
-          </div>
+          <section className='space-y-4 text-sm'>
+            <h2 className='font-semibold text-white'>GitHub App integration</h2>
+            <p className='text-kr0n-muted'>Manage organization installations and choose which repositories KR0N can access.</p>
+            <Link href='/projects/new' className='inline-block border border-kr0n-line px-4 py-3 text-white hover:bg-white/10'>Manage GitHub connections</Link>
+          </section>
         )}
 
         {/* ─── TAB 5: SECURITY & SESSIONS ─── */}

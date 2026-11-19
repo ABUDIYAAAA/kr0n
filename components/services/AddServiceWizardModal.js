@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   X,
@@ -97,12 +98,12 @@ const APPROVED_TEMPLATES = [
   },
 ];
 
-const FIXTURE_REPOS = [
-  { name: 'github.com/kr0n-org/orvea-core', defaultBranch: 'main', detected: 'Go FastHTTP API (gVisor ready)' },
-  { name: 'github.com/kr0n-org/orvea-web', defaultBranch: 'main', detected: 'Next.js 15 App Router (Serverless)' },
-  { name: 'github.com/kr0n-org/cart-service', defaultBranch: 'main', detected: 'Node.js 22 Express / Fastify' },
-  { name: 'github.com/kr0n-org/auth-token-engine', defaultBranch: 'main', detected: 'Rust Axum Microservice' },
-];
+function sourceDraft() {
+  try {
+    const draft = JSON.parse(localStorage.getItem('kr0n_github_project_draft') || '{}');
+    return { name: draft.repository ? `github.com/${draft.repository}` : '', defaultBranch: draft.branch || '', rootDir: draft.rootDirectory || '/' };
+  } catch { return { name: '', defaultBranch: '', rootDir: '/' }; }
+}
 
 export default function AddServiceWizardModal({
   isOpen,
@@ -116,8 +117,8 @@ export default function AddServiceWizardModal({
   const [step, setStep] = useState(1);
   const [serviceType, setServiceType] = useState('app'); // 'app' | 'template'
   const [selectedTemplate, setSelectedTemplate] = useState(APPROVED_TEMPLATES[0]);
-  const [selectedRepo, setSelectedRepo] = useState(FIXTURE_REPOS[0]);
-  const [branch, setBranch] = useState('main');
+  const [selectedRepo, setSelectedRepo] = useState(sourceDraft);
+  const [branch, setBranch] = useState(() => sourceDraft().defaultBranch || 'main');
   const [serviceName, setServiceName] = useState('');
   const [runtime, setRuntime] = useState('Long-running');
   const [port, setPort] = useState('8080');
@@ -146,13 +147,6 @@ export default function AddServiceWizardModal({
     setBuildCommand('docker pull ' + tmpl.defaultImage);
     setStartCommand('docker run ' + tmpl.defaultImage);
     setEnvVars(tmpl.defaultEnv);
-  };
-
-  const handleSelectRepo = (repo) => {
-    setSelectedRepo(repo);
-    const inferred = repo.name.split('/').pop().replace(/[^a-z0-9]/gi, '-');
-    setServiceName(inferred);
-    setBranch(repo.defaultBranch);
   };
 
   const handleAddEnvVar = () => {
@@ -187,7 +181,8 @@ export default function AddServiceWizardModal({
           runtime,
           runtimeLabel: serviceType === 'template' ? selectedTemplate.name : `${runtime} Workload`,
           repository: serviceType === 'template' ? `template/${selectedTemplate.id}` : selectedRepo.name,
-          branch,
+          branch: branch || selectedRepo.defaultBranch,
+          rootDir: selectedRepo.rootDir,
           port: port ? Number(port) : 8080,
           buildCommand,
           startCommand,
@@ -288,34 +283,10 @@ export default function AddServiceWizardModal({
             <div className='space-y-4'>
               {serviceType === 'app' ? (
                 <>
-                  <div className='space-y-1'>
-                    <h3 className='text-sm font-bold text-white font-mono uppercase'>Select Git Repository</h3>
-                    <p className='text-xs text-kr0n-text-secondary'>
-                      Connected through verified GitHub integration (@kr0n-org).
-                    </p>
-                  </div>
-                  <div className='space-y-2 border border-kr0n-line bg-kr0n-surface divide-y divide-kr0n-line-soft'>
-                    {FIXTURE_REPOS.map((repo) => (
-                      <div
-                        key={repo.name}
-                        onClick={() => handleSelectRepo(repo)}
-                        className={`p-4 flex items-center justify-between cursor-pointer transition-colors ${
-                          selectedRepo.name === repo.name ? 'bg-white/[0.06]' : 'hover:bg-white/[0.02]'
-                        }`}
-                      >
-                        <div className='flex items-center gap-3'>
-                          <GitBranch size={15} className='text-kr0n-muted' />
-                          <div>
-                            <div className='text-xs font-mono font-bold text-white'>{repo.name}</div>
-                            <div className='text-[10px] font-mono text-kr0n-text-secondary mt-0.5'>{repo.detected}</div>
-                          </div>
-                        </div>
-                        <span className='px-2 py-0.5 border border-kr0n-line text-[10px] font-mono text-kr0n-text-secondary'>
-                          {repo.defaultBranch}
-                        </span>
-                      </div>
-                    ))}
-                  </div>
+                  <h3 className='text-sm font-bold text-white'>GitHub source</h3>
+                  <p className='text-sm text-kr0n-muted'>{selectedRepo.name || 'Choose a repository in the GitHub source picker first.'}</p>
+                  {selectedRepo.name && <p className='text-xs text-kr0n-muted'>{selectedRepo.defaultBranch} · {selectedRepo.rootDir}</p>}
+                  <Link href='/projects/new' className='inline-block border border-kr0n-line p-3 text-sm text-white'>Choose GitHub repository</Link>
                 </>
               ) : (
                 <>
@@ -584,6 +555,7 @@ export default function AddServiceWizardModal({
               <button
                 type='button'
                 onClick={() => setStep(step + 1)}
+                disabled={step === 2 && serviceType === 'app' && !selectedRepo.name}
                 className='clipped-btn inline-flex items-center gap-1.5 bg-white hover:bg-neutral-200 text-black px-4 py-2 uppercase font-bold tracking-wider transition-colors'
               >
                 <span>Continue</span>

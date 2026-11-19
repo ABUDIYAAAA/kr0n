@@ -316,7 +316,7 @@ export default function AppShell({ children }) {
 
           {/* New project */}
           <Link
-            href='/projects'
+            href='/projects/new'
             className='clipped-btn flex items-center gap-1.5 bg-white hover:bg-neutral-200 text-black px-3 py-1.5 text-xs font-mono uppercase tracking-wider font-bold transition-colors'
           >
             <Plus size={13} />

@@ -9,8 +9,10 @@ import NewProjectModal from './NewProjectModal';
 import { PROJECTS } from '@/lib/projects-data';
 import { Plus, Compass, CheckCircle2, AlertCircle } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 export default function ProjectsWorkspace() {
+  const router = useRouter();
   const [projects, setProjects] = useState(() =>
     PROJECTS.map((p) => ({
       ...p,
@@ -137,9 +139,9 @@ export default function ProjectsWorkspace() {
   // Collect connector pairs
   const connectors = [];
   const seen = new Set();
-  projects.forEach((p) => {
+  filteredProjects.forEach((p) => {
     if (p.linkedTo && !seen.has(`${p.id}-${p.linkedTo}`) && !seen.has(`${p.linkedTo}-${p.id}`)) {
-      const target = projects.find((t) => t.id === p.linkedTo);
+      const target = filteredProjects.find((t) => t.id === p.linkedTo);
       if (target) {
         connectors.push({ from: p, to: target });
         seen.add(`${p.id}-${p.linkedTo}`);
@@ -158,7 +160,7 @@ export default function ProjectsWorkspace() {
         projectCount={filteredProjects.length}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        onOpenNewProject={() => setIsNewModalOpen(true)}
+        onOpenNewProject={() => router.push("/projects/new")}
       />
 
       {/* Main Content Area: Canvas or Grid */}
@@ -242,7 +244,7 @@ export default function ProjectsWorkspace() {
                     </div>
                     <button
                       type='button'
-                      onClick={() => setIsNewModalOpen(true)}
+                      onClick={() => router.push("/projects/new")}
                       className='clipped-btn inline-flex items-center gap-2 bg-white hover:bg-neutral-200 text-black px-4 py-2 text-xs font-mono uppercase tracking-wider font-bold transition-colors'
                     >
                       <Plus size={13} />
