@@ -1,11 +1,31 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Search, Menu, X, ArrowUpRight } from 'lucide-react';
+import { Search, Menu, X, ArrowUpRight, LogOut, User } from 'lucide-react';
+import { getStoredUser, isAuthenticated, logout } from '@/lib/auth';
 
 export default function SiteHeader({ onOpenCommand }) {
 	const [mobileOpen, setMobileOpen] = useState(false);
+	const [currentUser, setCurrentUser] = useState(() => (typeof window !== 'undefined' && isAuthenticated() ? getStoredUser() : null));
+
+	useEffect(() => {
+		const updateAuth = () => {
+			if (isAuthenticated()) {
+				setCurrentUser(getStoredUser());
+			} else {
+				setCurrentUser(null);
+			}
+		};
+
+		window.addEventListener('kr0n_auth_change', updateAuth);
+		return () => window.removeEventListener('kr0n_auth_change', updateAuth);
+	}, []);
+
+	const handleLogout = async () => {
+		await logout();
+		setCurrentUser(null);
+	};
 
 	const links = [
 		{ name: 'Docs', href: '/docs' },
@@ -67,21 +87,53 @@ export default function SiteHeader({ onOpenCommand }) {
 						</kbd>
 					</button>
 
-					{/* Log In */}
-					<Link
-						href='/login'
-						className='hidden sm:inline-block text-xs font-mono uppercase text-white/60 hover:text-white px-2 py-1 transition-colors'
-					>
-						Log in
-					</Link>
+					{currentUser ? (
+						<>
+							{/* Console Link */}
+							<Link
+								href='/projects'
+								className='hidden sm:inline-block text-xs font-mono uppercase text-white/80 hover:text-white px-2 py-1 transition-colors'
+							>
+								Console
+							</Link>
 
-					{/* Primary Get Started Action */}
-					<Link
-						href='/docs/quick-start'
-						className='clipped-btn bg-white hover:bg-neutral-200 text-black px-4 py-1.5 text-xs font-mono uppercase tracking-wider font-bold transition-colors'
-					>
-						Get started
-					</Link>
+							{/* User Profile / Sign Out */}
+							<button
+								type='button'
+								onClick={handleLogout}
+								className='hidden sm:inline-flex items-center gap-1.5 text-xs font-mono uppercase text-[#858C95] hover:text-red-400 px-2 py-1 transition-colors'
+								title='Sign out'
+							>
+								<LogOut size={12} />
+								<span>Sign out</span>
+							</button>
+
+							<Link
+								href='/projects'
+								className='clipped-btn bg-white hover:bg-neutral-200 text-black px-4 py-1.5 text-xs font-mono uppercase tracking-wider font-bold transition-colors'
+							>
+								Workspace
+							</Link>
+						</>
+					) : (
+						<>
+							{/* Log In */}
+							<Link
+								href='/login'
+								className='hidden sm:inline-block text-xs font-mono uppercase text-white/60 hover:text-white px-2 py-1 transition-colors'
+							>
+								Log in
+							</Link>
+
+							{/* Primary Get Started Action */}
+							<Link
+								href='/signup'
+								className='clipped-btn bg-white hover:bg-neutral-200 text-black px-4 py-1.5 text-xs font-mono uppercase tracking-wider font-bold transition-colors'
+							>
+								Get started
+							</Link>
+						</>
+					)}
 
 					{/* Mobile Menu Toggle */}
 					<button
@@ -114,20 +166,44 @@ export default function SiteHeader({ onOpenCommand }) {
 					</nav>
 
 					<div className='pt-2 flex items-center justify-between'>
-						<Link
-							href='/login'
-							onClick={() => setMobileOpen(false)}
-							className='text-xs font-mono uppercase text-white/70'
-						>
-							Log in
-						</Link>
-						<Link
-							href='/docs/quick-start'
-							onClick={() => setMobileOpen(false)}
-							className='clipped-btn bg-white text-black px-4 py-1.5 text-xs font-mono uppercase tracking-wider font-bold'
-						>
-							Get started
-						</Link>
+						{currentUser ? (
+							<>
+								<Link
+									href='/projects'
+									onClick={() => setMobileOpen(false)}
+									className='text-xs font-mono uppercase text-white/70'
+								>
+									Console
+								</Link>
+								<button
+									type='button'
+									onClick={() => {
+										handleLogout();
+										setMobileOpen(false);
+									}}
+									className='text-xs font-mono uppercase text-red-400'
+								>
+									Sign out
+								</button>
+							</>
+						) : (
+							<>
+								<Link
+									href='/login'
+									onClick={() => setMobileOpen(false)}
+									className='text-xs font-mono uppercase text-white/70'
+								>
+									Log in
+								</Link>
+								<Link
+									href='/signup'
+									onClick={() => setMobileOpen(false)}
+									className='clipped-btn bg-white text-black px-4 py-1.5 text-xs font-mono uppercase tracking-wider font-bold'
+								>
+									Get started
+								</Link>
+							</>
+						)}
 					</div>
 				</div>
 			)}

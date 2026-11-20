@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
   LayoutGrid,
   Bell,
@@ -20,10 +20,12 @@ import {
   Rocket,
   Terminal,
   Sliders,
+  LogOut,
 } from 'lucide-react';
 import { useState, useEffect, useCallback } from 'react';
 import { APP_NAV_ITEMS } from '@/lib/projects-data';
 import { useKr0nStore } from '@/lib/kr0n-state';
+import { getStoredUser, logout } from '@/lib/auth';
 import CommandPalette from '@/components/navigation/CommandPalette';
 
 const ICON_MAP = {
@@ -39,8 +41,21 @@ const ICON_MAP = {
 
 export default function AppShell({ children }) {
   const pathname = usePathname();
+  const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
+  const [currentUser, setCurrentUser] = useState(() => (typeof window !== 'undefined' ? getStoredUser() : null));
+
+  useEffect(() => {
+    const handleAuthChange = () => setCurrentUser(getStoredUser());
+    window.addEventListener('kr0n_auth_change', handleAuthChange);
+    return () => window.removeEventListener('kr0n_auth_change', handleAuthChange);
+  }, []);
+
+  const handleLogout = async () => {
+    await logout();
+    router.push('/login');
+  };
 
   const { projects, alerts } = useKr0nStore();
   const firingCount = alerts.filter((a) => a.status === 'firing').length;
@@ -332,7 +347,29 @@ export default function AppShell({ children }) {
           {renderNavList()}
 
           {/* Sidebar footer */}
-          <div className='p-3 border-t border-kr0n-line shrink-0'>
+          <div className='p-3 border-t border-kr0n-line shrink-0 space-y-2'>
+            {currentUser && (
+              <div className='flex items-center justify-between gap-2 bg-white/[0.02] p-1.5 border border-kr0n-line-soft'>
+                <div className='flex items-center gap-2 min-w-0'>
+                  <div className='w-5 h-5 rounded bg-[#242930] text-white flex items-center justify-center font-mono text-[9px] font-bold shrink-0'>
+                    {(currentUser.displayName || currentUser.email || 'U').slice(0, 2).toUpperCase()}
+                  </div>
+                  <div className='min-w-0 truncate'>
+                    <div className='text-[10px] font-mono text-white truncate font-medium'>
+                      {currentUser.displayName || currentUser.email.split('@')[0]}
+                    </div>
+                  </div>
+                </div>
+                <button
+                  type='button'
+                  onClick={handleLogout}
+                  title='Sign Out'
+                  className='text-kr0n-muted hover:text-red-400 p-1 transition-colors'
+                >
+                  <LogOut size={12} />
+                </button>
+              </div>
+            )}
             <div className='text-[10px] font-mono text-kr0n-muted font-bold flex items-center justify-between tracking-wider'>
               <span>WORKSPACE</span>
               <span className='flex items-center gap-1.5'>

@@ -19,7 +19,7 @@ async function proxy(request, { params }) {
       const input = await request.json();
       body = JSON.stringify({ installation_id: input.installation_id, state: input.state });
     }
-    const base = process.env.KR0N_BACKEND_URL || 'http://localhost:8080';
+    const base = process.env.NEXT_PUBLIC_BACKEND_URL || process.env.KR0N_BACKEND_URL || 'http://localhost:8080';
     const upstream = await fetch(`${base}/api/v1/${target}${query.size ? '?' + query : ''}`, { method: request.method, headers, body, cache: 'no-store', redirect: 'error', signal: AbortSignal.timeout(15000) });
     return NextResponse.json(await upstream.json(), { status: upstream.status, headers: { 'Cache-Control': 'no-store' } });
   } catch {

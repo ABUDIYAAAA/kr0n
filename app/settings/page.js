@@ -20,8 +20,19 @@ import {
   X,
   ExternalLink,
   Lock,
+  LogOut,
+  AlertCircle,
 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import { useKr0nStore } from '@/lib/kr0n-state';
+import {
+  getStoredUser,
+  getSessions,
+  revokeSession as authRevokeSession,
+  changePassword,
+  logout,
+  isAuthenticated,
+} from '@/lib/auth';
 
 export default function GlobalSettingsPage() {
   const {
@@ -47,16 +58,71 @@ export default function GlobalSettingsPage() {
   const [generatedToken, setGeneratedToken] = useState(null);
   const [copiedToken, setCopiedToken] = useState(false);
 
+  const router = useRouter();
 
+  // Password change fields
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [passwordChangeLoading, setPasswordChangeLoading] = useState(false);
+  const [passwordChangeError, setPasswordChangeError] = useState('');
+  const [passwordChangeSuccess, setPasswordChangeSuccess] = useState('');
 
-  // Profile fields
-  const [profileName, setProfileName] = useState(settings.profile.fullName);
-  const [profileEmail, setProfileEmail] = useState(settings.profile.email);
+  // Profile fields (sync with authenticated user if available)
+  const storedUser = typeof window !== 'undefined' ? getStoredUser() : null;
+  const [profileName, setProfileName] = useState(storedUser?.displayName || settings.profile.fullName);
+  const [profileEmail, setProfileEmail] = useState(storedUser?.email || settings.profile.email);
   const [profileTimezone, setProfileTimezone] = useState(settings.profile.timezone);
   const [profileSaved, setProfileSaved] = useState(false);
 
   // Audit search
   const [auditQuery, setAuditQuery] = useState('');
+
+  const handleRevokeSession = async (sessionId) => {
+    try {
+      if (isAuthenticated()) {
+        await authRevokeSession(sessionId);
+      }
+    } catch (err) {
+      console.warn('[kr0n-settings] Session revoke remote notice:', err?.message);
+    }
+    revokeSession(sessionId);
+  };
+
+  const handleChangePassword = async (e) => {
+    e.preventDefault();
+    setPasswordChangeError('');
+    setPasswordChangeSuccess('');
+
+    if (!currentPassword || !newPassword) return;
+    if (newPassword !== confirmNewPassword) {
+      setPasswordChangeError('New passwords do not match');
+      return;
+    }
+    if (newPassword.length < 8) {
+      setPasswordChangeError('New password must be at least 8 characters');
+      return;
+    }
+
+    setPasswordChangeLoading(true);
+    try {
+      await changePassword(currentPassword, newPassword);
+      setPasswordChangeSuccess('Password changed successfully.');
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+    } catch (err) {
+      console.error('[kr0n-settings] Change password error:', err);
+      setPasswordChangeError(err.message || 'Failed to change password.');
+    } finally {
+      setPasswordChangeLoading(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    await logout();
+    router.push('/login');
+  };
 
   const handleCreateToken = (e) => {
     e.preventDefault();
@@ -340,7 +406,7 @@ export default function GlobalSettingsPage() {
                   {!sess.activeNow && (
                     <button
                       type='button'
-                      onClick={() => revokeSession(sess.id)}
+                      onClick={() => handleRevokeSession(sess.id)}
                       className='px-2.5 py-1 border border-kr0n-line hover:border-red-400 text-kr0n-text-secondary hover:text-red-400 transition-colors'
                     >
                       Revoke
@@ -348,6 +414,95 @@ export default function GlobalSettingsPage() {
                   )}
                 </div>
               ))}
+            </div>
+
+            {/* Change Password */}
+            <div className='border-t border-kr0n-line-soft pt-6 space-y-4 max-w-xl'>
+              <div>
+                <h3 className='text-xs font-bold text-white uppercase'>Change Password</h3>
+                <p className='text-kr0n-text-secondary font-sans text-xs mt-0.5'>
+                  Update your control plane password. Requires active authentication.
+                </p>
+              </div>
+
+              {passwordChangeError && (
+                <div className='border border-red-500/40 bg-red-500/10 p-2 text-xs font-mono text-red-400 flex items-center gap-2'>
+                  <AlertCircle size={14} className='shrink-0' />
+                  <span>{passwordChangeError}</span>
+                </div>
+              )}
+
+              {passwordChangeSuccess && (
+                <div className='border border-emerald-500/40 bg-emerald-500/10 p-2 text-xs font-mono text-emerald-400 flex items-center gap-2'>
+                  <CheckCircle2 size={14} className='shrink-0' />
+                  <span>{passwordChangeSuccess}</span>
+                </div>
+              )}
+
+              <form onSubmit={handleChangePassword} className='space-y-3'>
+                <div>
+                  <label className='block text-[11px] font-mono text-kr0n-muted mb-1'>Current Password</label>
+                  <input
+                    type='password'
+                    required
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder='••••••••'
+                    disabled={passwordChangeLoading}
+                    className='w-full bg-kr0n-black border border-kr0n-line focus:border-white text-xs text-white px-3 py-2 outline-none'
+                  />
+                </div>
+                <div>
+                  <label className='block text-[11px] font-mono text-kr0n-muted mb-1'>New Password</label>
+                  <input
+                    type='password'
+                    required
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder='Minimum 8 characters'
+                    disabled={passwordChangeLoading}
+                    className='w-full bg-kr0n-black border border-kr0n-line focus:border-white text-xs text-white px-3 py-2 outline-none'
+                  />
+                </div>
+                <div>
+                  <label className='block text-[11px] font-mono text-kr0n-muted mb-1'>Confirm New Password</label>
+                  <input
+                    type='password'
+                    required
+                    value={confirmNewPassword}
+                    onChange={(e) => setConfirmNewPassword(e.target.value)}
+                    placeholder='Confirm new password'
+                    disabled={passwordChangeLoading}
+                    className='w-full bg-kr0n-black border border-kr0n-line focus:border-white text-xs text-white px-3 py-2 outline-none'
+                  />
+                </div>
+                <button
+                  type='submit'
+                  disabled={passwordChangeLoading}
+                  className='clipped-btn bg-white hover:bg-neutral-200 text-black px-4 py-2 text-xs font-mono uppercase font-bold tracking-wider transition-colors disabled:opacity-50'
+                >
+                  {passwordChangeLoading ? 'Updating...' : 'Update Password'}
+                </button>
+              </form>
+            </div>
+
+            {/* Account Sign Out */}
+            <div className='border-t border-kr0n-line-soft pt-4'>
+              <div className='border border-red-500/20 bg-red-500/5 p-4 flex items-center justify-between gap-4'>
+                <div>
+                  <div className='text-xs font-bold text-white uppercase'>Sign Out of Workspace</div>
+                  <div className='text-[11px] text-kr0n-text-secondary font-sans mt-0.5'>
+                    Revokes your active session token and returns to login.
+                  </div>
+                </div>
+                <button
+                  type='button'
+                  onClick={handleSignOut}
+                  className='clipped-btn px-3 py-1.5 border border-red-500/40 hover:bg-red-500 hover:text-white text-red-400 text-xs font-mono uppercase font-bold tracking-wider transition-colors'
+                >
+                  Sign Out
+                </button>
+              </div>
             </div>
 
             <div className='p-3 border border-kr0n-line-soft bg-kr0n-black text-[11px] text-kr0n-muted font-sans leading-relaxed'>

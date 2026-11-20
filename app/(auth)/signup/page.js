@@ -3,7 +3,15 @@
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { Eye, EyeOff } from "lucide-react";
+import { Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
+import {
+  register,
+  login,
+  loginWithOAuth,
+  startGitHubOAuth,
+  getRedirectUrl,
+} from "@/lib/auth";
+import { useKr0nStore } from "@/lib/kr0n-state";
 
 function GithubIcon({ className = "w-4 h-4" }) {
   return (
@@ -38,6 +46,7 @@ function GoogleIcon({ className = "w-4 h-4" }) {
 
 export default function SignupPage() {
   const router = useRouter();
+  const { syncAuthUser } = useKr0nStore();
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -48,12 +57,17 @@ export default function SignupPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState(null);
   const [error, setError] = useState("");
+  const [successMsg, setSuccessMsg] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError("");
+    setSuccessMsg("");
 
-    if (!name || !email || !password || !confirmPassword) return;
+    if (!name || !email || !password || !confirmPassword) {
+      setError("All fields are required");
+      return;
+    }
 
     if (password !== confirmPassword) {
       setError("Passwords do not match");
@@ -66,14 +80,70 @@ export default function SignupPage() {
     }
 
     setIsLoading(true);
-    await new Promise((resolve) => setTimeout(resolve, 800));
-    router.push("/");
+    try {
+      // 1. Register with backend
+      await register(email, password, name);
+
+      // 2. Automatically log in to issue tokens and session
+      try {
+        const authData = await login(email, password);
+        if (authData?.user) {
+          syncAuthUser(authData.user);
+        }
+        setSuccessMsg("Account created and signed in! Redirecting...");
+        const targetUrl = getRedirectUrl();
+        if (targetUrl && !targetUrl.includes('/callback')) {
+          router.push(targetUrl);
+        } else {
+          router.push("/projects");
+        }
+      } catch (loginErr) {
+        // If email verification is mandatory before login
+        if (loginErr.message && loginErr.message.toLowerCase().includes('verif')) {
+          setSuccessMsg("Account created successfully! Please verify your email before signing in.");
+          setTimeout(() => router.push("/login"), 3000);
+        } else {
+          // Other login error, guide to login page
+          setSuccessMsg("Account registered! Please sign in with your credentials.");
+          setTimeout(() => router.push("/login"), 1500);
+        }
+      }
+    } catch (err) {
+      console.error("[kr0n-signup] Registration error:", err);
+      setError(err.message || "Failed to create account. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleOAuth = async (provider) => {
+    setError("");
+    setSuccessMsg("");
     setSocialLoading(provider);
-    await new Promise((resolve) => setTimeout(resolve, 500));
-    router.push("/callback");
+
+    try {
+      const res = await loginWithOAuth(provider);
+      if (res?.type === "redirect") {
+        return;
+      }
+      if (res?.user) {
+        syncAuthUser(res.user);
+      }
+      setSuccessMsg(`Authenticated with ${provider === "github" ? "GitHub" : "Google"}! Redirecting...`);
+
+      setTimeout(() => {
+        const targetUrl = getRedirectUrl();
+        if (targetUrl && !targetUrl.includes("/callback")) {
+          router.push(targetUrl);
+        } else {
+          router.push("/projects");
+        }
+      }, 500);
+    } catch (err) {
+      console.error(`[kr0n-oauth] ${provider} error:`, err);
+      setError(err.message || `Unable to authenticate with ${provider}.`);
+      setSocialLoading(null);
+    }
   };
 
   return (
@@ -93,8 +163,17 @@ export default function SignupPage() {
 
         {/* Error Notice */}
         {error && (
-          <div className="border border-[#ef4444]/40 bg-[#ef4444]/10 p-2.5 text-xs font-mono text-[#ef4444] mb-4">
-            {error}
+          <div className="border border-red-500/40 bg-red-500/10 p-2.5 text-xs font-mono text-red-400 mb-4 flex items-start gap-2">
+            <AlertCircle size={15} className="shrink-0 mt-0.5 text-red-400" />
+            <span className="leading-tight">{error}</span>
+          </div>
+        )}
+
+        {/* Success Notice */}
+        {successMsg && (
+          <div className="border border-emerald-500/40 bg-emerald-500/10 p-2.5 text-xs font-mono text-emerald-400 mb-4 flex items-start gap-2">
+            <CheckCircle size={15} className="shrink-0 mt-0.5 text-emerald-400" />
+            <span className="leading-tight">{successMsg}</span>
           </div>
         )}
 
