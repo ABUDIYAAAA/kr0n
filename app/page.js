@@ -1,6 +1,8 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { getMe, isAuthenticated } from '@/lib/auth';
 import SiteHeader from './components/SiteHeader';
 import HeroSection from './components/HeroSection';
 import ManifestoScene from './components/ManifestoScene';
@@ -10,7 +12,22 @@ import SiteFooter from './components/SiteFooter';
 import CommandLayer from './components/CommandLayer';
 
 export default function HomePage() {
+	const router = useRouter();
 	const [commandOpen, setCommandOpen] = useState(false);
+
+	useEffect(() => {
+		if (isAuthenticated()) {
+			router.replace('/dashboard');
+			return;
+		}
+		getMe()
+			.then((user) => {
+				if (user) {
+					router.replace('/dashboard');
+				}
+			})
+			.catch(() => {});
+	}, [router]);
 
 	useEffect(() => {
 		const handleKeyDown = (e) => {

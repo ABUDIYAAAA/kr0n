@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Search, Menu, X, ArrowUpRight, LogOut, User } from 'lucide-react';
-import { getStoredUser, isAuthenticated, logout } from '@/lib/auth';
+import { getStoredUser, getMe, isAuthenticated, logout } from '@/lib/auth';
 
 export default function SiteHeader({ onOpenCommand }) {
 	const [mobileOpen, setMobileOpen] = useState(false);
@@ -19,7 +19,18 @@ export default function SiteHeader({ onOpenCommand }) {
 		};
 
 		window.addEventListener('kr0n_auth_change', updateAuth);
-		return () => window.removeEventListener('kr0n_auth_change', updateAuth);
+
+		let mounted = true;
+		getMe().then((user) => {
+			if (mounted && user) {
+				setCurrentUser(user);
+			}
+		}).catch(() => {});
+
+		return () => {
+			mounted = false;
+			window.removeEventListener('kr0n_auth_change', updateAuth);
+		};
 	}, []);
 
 	const handleLogout = async () => {

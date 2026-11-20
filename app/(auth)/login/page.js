@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
@@ -11,6 +11,8 @@ import {
   requestPasswordReset,
   confirmPasswordReset,
   getRedirectUrl,
+  getMe,
+  isAuthenticated,
 } from "@/lib/auth";
 import { useKr0nStore } from "@/lib/kr0n-state";
 
@@ -57,6 +59,21 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
 
+  // Check if user is already logged in
+  useEffect(() => {
+    if (isAuthenticated()) {
+      router.replace("/dashboard");
+      return;
+    }
+    getMe()
+      .then((user) => {
+        if (user) {
+          router.replace("/dashboard");
+        }
+      })
+      .catch(() => {});
+  }, [router]);
+
   // Forgot password sub-flow states
   const [showForgot, setShowForgot] = useState(false);
   const [forgotSent, setForgotSent] = useState(false);
@@ -82,7 +99,7 @@ export default function LoginPage() {
       if (targetUrl && !targetUrl.includes('/callback')) {
         router.push(targetUrl);
       } else {
-        router.push("/projects");
+        router.push("/dashboard");
       }
     } catch (err) {
       console.error("[kr0n-login] Login error:", err);

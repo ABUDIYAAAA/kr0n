@@ -57,12 +57,21 @@ function CallbackHandler() {
         }
 
         try {
-          const backendUrl = getBackendUrl().replace(/\/+$/, '');
-          const verifier = typeof window !== 'undefined'
-            ? (sessionStorage.getItem('kr0n_oauth_code_verifier') || localStorage.getItem('kr0n_oauth_code_verifier') || '')
+          const isBrowser = typeof window !== 'undefined';
+          const backendUrl = isBrowser ? '' : getBackendUrl().replace(/\/+$/, '');
+
+          const isGoogle =
+            (isBrowser && (sessionStorage.getItem('kr0n_google_oauth_state') === state || localStorage.getItem('kr0n_google_oauth_state') === state)) ||
+            searchParams.get('provider') === 'google';
+
+          const verifier = isBrowser
+            ? (isGoogle
+                ? (sessionStorage.getItem('kr0n_google_oauth_code_verifier') || localStorage.getItem('kr0n_google_oauth_code_verifier') || '')
+                : (sessionStorage.getItem('kr0n_oauth_code_verifier') || localStorage.getItem('kr0n_oauth_code_verifier') || ''))
             : '';
 
-          let callbackUrl = `${backendUrl}/api/v1/auth/github/callback?code=${encodeURIComponent(code)}`;
+          const endpoint = isGoogle ? '/api/v1/auth/google/callback' : '/api/v1/auth/github/callback';
+          let callbackUrl = `${backendUrl}${endpoint}?code=${encodeURIComponent(code)}`;
           if (verifier) {
             callbackUrl += `&code_verifier=${encodeURIComponent(verifier)}`;
           }
@@ -81,17 +90,20 @@ function CallbackHandler() {
             throw new Error(data.error || `OAuth completion failed with HTTP ${res.status}`);
           }
 
-          if (data.access_token) {
+          if (data.access_token || data.user) {
             // Clean up temporary OAuth secrets
             if (typeof window !== 'undefined') {
               sessionStorage.removeItem('kr0n_oauth_code_verifier');
               localStorage.removeItem('kr0n_oauth_code_verifier');
               sessionStorage.removeItem('kr0n_oauth_state');
+              sessionStorage.removeItem('kr0n_google_oauth_code_verifier');
+              localStorage.removeItem('kr0n_google_oauth_code_verifier');
+              sessionStorage.removeItem('kr0n_google_oauth_state');
             }
 
             const authPayload = {
-              accessToken: data.access_token,
-              refreshToken: data.refresh_token,
+              accessToken: data.access_token || 'cookie-session',
+              refreshToken: data.refresh_token || null,
               tokenType: data.token_type || "Bearer",
               expiresIn: data.expires_in || 900,
               user: data.user ? {
@@ -114,7 +126,7 @@ function CallbackHandler() {
             }
             return;
           } else {
-            throw new Error("No access token received from authentication provider.");
+            throw new Error("No access token or user profile received from authentication provider.");
           }
         } catch (err) {
           console.error("[kr0n-oauth] Code exchange error:", err);

@@ -1,25 +1,41 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import ProjectCard from './ProjectCard';
 import ProjectConnector from './ProjectConnector';
 import ProjectsToolbar from './ProjectsToolbar';
 import NewProjectModal from './NewProjectModal';
-import { PROJECTS } from '@/lib/projects-data';
-import { Plus, Compass, CheckCircle2, AlertCircle } from 'lucide-react';
+import { useKr0nStore } from '@/lib/kr0n-state';
+import { Plus, Compass, CheckCircle2, AlertCircle, GitBranch } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 
 export default function ProjectsWorkspace() {
   const router = useRouter();
+  const { projects: storeProjects } = useKr0nStore();
+
   const [projects, setProjects] = useState(() =>
-    PROJECTS.map((p) => ({
+    (storeProjects || []).map((p, idx) => ({
       ...p,
-      _x: p.position.x,
-      _y: p.position.y,
+      _x: p._x || p.position?.x || 80 + (idx % 3) * 340,
+      _y: p._y || p.position?.y || 80 + Math.floor(idx / 3) * 220,
+      position: p.position || { x: 80 + (idx % 3) * 340, y: 80 + Math.floor(idx / 3) * 220 },
     }))
   );
+
+  const [prevStoreProjects, setPrevStoreProjects] = useState(storeProjects);
+  if (storeProjects !== prevStoreProjects) {
+    setPrevStoreProjects(storeProjects);
+    setProjects(
+      (storeProjects || []).map((p, idx) => ({
+        ...p,
+        _x: p._x || p.position?.x || 80 + (idx % 3) * 340,
+        _y: p._y || p.position?.y || 80 + Math.floor(idx / 3) * 220,
+        position: p.position || { x: 80 + (idx % 3) * 340, y: 80 + Math.floor(idx / 3) * 220 },
+      }))
+    );
+  }
   const [filter, setFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [draggingId, setDraggingId] = useState(null);

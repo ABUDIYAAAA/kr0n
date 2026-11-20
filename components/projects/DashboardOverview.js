@@ -1,5 +1,6 @@
 'use client';
 
+import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import Link from 'next/link';
 import {
@@ -11,7 +12,8 @@ import {
   Globe,
   GitBranch,
 } from 'lucide-react';
-import { PROJECTS } from '@/lib/projects-data';
+import { useKr0nStore } from '@/lib/kr0n-state';
+import { getStoredUser, getMe } from '@/lib/auth';
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -60,10 +62,34 @@ const RECENT_ACTIVITY = [
 ];
 
 export default function DashboardOverview() {
+  const { projects } = useKr0nStore();
+  const [currentUser, setCurrentUser] = useState(() => (typeof window !== 'undefined' ? getStoredUser() : null));
+
+  useEffect(() => {
+    let mounted = true;
+    getMe()
+      .then((user) => {
+        if (mounted && user) {
+          setCurrentUser(user);
+        }
+      })
+      .catch(() => {});
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
   const greeting = getGreeting();
-  const totalServices = PROJECTS.reduce((acc, p) => acc + p.services.length, 0);
-  const healthyCount = PROJECTS.filter((p) => p.status === 'healthy').length;
-  const attentionCount = PROJECTS.filter(
+  const userName =
+    currentUser?.displayName ||
+    currentUser?.display_name ||
+    currentUser?.name ||
+    (currentUser?.email ? currentUser.email.split('@')[0] : null);
+  const headingText = userName ? `${greeting}, ${userName}.` : `${greeting}.`;
+
+  const totalServices = (projects || []).reduce((acc, p) => acc + (p.services?.length || 0), 0);
+  const healthyCount = (projects || []).filter((p) => p.status === 'healthy').length;
+  const attentionCount = (projects || []).filter(
     (p) => p.status === 'warning' || p.status === 'failed'
   ).length;
 
@@ -79,7 +105,7 @@ export default function DashboardOverview() {
         >
           <div className='space-y-1.5'>
             <h1 className='text-2xl sm:text-3xl font-black font-mono tracking-tight text-white'>
-              {greeting}.
+              {headingText}
             </h1>
             <p className='text-xs font-mono uppercase tracking-wider text-kr0n-muted'>
               KR0N Edge Application Workspace &mdash; 5 clusters active
@@ -110,7 +136,7 @@ export default function DashboardOverview() {
             <div className='text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-wider font-bold'>
               Projects
             </div>
-            <div className='text-2xl font-bold text-white'>{PROJECTS.length}</div>
+            <div className='text-2xl font-bold text-white'>{projects.length}</div>
           </div>
           <div className='bg-kr0n-surface border border-kr0n-line p-4 space-y-1'>
             <div className='text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-wider font-bold'>
@@ -227,7 +253,7 @@ export default function DashboardOverview() {
           </div>
 
           <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3'>
-            {PROJECTS.filter(
+            {projects.filter(
               (p, i, arr) => arr.findIndex((x) => x.name === p.name) === i
             )
               .slice(0, 4)

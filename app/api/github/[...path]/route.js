@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-const allowed = /^orgs(?:\/[a-f0-9-]+\/github\/(?:installations(?:\/start|\/\d+)?|repositories(?:\/[^/]+\/[^/]+\/(?:branches|directories))?))?$/i;
+const allowed = /^orgs(?:\/[a-zA-Z0-9_-]+\/github\/(?:installations(?:\/start|\/\d+)?|repositories(?:\/[^/]+\/[^/]+\/(?:branches|directories))?))?$/i;
 async function proxy(request, { params }) {
   const { path } = await params;
   if (path.some(part => part === '.' || part === '..' || /[%/\\]/.test(part))) return NextResponse.json({ error: 'Invalid path' }, { status: 400 });
   const target = path.join('/');
   if (!allowed.test(target)) return NextResponse.json({ error: 'Unsupported GitHub endpoint' }, { status: 404 });
-  if (request.method !== 'GET' && !(request.method === 'POST' && /^orgs\/[a-f0-9-]+\/github\/installations$/i.test(target)) && !(request.method === 'DELETE' && /^orgs\/[a-f0-9-]+\/github\/installations\/\d+$/i.test(target))) return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
+  if (request.method !== 'GET' && !(request.method === 'POST' && /^orgs(?:\/[a-zA-Z0-9_-]+\/github\/installations)?$/i.test(target)) && !(request.method === 'DELETE' && /^orgs\/[a-zA-Z0-9_-]+\/github\/installations\/\d+$/i.test(target))) return NextResponse.json({ error: 'Method not allowed' }, { status: 405 });
   const origin = request.headers.get('origin');
   if (origin && origin !== new URL(request.url).origin) return NextResponse.json({ error: 'Invalid origin' }, { status: 403 });
   const query = new URLSearchParams();
