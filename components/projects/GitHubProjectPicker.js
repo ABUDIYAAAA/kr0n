@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search,
@@ -14,9 +14,18 @@ import {
   Trash2,
   Sparkles,
   Layers,
+  Loader2,
+  AlertCircle,
+  ExternalLink,
+  Check,
 } from 'lucide-react';
 import { githubApi } from '@/lib/github-api';
-import { getOrganizations, getMe, getStoredUser } from '@/lib/auth';
+import {
+  getOrganizations,
+  createOrganization,
+  getMe,
+  getStoredUser,
+} from '@/lib/auth';
 import { useKr0nStore } from '@/lib/kr0n-state';
 
 // Framework preset definitions
@@ -82,7 +91,7 @@ const APPLICATION_PRESETS = [
 // Helper to render framework / repo icon
 function RepoIcon({ type, name = '' }) {
   const lower = (type || name).toLowerCase();
-  if (lower.includes('vite') || lower.includes('isharu')) {
+  if (lower.includes('vite') || lower.includes('vue')) {
     return (
       <div className="w-5 h-5 rounded-full flex items-center justify-center bg-purple-500/20 border border-purple-500/40 text-purple-300">
         <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
@@ -91,7 +100,7 @@ function RepoIcon({ type, name = '' }) {
       </div>
     );
   }
-  if (lower.includes('next') || lower.includes('damru')) {
+  if (lower.includes('next') || lower.includes('react')) {
     return (
       <div className="w-5 h-5 rounded-full flex items-center justify-center bg-white/10 border border-white/30 text-white">
         <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor">
@@ -119,7 +128,15 @@ export default function GitHubProjectPicker() {
   const [organizations, setOrganizations] = useState([]);
   const [selectedOrgId, setSelectedOrgId] = useState('');
 
-  // Repositories State
+  // GitHub Connection & Installation State
+  const [loading, setLoading] = useState(true);
+  const [isGitHubConnected, setIsGitHubConnected] = useState(false);
+  const [installations, setInstallations] = useState([]);
+  const [activeInstallation, setActiveInstallation] = useState(null);
+  const [connecting, setConnecting] = useState(false);
+  const [connectError, setConnectError] = useState(null);
+
+  // Repositories State (ONLY REAL REPOSITORIES FROM GITHUB)
   const [repos, setRepos] = useState([]);
   const [selectedRepo, setSelectedRepo] = useState(null);
   const [branches, setBranches] = useState([]);
@@ -127,23 +144,12 @@ export default function GitHubProjectPicker() {
   const [directories, setDirectories] = useState(['./']);
   const [selectedDir, setSelectedDir] = useState('./');
 
-  // Search Filter
+  // Manual installation ID input fallback (e.g. if GitHub Setup URL did not auto-redirect)
+  const [manualInstallId, setManualInstallId] = useState('184138371');
+
+  // Search Filter & Account Dropdown
   const [search, setSearch] = useState('');
   const [showAccountMenu, setShowAccountMenu] = useState(false);
-
-  // Connect / Install GitHub App via backend
-  async function connectGitHubApp() {
-    if (!selectedOrgId) return;
-    try {
-      const data = await githubApi(`orgs/${selectedOrgId}/github/installations/start`);
-      if (data?.install_url) {
-        sessionStorage.setItem('kr0n_github_install', JSON.stringify({ org: selectedOrgId, state: data.state }));
-        window.location.assign(data.install_url);
-      }
-    } catch (err) {
-      console.warn('[kr0n] Failed to start GitHub App installation:', err?.message);
-    }
-  }
 
   // Configuration Form State (Screen 2)
   const [projectName, setProjectName] = useState('');
@@ -162,108 +168,241 @@ export default function GitHubProjectPicker() {
   const [envKey, setEnvKey] = useState('');
   const [envVal, setEnvVal] = useState('');
 
-  // Status & Loaders
+  // Deployment action status
   const [busy, setBusy] = useState(false);
 
-  // ─── 1. INITIALIZE USER & WORKSPACE ─────────────────────────────────
+  // Derived Account details
+  const accountLogin =
+    activeInstallation?.account_login ||
+    currentUser?.displayName ||
+    currentUser?.display_name ||
+    currentUser?.email?.split('@')[0] ||
+    'Developer';
+
+  const accountEmail = currentUser?.email || '';
+
+  // ─── 1. INITIALIZE WORKSPACE & CHECK GITHUB STATUS ──────────────────
+  const refreshGitHubState = useCallback(async (orgId) => {
+    if (!orgId) {
+      setIsGitHubConnected(false);
+      setRepos([]);
+      setLoading(false);
+      return;
+    }
+
+    try {
+      const instData = await githubApi(`orgs/${orgId}/github/installations`).catch(() => ({}));
+      const instList = instData?.installations || [];
+      setInstallations(instList);
+
+      if (instList.length > 0) {
+        setIsGitHubConnected(true);
+        const inst = instList[0];
+        setActiveInstallation(inst);
+
+        // Fetch real repositories from GitHub
+        const repoData = await githubApi(
+          `orgs/${orgId}/github/repositories?installation_id=${inst.installation_id}`
+        ).catch((err) => {
+          console.warn('[kr0n] Failed to fetch repositories:', err?.message);
+          return { repositories: [] };
+        });
+
+        const apiRepos = repoData?.repositories || [];
+        setRepos(
+          apiRepos.map((r, idx) => ({
+            ...r,
+            updatedDate: r.updated_at
+              ? new Date(r.updated_at).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                })
+              : 'Recently',
+          }))
+        );
+      } else {
+        setIsGitHubConnected(false);
+        setRepos([]);
+      }
+    } catch (err) {
+      console.warn('[kr0n] GitHub status check error:', err?.message);
+      setIsGitHubConnected(false);
+      setRepos([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     let active = true;
+
     (async () => {
       try {
-        const me = await getMe();
-        if (!active) return;
-        if (me) {
-          setCurrentUser(me);
+        const me = await getMe().catch(() => null);
+        if (active && me) setCurrentUser(me);
+
+        // Fetch organizations
+        let orgList = await getOrganizations().catch(() => []);
+
+        // If no organization exists for user, auto-create a default workspace
+        if (active && (!orgList || orgList.length === 0)) {
+          const defaultName = (me?.displayName || me?.display_name || 'My Workspace').trim();
+          const created = await createOrganization(defaultName).catch(() => null);
+          if (created) {
+            orgList = [created.organization || created];
+          }
         }
-        const orgList = await getOrganizations();
-        if (!active) return;
-        if (orgList && orgList.length > 0) {
+
+        if (active && orgList && orgList.length > 0) {
           setOrganizations(orgList);
-          setSelectedOrgId(orgList[0].id);
+          const firstOrgId = orgList[0].id;
+          setSelectedOrgId(firstOrgId);
+          await refreshGitHubState(firstOrgId);
+        } else {
+          setLoading(false);
         }
       } catch (err) {
         console.warn('[kr0n] Workspace init error:', err?.message);
+        if (active) setLoading(false);
       }
     })();
+
     return () => {
       active = false;
     };
-  }, []);
+  }, [refreshGitHubState]);
 
-  // ─── 2. FETCH REPOSITORIES FROM GITHUB / BACKEND ─────────────────────
-  useEffect(() => {
-    let active = true;
-    (async () => {
-      const defaultUserLogin = currentUser?.displayName || currentUser?.display_name || 'arpittripathi755';
-      const fallbackRepos = [
-        {
-          id: 'repo-damru-26',
-          name: 'Damru-26',
-          owner: defaultUserLogin,
-          full_name: `${defaultUserLogin}/Damru-26`,
-          private: true,
-          default_branch: 'main',
-          updatedDate: 'Nov 9',
-          type: 'nextjs',
-        },
-        {
-          id: 'repo-isharu',
-          name: 'Isharu',
-          owner: defaultUserLogin,
-          full_name: `${defaultUserLogin}/Isharu`,
-          private: true,
-          default_branch: 'main',
-          updatedDate: 'Nov 4',
-          type: 'vite',
-        },
-        {
-          id: 'repo-ship-safe',
-          name: 'Ship-Safe',
-          owner: defaultUserLogin,
-          full_name: `${defaultUserLogin}/Ship-Safe`,
-          private: true,
-          default_branch: 'main',
-          updatedDate: 'Nov 4',
-          type: 'react',
-        },
-      ];
+  // ─── 2. CONNECT / INSTALL GITHUB APP ────────────────────────────────
+  async function connectGitHubApp() {
+    setConnecting(true);
+    setConnectError(null);
 
-      try {
-        if (selectedOrgId) {
-          const instData = await githubApi(`orgs/${selectedOrgId}/github/installations`).catch(() => ({}));
-          const installations = instData?.installations || [];
-          if (installations.length > 0) {
-            const instId = installations[0].installation_id;
-            const repoData = await githubApi(
-              `orgs/${selectedOrgId}/github/repositories?installation_id=${instId}`
-            ).catch(() => ({}));
-            const apiRepos = repoData?.repositories || [];
-            if (active && apiRepos.length > 0) {
-              setRepos(
-                apiRepos.map((r, idx) => ({
-                  ...r,
-                  updatedDate: r.updated_at ? new Date(r.updated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : `Nov ${idx + 4}`,
-                }))
-              );
-              return;
-            }
+    try {
+      let orgId = selectedOrgId;
+
+      // Ensure organization is ready
+      if (!orgId) {
+        let orgList = await getOrganizations().catch(() => []);
+        if (!orgList || orgList.length === 0) {
+          const defaultName = (currentUser?.displayName || currentUser?.display_name || 'My Workspace').trim();
+          const created = await createOrganization(defaultName).catch(() => null);
+          if (created) {
+            orgList = [created.organization || created];
           }
         }
-      } catch (err) {
-        console.warn('[kr0n] Failed to fetch backend repos, using user repo list:', err?.message);
+        if (orgList && orgList.length > 0) {
+          orgId = orgList[0].id;
+          setSelectedOrgId(orgId);
+          setOrganizations(orgList);
+        }
       }
 
-      if (active) {
-        setRepos(fallbackRepos);
+      if (!orgId) {
+        throw new Error('Workspace initialization is taking longer than expected. Please try again.');
       }
-    })();
 
-    return () => {
-      active = false;
-    };
-  }, [selectedOrgId, currentUser]);
+      // Initiate installation via backend
+      const data = await githubApi(`orgs/${orgId}/github/installations/start`);
+      if (data?.install_url) {
+        const installMeta = JSON.stringify({ org: orgId, state: data.state });
+        sessionStorage.setItem('kr0n_github_install', installMeta);
+        localStorage.setItem('kr0n_github_install', installMeta);
+        window.location.assign(data.install_url);
+        return;
+      }
 
-  // ─── 3. FETCH REPO BRANCHES & DIRECTORIES ON SELECTION ──────────────
+      throw new Error(data?.error || 'No installation URL returned by GitHub gateway.');
+    } catch (err) {
+      console.error('[kr0n] Failed to connect GitHub:', err);
+      setConnectError(err.message || 'Unable to start GitHub connection.');
+      setConnecting(false);
+    }
+  }
+
+  // ─── 2B. LINK EXISTING INSTALLATION (MANUAL / FALLBACK) ─────────────
+  const linkExistingInstallation = useCallback(async (rawInput) => {
+    if (!rawInput) return;
+    const match = String(rawInput).match(/\d+/);
+    if (!match) {
+      setConnectError('Please enter a valid numeric GitHub installation ID or URL.');
+      return;
+    }
+    const installId = match[0];
+    setConnecting(true);
+    setConnectError(null);
+
+    try {
+      let orgId = selectedOrgId;
+      if (!orgId) {
+        let orgList = await getOrganizations().catch(() => []);
+        if (!orgList || orgList.length === 0) {
+          const defaultName = (currentUser?.displayName || currentUser?.display_name || 'My Workspace').trim();
+          const created = await createOrganization(defaultName).catch(() => null);
+          if (created) orgList = [created.organization || created];
+        }
+        if (orgList && orgList.length > 0) {
+          orgId = orgList[0].id;
+          setSelectedOrgId(orgId);
+          setOrganizations(orgList);
+        }
+      }
+      if (!orgId) throw new Error('Workspace initialization in progress. Please try again.');
+
+      // Check stored state token first, or get a fresh signed state token from backend
+      let stateToken = '';
+      try {
+        const stored = JSON.parse(
+          localStorage.getItem('kr0n_github_install') ||
+          sessionStorage.getItem('kr0n_github_install') ||
+          '{}'
+        );
+        if (stored?.state) stateToken = stored.state;
+      } catch {
+        // ignore JSON parse error
+      }
+
+      if (!stateToken) {
+        const startData = await githubApi(`orgs/${orgId}/github/installations/start`);
+        stateToken = startData?.state;
+      }
+
+      if (!stateToken) {
+        throw new Error('Unable to generate verification handshake. Please retry.');
+      }
+
+      await githubApi(`orgs/${orgId}/github/installations`, {
+        method: 'POST',
+        body: JSON.stringify({
+          installation_id: installId,
+          state: stateToken,
+        }),
+      });
+
+      sessionStorage.removeItem('kr0n_github_install');
+      localStorage.removeItem('kr0n_github_install');
+
+      await refreshGitHubState(orgId);
+    } catch (err) {
+      console.error('[kr0n] Failed to link installation:', err);
+      setConnectError(err.message || 'Failed to link GitHub installation.');
+    } finally {
+      setConnecting(false);
+    }
+  }, [selectedOrgId, currentUser, refreshGitHubState]);
+
+  // Auto-link if installation_id is passed in query params
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const query = new URLSearchParams(window.location.search);
+    const installParam = query.get('installation_id');
+    if (installParam && selectedOrgId) {
+      Promise.resolve().then(() => {
+        linkExistingInstallation(installParam);
+      });
+    }
+  }, [selectedOrgId, linkExistingInstallation]);
+
+  // ─── 3. FETCH BRANCHES & DIRS ON REPO SELECTION ─────────────────────
   useEffect(() => {
     if (!selectedRepo || !selectedOrgId) return;
     let active = true;
@@ -310,21 +449,17 @@ export default function GitHubProjectPicker() {
     };
   }, [selectedRepo, selectedOrgId, selectedBranch]);
 
-  // Handle clicking "Import" on a repository (transitions to Screen 2)
+  // Handle clicking "Import" on a repository (Screen 1 -> Screen 2)
   function handleSelectRepo(r) {
     setSelectedRepo(r);
-    // Project name suggestion e.g. isharu-ikng or isharu
     const cleanName = r.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
     setProjectName(cleanName);
     setSelectedBranch(r.default_branch || 'main');
     setSelectedDir('./');
 
-    // Preset auto-detection
     const lowerName = r.name.toLowerCase();
-    if (lowerName.includes('next') || lowerName.includes('damru')) {
+    if (lowerName.includes('next')) {
       setPresetId('nextjs');
-    } else if (lowerName.includes('vite') || lowerName.includes('isharu')) {
-      setPresetId('vite');
     } else if (lowerName.includes('remix')) {
       setPresetId('remix');
     } else if (lowerName.includes('nuxt')) {
@@ -348,20 +483,31 @@ export default function GitHubProjectPicker() {
     setEnvVal('');
   }
 
-  // Handle deploying the project
+  // Handle deploying the project (navigates to Deployment Details view)
   async function handleDeploy() {
     if (!projectName.trim()) return;
     setBusy(true);
 
-    const activePreset = APPLICATION_PRESETS.find((p) => p.id === presetId) || APPLICATION_PRESETS[0];
-    const buildCmd = buildOverride && customBuildCommand.trim() ? customBuildCommand.trim() : activePreset.buildCommand;
-    const outDir = outputOverride && customOutputDir.trim() ? customOutputDir.trim() : activePreset.outputDir;
-    const instCmd = installOverride && customInstallCommand.trim() ? customInstallCommand.trim() : activePreset.installCommand;
+    const activePreset =
+      APPLICATION_PRESETS.find((p) => p.id === presetId) || APPLICATION_PRESETS[0];
+    const buildCmd =
+      buildOverride && customBuildCommand.trim()
+        ? customBuildCommand.trim()
+        : activePreset.buildCommand;
+    const outDir =
+      outputOverride && customOutputDir.trim()
+        ? customOutputDir.trim()
+        : activePreset.outputDir;
+    const instCmd =
+      installOverride && customInstallCommand.trim()
+        ? customInstallCommand.trim()
+        : activePreset.installCommand;
 
     try {
       const newProj = addProject({
         name: projectName.trim(),
-        repository: selectedRepo?.full_name || `${accountLogin}/${selectedRepo?.name || projectName.trim()}`,
+        repository:
+          selectedRepo?.full_name || `${accountLogin}/${selectedRepo?.name || projectName.trim()}`,
         branch: selectedBranch || 'main',
         rootDir: selectedDir || './',
         runtime: activePreset.name,
@@ -373,7 +519,6 @@ export default function GitHubProjectPicker() {
         environment: 'production',
       });
 
-      // Navigate to project detail view
       router.push(`/projects/${newProj.id}`);
     } catch (err) {
       console.error('[kr0n] Deploy failed:', err);
@@ -381,23 +526,135 @@ export default function GitHubProjectPicker() {
     }
   }
 
-  const accountLogin =
-    currentUser?.displayName || currentUser?.display_name || currentUser?.name || 'arpittripathi755';
   const teamDisplayName =
-    organizations.find((o) => o.id === selectedOrgId)?.name || `${accountLogin}-4325's ...`;
+    organizations.find((o) => o.id === selectedOrgId)?.name || `${accountLogin}'s Team`;
 
   const filteredRepos = repos.filter((r) =>
     r.name.toLowerCase().includes(search.trim().toLowerCase())
   );
 
-  const currentPreset = APPLICATION_PRESETS.find((p) => p.id === presetId) || APPLICATION_PRESETS[0];
+  const currentPreset =
+    APPLICATION_PRESETS.find((p) => p.id === presetId) || APPLICATION_PRESETS[0];
 
   return (
     <main className="min-h-screen bg-[#000000] text-white flex flex-col justify-start items-center p-6 sm:p-12 font-sans selection:bg-white selection:text-black">
       {/* ═══════════════════════════════════════════════════════════════════ */}
-      {/* SCREEN 1: IMPORT GIT REPOSITORY (IMAGE 1)                           */}
+      {/* STATE 0: INITIAL LOADING SKELETON                                    */}
       {/* ═══════════════════════════════════════════════════════════════════ */}
-      {step === 'select' && (
+      {loading && (
+        <div className="w-full max-w-3xl space-y-5 animate-pulse">
+          <div className="h-8 w-64 bg-neutral-900 rounded" />
+          <div className="flex gap-3">
+            <div className="h-10 w-48 bg-neutral-900 rounded" />
+            <div className="h-10 flex-1 bg-neutral-900 rounded" />
+          </div>
+          <div className="h-48 border border-[#222222] bg-[#0c0c0c] rounded-lg flex items-center justify-center">
+            <Loader2 size={24} className="animate-spin text-neutral-500" />
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* STATE 1: GITHUB NOT CONNECTED (E.G. LOGGED IN VIA GOOGLE)           */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {!loading && !isGitHubConnected && step === 'select' && (
+        <div className="w-full max-w-2xl space-y-6">
+          <h1 className="text-2xl font-bold tracking-tight text-white">Import Git Repository</h1>
+
+          <div className="border border-[#222222] bg-[#0c0c0c] rounded-xl p-8 sm:p-10 text-center space-y-6 shadow-2xl">
+            {/* GitHub Octocat Icon Badge */}
+            <div className="w-16 h-16 rounded-2xl bg-white/5 border border-white/10 text-white mx-auto flex items-center justify-center shadow-inner">
+              <svg viewBox="0 0 24 24" width="32" height="32" fill="currentColor">
+                <path
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                  d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+                />
+              </svg>
+            </div>
+
+            <div className="space-y-2 max-w-md mx-auto">
+              <h2 className="text-xl font-bold text-white tracking-tight">
+                Connect your GitHub account
+              </h2>
+              <p className="text-sm text-neutral-400 leading-relaxed">
+                {accountEmail ? (
+                  <>
+                    You are signed in with <span className="text-white font-medium">{accountEmail}</span>.
+                    To view and import your repositories, connect your GitHub account.
+                  </>
+                ) : (
+                  'Connect your GitHub account or organization to import repositories and trigger deployments.'
+                )}
+              </p>
+            </div>
+
+            {connectError && (
+              <div className="p-3 bg-red-500/10 border border-red-500/30 rounded-lg text-xs text-red-400 flex items-center justify-center gap-2 max-w-md mx-auto">
+                <AlertCircle size={14} className="shrink-0" />
+                <span>{connectError}</span>
+              </div>
+            )}
+
+            {/* Primary Action Button */}
+            <div className="pt-2">
+              <button
+                type="button"
+                disabled={connecting}
+                onClick={connectGitHubApp}
+                className="bg-white text-black font-semibold text-sm px-6 py-2.5 rounded-md hover:bg-neutral-200 active:scale-[0.98] transition-all inline-flex items-center gap-2 cursor-pointer shadow-lg disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {connecting ? (
+                  <>
+                    <Loader2 size={16} className="animate-spin" />
+                    <span>Connecting to GitHub…</span>
+                  </>
+                ) : (
+                  <>
+                    <svg viewBox="0 0 24 24" width="16" height="16" fill="currentColor">
+                      <path d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+                    </svg>
+                    <span>Connect GitHub</span>
+                  </>
+                )}
+              </button>
+            </div>
+
+            {/* Manual Completion Box (if GitHub didn't auto-redirect after installation) */}
+            <div className="pt-4 border-t border-[#1c1c1c] max-w-md mx-auto space-y-2 text-left">
+              <span className="block text-xs text-neutral-400 font-medium">
+                Already installed the app on GitHub? Complete setup below:
+              </span>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  placeholder="Installation ID or URL (e.g. 184138371)"
+                  value={manualInstallId}
+                  onChange={(e) => setManualInstallId(e.target.value)}
+                  className="flex-1 bg-[#121212] border border-[#222222] focus:border-[#444444] rounded px-3 py-2 text-xs text-white outline-none font-mono"
+                />
+                <button
+                  type="button"
+                  disabled={connecting || !manualInstallId.trim()}
+                  onClick={() => linkExistingInstallation(manualInstallId)}
+                  className="bg-white text-black font-semibold text-xs px-4 py-2 rounded hover:bg-neutral-200 disabled:opacity-50 transition-colors shrink-0 cursor-pointer"
+                >
+                  {connecting ? 'Linking…' : 'Link App'}
+                </button>
+              </div>
+            </div>
+
+            <p className="text-[11px] text-neutral-500 font-mono">
+              Only repositories you grant access to will be synchronized.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {/* STATE 2: GITHUB CONNECTED - IMPORT GIT REPOSITORY (IMAGE 1)         */}
+      {/* ═══════════════════════════════════════════════════════════════════ */}
+      {!loading && isGitHubConnected && step === 'select' && (
         <div className="w-full max-w-3xl space-y-5">
           {/* Header Title */}
           <h1 className="text-2xl font-bold tracking-tight text-white">Import Git Repository</h1>
@@ -411,10 +668,14 @@ export default function GitHubProjectPicker() {
                 onClick={() => setShowAccountMenu(!showAccountMenu)}
                 className="flex items-center gap-2 bg-[#0c0c0c] border border-[#222222] hover:border-[#333333] rounded-md px-3 py-2 text-sm text-neutral-200 shrink-0 cursor-pointer transition-colors"
               >
-                {currentUser?.avatarUrl || currentUser?.avatar_url ? (
+                {activeInstallation?.avatar_url || currentUser?.avatarUrl || currentUser?.avatar_url ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
-                    src={currentUser.avatarUrl || currentUser.avatar_url}
+                    src={
+                      activeInstallation?.avatar_url ||
+                      currentUser?.avatarUrl ||
+                      currentUser?.avatar_url
+                    }
                     alt={accountLogin}
                     referrerPolicy="no-referrer"
                     className="w-5 h-5 rounded-full object-cover"
@@ -429,11 +690,15 @@ export default function GitHubProjectPicker() {
               </button>
 
               {showAccountMenu && (
-                <div className="absolute left-0 mt-1.5 w-60 border border-[#222222] bg-[#0c0c0c] rounded-md shadow-2xl py-1 z-30 text-xs">
-                  <div className="px-3 py-1.5 text-neutral-400 font-mono text-[10px] uppercase">Active Account</div>
+                <div className="absolute left-0 mt-1.5 w-64 border border-[#222222] bg-[#0c0c0c] rounded-md shadow-2xl py-1 z-30 text-xs">
+                  <div className="px-3 py-1.5 text-neutral-400 font-mono text-[10px] uppercase">
+                    Connected Account
+                  </div>
                   <div className="px-3 py-1.5 flex items-center justify-between text-white font-medium">
                     <span className="truncate">{accountLogin}</span>
-                    <span className="text-[10px] text-emerald-400 font-mono">Connected</span>
+                    <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
+                      <Check size={11} /> Connected
+                    </span>
                   </div>
                   <div className="border-t border-[#1c1c1c] my-1" />
                   <button
@@ -444,7 +709,17 @@ export default function GitHubProjectPicker() {
                     }}
                     className="w-full text-left px-3 py-2 text-neutral-300 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2 cursor-pointer"
                   >
-                    <GitBranch size={13} /> Link / Install GitHub App
+                    <GitBranch size={13} /> Manage Repository Permissions
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowAccountMenu(false);
+                      connectGitHubApp();
+                    }}
+                    className="w-full text-left px-3 py-2 text-neutral-300 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2 cursor-pointer"
+                  >
+                    <Plus size={13} /> Add Another GitHub Account
                   </button>
                 </div>
               )}
@@ -465,7 +740,25 @@ export default function GitHubProjectPicker() {
 
           {/* Repository List Box */}
           <div className="border border-[#222222] bg-[#0c0c0c] rounded-lg divide-y divide-[#1c1c1c] overflow-hidden">
-            {filteredRepos.length === 0 ? (
+            {repos.length === 0 ? (
+              <div className="p-8 text-center space-y-3">
+                <p className="text-sm text-neutral-400">
+                  No repositories found for this account.
+                </p>
+                <p className="text-xs text-neutral-500 max-w-sm mx-auto">
+                  Ensure you authorized KR0N to access your repositories on GitHub.
+                </p>
+                <div className="pt-2">
+                  <button
+                    type="button"
+                    onClick={connectGitHubApp}
+                    className="bg-white text-black font-semibold text-xs px-4 py-2 rounded-md hover:bg-neutral-200 transition-colors cursor-pointer"
+                  >
+                    Configure Repository Permissions
+                  </button>
+                </div>
+              </div>
+            ) : filteredRepos.length === 0 ? (
               <div className="p-8 text-center text-sm text-neutral-500">
                 No repositories found matching &ldquo;{search}&rdquo;
               </div>
@@ -478,9 +771,11 @@ export default function GitHubProjectPicker() {
                   {/* Left: Icon + Name + Lock + Date */}
                   <div className="flex items-center gap-2.5 min-w-0">
                     <RepoIcon type={r.type} name={r.name} />
-                    <span className="font-medium text-sm text-white">{r.name}</span>
+                    <span className="font-medium text-sm text-white truncate">{r.name}</span>
                     {r.private && <Lock size={12} className="text-neutral-400 shrink-0 ml-0.5" />}
-                    <span className="text-neutral-400 text-sm shrink-0">· {r.updatedDate || 'Nov 4'}</span>
+                    <span className="text-neutral-400 text-sm shrink-0">
+                      · {r.updatedDate || 'Recently'}
+                    </span>
                   </div>
 
                   {/* Right: White Import Button */}
@@ -517,8 +812,18 @@ export default function GitHubProjectPicker() {
           <div className="border border-[#222222] bg-[#121212] rounded-lg p-3.5 space-y-1">
             <p className="text-xs text-neutral-400">Importing from GitHub</p>
             <div className="flex items-center gap-3">
-              <svg viewBox="0 0 24 24" width="18" height="18" fill="currentColor" className="text-white shrink-0">
-                <path fillRule="evenodd" clipRule="evenodd" d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z" />
+              <svg
+                viewBox="0 0 24 24"
+                width="18"
+                height="18"
+                fill="currentColor"
+                className="text-white shrink-0"
+              >
+                <path
+                  fillRule="evenodd"
+                  clipRule="evenodd"
+                  d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
+                />
               </svg>
               <span className="font-semibold text-sm text-white">
                 {selectedRepo.full_name || `${accountLogin}/${selectedRepo.name}`}
@@ -529,13 +834,17 @@ export default function GitHubProjectPicker() {
             </div>
           </div>
 
-          <p className="text-sm text-neutral-300">Choose where you want to create the project and give it a name.</p>
+          <p className="text-sm text-neutral-300">
+            Choose where you want to create the project and give it a name.
+          </p>
 
           {/* Team / Workspace & Project Name Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-3">
             {/* Vercel Team / Workspace */}
             <div>
-              <label className="block text-xs text-neutral-400 font-medium mb-1.5">Vercel Team</label>
+              <label className="block text-xs text-neutral-400 font-medium mb-1.5">
+                Vercel Team
+              </label>
               <div className="border border-[#222222] bg-[#121212] rounded-md px-3 py-2 flex items-center justify-between text-sm text-white">
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
@@ -549,16 +858,20 @@ export default function GitHubProjectPicker() {
             </div>
 
             {/* Separator Slash */}
-            <span className="text-neutral-500 font-mono text-lg hidden sm:block pt-5 text-center">/</span>
+            <span className="text-neutral-500 font-mono text-lg hidden sm:block pt-5 text-center">
+              /
+            </span>
 
             {/* Project Name */}
             <div>
-              <label className="block text-xs text-neutral-400 font-medium mb-1.5">Project Name</label>
+              <label className="block text-xs text-neutral-400 font-medium mb-1.5">
+                Project Name
+              </label>
               <input
                 type="text"
                 value={projectName}
                 onChange={(e) => setProjectName(e.target.value)}
-                placeholder="isharu-ikng"
+                placeholder="my-app"
                 className="w-full border border-[#222222] bg-[#121212] rounded-md px-3 py-2 text-sm text-white outline-none focus:border-[#444444] transition-colors"
               />
             </div>
@@ -571,7 +884,9 @@ export default function GitHubProjectPicker() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Root Directory */}
             <div>
-              <label className="block text-xs text-neutral-400 font-medium mb-1.5">Root Directory</label>
+              <label className="block text-xs text-neutral-400 font-medium mb-1.5">
+                Root Directory
+              </label>
               <div className="border border-[#222222] bg-[#121212] rounded-md px-3 py-2 flex items-center gap-2 text-sm text-white">
                 <Folder size={14} className="text-neutral-400 shrink-0" />
                 <select
@@ -590,7 +905,9 @@ export default function GitHubProjectPicker() {
 
             {/* Application Preset */}
             <div>
-              <label className="block text-xs text-neutral-400 font-medium mb-1.5">Application Preset</label>
+              <label className="block text-xs text-neutral-400 font-medium mb-1.5">
+                Application Preset
+              </label>
               <div className="border border-[#222222] bg-[#121212] rounded-md px-3 py-2 flex items-center justify-between text-sm text-white">
                 <div className="flex items-center gap-2">
                   <RepoIcon type={currentPreset.id} />
@@ -621,7 +938,9 @@ export default function GitHubProjectPicker() {
               <div className="flex items-center gap-2">
                 <ChevronRight
                   size={14}
-                  className={`text-neutral-400 transition-transform ${expandBuildSettings ? 'rotate-90' : ''}`}
+                  className={`text-neutral-400 transition-transform ${
+                    expandBuildSettings ? 'rotate-90' : ''
+                  }`}
                 />
                 <span>Build and Output Settings</span>
               </div>
@@ -714,9 +1033,13 @@ export default function GitHubProjectPicker() {
               <div className="flex items-center gap-2">
                 <ChevronRight
                   size={14}
-                  className={`text-neutral-400 transition-transform ${expandEnvVars ? 'rotate-90' : ''}`}
+                  className={`text-neutral-400 transition-transform ${
+                    expandEnvVars ? 'rotate-90' : ''
+                  }`}
                 />
-                <span>Environment Variables {envVars.length > 0 ? `(${envVars.length})` : ''}</span>
+                <span>
+                  Environment Variables {envVars.length > 0 ? `(${envVars.length})` : ''}
+                </span>
               </div>
             </button>
 
@@ -749,13 +1072,18 @@ export default function GitHubProjectPicker() {
                 {envVars.length > 0 && (
                   <div className="border border-[#222222] rounded divide-y divide-[#1c1c1c] mt-2">
                     {envVars.map((v) => (
-                      <div key={v.key} className="p-2 flex items-center justify-between font-mono text-xs">
+                      <div
+                        key={v.key}
+                        className="p-2 flex items-center justify-between font-mono text-xs"
+                      >
                         <span className="text-white font-semibold">{v.key}</span>
                         <div className="flex items-center gap-2">
                           <span className="text-neutral-500">••••••••</span>
                           <button
                             type="button"
-                            onClick={() => setEnvVars((prev) => prev.filter((item) => item.key !== v.key))}
+                            onClick={() =>
+                              setEnvVars((prev) => prev.filter((item) => item.key !== v.key))
+                            }
                             className="text-neutral-400 hover:text-red-400"
                           >
                             <Trash2 size={12} />

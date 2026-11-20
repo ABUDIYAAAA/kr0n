@@ -3,6 +3,7 @@
 import { useRef, useCallback, useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   MoreHorizontal,
   ExternalLink,
@@ -31,6 +32,7 @@ export default function ProjectCard({
   onHeightChange,
 }) {
   const cardRef = useRef(null);
+  const router = useRouter();
   const dragState = useRef({ startX: 0, startY: 0, origX: 0, origY: 0, active: false });
   const [isExpanded, setIsExpanded] = useState(false);
   const [isHovered, setIsHovered] = useState(false);
@@ -103,6 +105,8 @@ export default function ProjectCard({
   const handlePointerUp = useCallback(
     (e) => {
       if (!dragState.current.active) return;
+      const dx = Math.abs(e.clientX - dragState.current.startX);
+      const dy = Math.abs(e.clientY - dragState.current.startY);
       dragState.current.active = false;
       const el = cardRef.current;
       if (el) {
@@ -111,8 +115,11 @@ export default function ProjectCard({
         } catch (_) {}
       }
       onDragEnd();
+      if (dx < 6 && dy < 6) {
+        router.push(`/projects/${project.id}`);
+      }
     },
-    [onDragEnd]
+    [onDragEnd, project.id, router]
   );
 
   // Keyboard navigation
@@ -224,9 +231,12 @@ export default function ProjectCard({
               />
 
               {/* Project Name */}
-              <span className='text-xs font-mono font-bold text-white uppercase tracking-wider truncate'>
+              <Link
+                href={`/projects/${project.id}`}
+                className='text-xs font-mono font-bold text-white uppercase tracking-wider truncate hover:underline cursor-pointer'
+              >
                 {project.name}
-              </span>
+              </Link>
             </div>
 
             {/* Right Controls: Expand & Options */}

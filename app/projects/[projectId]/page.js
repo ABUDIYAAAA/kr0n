@@ -4,563 +4,545 @@ import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   ArrowLeft,
-  Rocket,
+  Share2,
+  Terminal,
+  ChevronDown,
+  ChevronRight,
+  MoreHorizontal,
+  ExternalLink,
   Globe,
   GitBranch,
-  Cpu,
-  HardDrive,
-  Activity,
-  Layers,
-  Terminal,
+  GitCommit,
   Clock,
-  CheckCircle2,
-  ExternalLink,
-  Settings as SettingsIcon,
-  ShieldCheck,
+  ArrowUpCircle,
+  Check,
+  X,
+  Sliders,
   RefreshCw,
-  Copy,
-  Pause,
-  Play,
-  Plus,
 } from 'lucide-react';
-import { STATUS_CONFIG, DEPLOYMENT_STATUS_CONFIG } from '@/lib/projects-data';
 import { useKr0nStore } from '@/lib/kr0n-state';
-import AddServiceWizardModal from '@/components/services/AddServiceWizardModal';
-import BrandedNotFound from '@/components/common/BrandedNotFound';
+import { getStoredUser, getMe } from '@/lib/auth';
 
-export default function ProjectDetailPage({ params }) {
+export default function ProjectDeploymentDetailPage({ params }) {
   const unwrappedParams = use(params);
   const { projectId } = unwrappedParams;
 
-  const {
-    projects,
-    addService,
-    createEnvironment,
-    triggerDeploy: storeTriggerDeploy,
-  } = useKr0nStore();
+  const { projects } = useKr0nStore();
+  const [currentUser, setCurrentUser] = useState(() => getStoredUser());
 
-  const project = projects.find((p) => p.id === projectId);
+  // UI state
+  const [showLogs, setShowLogs] = useState(false);
+  const [expandSettings, setExpandSettings] = useState(false);
+  const [showShareToast, setShowShareToast] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const [showVisitDropdown, setShowVisitDropdown] = useState(false);
 
-  const [activeTab, setActiveTab] = useState('overview');
-  const [isDeploying, setIsDeploying] = useState(false);
-  const [logsPaused, setLogsPaused] = useState(false);
-  const [copiedKey, setCopiedKey] = useState(false);
-  const [showAddServiceModal, setShowAddServiceModal] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return new URLSearchParams(window.location.search).get('action') === 'add-service';
-    }
-    return false;
-  });
-  const [showAddEnvModal, setShowAddEnvModal] = useState(false);
-  const [newEnvName, setNewEnvName] = useState('');
-
-  const [logs, setLogs] = useState([
-    { id: 1, time: '14:22:01.102', level: 'INFO', msg: '[kr0n-edge] Router initialized on cluster us-east-1' },
-    { id: 2, time: '14:22:01.450', level: 'INFO', msg: '[kr0n-worker] Healthcheck probe responded 200 OK in 2.1ms' },
-    { id: 3, time: '14:22:03.881', level: 'DEBUG', msg: `[upstream] Connection pool warm: 12 connections ready` },
-    { id: 4, time: '14:22:08.219', level: 'INFO', msg: `[traffic] GET /api/v1/health status=200 latency=1.8ms` },
-    { id: 5, time: '14:22:14.041', level: 'INFO', msg: `[traffic] GET /api/v1/inventory status=200 latency=6.4ms (cache=HIT)` },
-  ]);
-
-  // Simulate streaming logs
+  // Sync current user profile
   useEffect(() => {
-    if (logsPaused) return;
-    const interval = setInterval(() => {
-      const now = new Date();
-      const timeStr = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3, '0');
-      const endpoints = ['/api/v1/checkout', '/api/v1/cart', '/api/v1/products', '/api/v1/auth/session'];
-      const ep = endpoints[Math.floor(Math.random() * endpoints.length)];
-      const lat = (Math.random() * 12 + 1).toFixed(1);
+    let active = true;
+    (async () => {
+      try {
+        const me = await getMe();
+        if (active && me) setCurrentUser(me);
+      } catch {
+        // Safe ignore
+      }
+    })();
+    return () => {
+      active = false;
+    };
+  }, []);
 
-      setLogs((prev) => [
-        ...prev.slice(-15),
-        {
-          id: Date.now(),
-          time: timeStr,
-          level: 'INFO',
-          msg: `[traffic] GET ${ep} status=200 latency=${lat}ms (edge-route=us-east)`,
-        },
-      ]);
-    }, 2800);
+  // Find project in store or synthesize safe fallback
+  const foundProject = projects.find((p) => p.id === projectId);
+  const project = foundProject || {
+    id: projectId,
+    name: projectId.replace(/^proj_/, '').replace(/_[a-z0-9]+$/, '') || 'foldbyfold',
+    url: `${projectId.replace(/^proj_/, '').replace(/_[a-z0-9]+$/, '') || 'foldbyfold-rho'}.vercel.app`,
+    repository: 'arpittripathi755/foldbyfold',
+    environment: 'production',
+    currentDeployment: {
+      version: 'v1.0.0',
+      branch: 'main',
+      commit: 'add0788',
+      commitMessage: 'made better',
+      duration: '6s',
+      timestamp: 'Oct 6',
+      status: 'ready',
+    },
+    services: [
+      {
+        id: 'svc_web',
+        name: 'web',
+        runtime: 'Vite',
+        buildCommand: 'npm run build',
+        outputDir: 'dist',
+      },
+    ],
+  };
 
-    return () => clearInterval(interval);
-  }, [logsPaused]);
+  const accountLogin =
+    currentUser?.displayName || currentUser?.display_name || currentUser?.name || 'arpittripathi755';
+  const cleanName = project.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
+  const primaryDomain = project.url || `${cleanName}.vercel.app`;
+  const branchDomain = `${cleanName}-git-main-${accountLogin}-4325s-projects.vercel.app`;
+  const commitDomain = `${cleanName}-7t7jl8gy2-${accountLogin}-4325s-projects.vercel.app`;
+  const deployment = project.currentDeployment || {
+    branch: 'main',
+    commit: 'add0788',
+    commitMessage: 'made better',
+    duration: '6s',
+    timestamp: 'Oct 6',
+    status: 'ready',
+  };
 
-  if (!project) {
-    return (
-      <BrandedNotFound
-        type='Project'
-        id={projectId}
-        backHref='/projects'
-        backLabel='Back to Projects'
-      />
-    );
+  function handleCopyShare() {
+    if (typeof window !== 'undefined') {
+      navigator.clipboard.writeText(`https://${primaryDomain}`);
+      setShowShareToast(true);
+      setTimeout(() => setShowShareToast(false), 3000);
+    }
   }
 
-  const handleTriggerDeploy = () => {
-    setIsDeploying(true);
-    setTimeout(() => {
-      if (project.services.length > 0) {
-        storeTriggerDeploy(project.services[0].id, 'Manual release from project overview');
-      }
-      setIsDeploying(false);
-    }, 2500);
-  };
-
-  const handleAddEnvSubmit = (e) => {
-    e.preventDefault();
-    if (!newEnvName.trim()) return;
-    createEnvironment(projectId, newEnvName.trim());
-    setNewEnvName('');
-    setShowAddEnvModal(false);
-  };
-
-  const status = STATUS_CONFIG[project.status] || STATUS_CONFIG.healthy;
-
   return (
-    <div className='flex-1 overflow-auto bg-kr0n-canvas text-kr0n-text'>
-      {/* ─── Breadcrumb Navigation Bar ─── */}
-      <div className='h-12 border-b border-kr0n-line bg-kr0n-canvas-raised/80 backdrop-blur-sm flex items-center justify-between px-6'>
-        <div className='flex items-center gap-3 text-xs font-mono'>
+    <main className="min-h-screen bg-[#000000] text-white flex flex-col font-sans selection:bg-white selection:text-black">
+      {/* ─── TOP HEADER BAR ─── */}
+      <header className="border-b border-[#1c1c1c] bg-[#000000] px-4 sm:px-8 py-3.5 flex items-center justify-between">
+        <div className="flex items-center gap-3">
           <Link
-            href='/projects'
-            className='flex items-center gap-1 text-kr0n-text-secondary hover:text-white transition-colors uppercase tracking-wider font-medium'
+            href="/projects"
+            className="text-neutral-400 hover:text-white transition-colors p-1 -ml-1 rounded"
+            title="Back to Projects"
           >
-            <ArrowLeft size={12} />
-            <span>Projects</span>
+            <ArrowLeft size={16} />
           </Link>
-          <span className='text-kr0n-muted'>/</span>
-          <span className='text-white font-bold uppercase tracking-wider'>
-            {project.name}
-          </span>
-          <span className='px-1.5 py-0.5 border border-kr0n-line text-[10px] text-kr0n-text-secondary uppercase font-bold'>
-            {project.environment}
-          </span>
+          <h1 className="text-base sm:text-lg font-semibold tracking-tight text-white">
+            Deployment Details
+          </h1>
         </div>
 
-        <div className='flex items-center gap-3'>
-          {project.url && (
-            <a
-              href={`https://${project.url}`}
-              target='_blank'
-              rel='noopener noreferrer'
-              className='hidden sm:flex items-center gap-1.5 text-xs font-mono text-kr0n-text-secondary hover:text-white transition-colors font-medium'
-            >
-              <span>{project.url}</span>
-              <ExternalLink size={11} />
-            </a>
-          )}
+        {/* Action Controls */}
+        <div className="flex items-center gap-2">
+          {/* Share Button */}
           <button
-            type='button'
-            disabled={isDeploying}
-            onClick={handleTriggerDeploy}
-            className='clipped-btn inline-flex items-center gap-2 bg-white hover:bg-neutral-200 text-black px-4 py-1.5 text-xs font-mono uppercase tracking-wider font-bold transition-colors disabled:opacity-50'
+            type="button"
+            onClick={handleCopyShare}
+            className="bg-[#0c0c0c] border border-[#222222] hover:border-[#333333] px-3 py-1.5 text-xs text-neutral-300 hover:text-white rounded-md flex items-center gap-1.5 transition-colors cursor-pointer"
           >
-            {isDeploying ? (
-              <>
-                <span className='w-3 h-3 border-2 border-black border-t-transparent rounded-full animate-spin' />
-                Deploying...
-              </>
-            ) : (
-              <>
-                <Rocket size={12} />
-                Deploy Release
-              </>
-            )}
+            <Share2 size={13} className="text-neutral-400" />
+            <span className="hidden sm:inline font-medium">Share</span>
           </button>
-        </div>
-      </div>
 
-      {/* ─── Project Header ─── */}
-      <div className='px-6 sm:px-8 py-8 border-b border-kr0n-line bg-kr0n-black/40'>
-        <div className='max-w-6xl mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6'>
-          <div className='space-y-2'>
-            <div className='flex items-center gap-3'>
-              <span
-                className={`w-3 h-3 rounded-full ${status.dotClass} ${
-                  project.status === 'healthy' || isDeploying ? 'animate-pulse' : ''
-                }`}
-              />
-              <h1 className='text-2xl sm:text-3xl font-black font-mono tracking-wider text-white uppercase'>
-                {project.name}
-              </h1>
-              <span className='px-2 py-0.5 border border-kr0n-line bg-kr0n-surface text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-widest font-bold'>
-                {project.environment}
-              </span>
-            </div>
-            <p className='text-sm text-kr0n-text-secondary max-w-xl'>
-              {project.description}
-            </p>
-          </div>
-
-          {/* Quick Metrics Cards */}
-          <div className='grid grid-cols-3 gap-3 font-mono text-xs'>
-            <div className='border border-kr0n-line bg-kr0n-surface p-3 min-w-28'>
-              <div className='text-[10px] text-kr0n-muted uppercase font-bold tracking-wider'>Services</div>
-              <div className='text-base font-bold text-white mt-1'>
-                {project.services.length} active
-              </div>
-            </div>
-            <div className='border border-kr0n-line bg-kr0n-surface p-3 min-w-28'>
-              <div className='text-[10px] text-kr0n-muted uppercase font-bold tracking-wider'>CPU Usage</div>
-              <div className='text-base font-bold text-white mt-1'>
-                {project.resources.cpu}%
-              </div>
-            </div>
-            <div className='border border-kr0n-line bg-kr0n-surface p-3 min-w-28'>
-              <div className='text-[10px] text-kr0n-muted uppercase font-bold tracking-wider'>Memory</div>
-              <div className='text-base font-bold text-white mt-1'>
-                {project.resources.memory}
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Navigation Tabs */}
-        <div className='max-w-6xl mx-auto flex items-center gap-6 mt-8 border-b border-kr0n-line-soft font-mono text-xs uppercase tracking-wider overflow-x-auto'>
-          {['overview', 'services', 'deployments', 'logs', 'environment'].map((tab) => (
-            <button
-              key={tab}
-              type='button'
-              onClick={() => setActiveTab(tab)}
-              className={`pb-3 border-b-2 transition-colors whitespace-nowrap ${
-                activeTab === tab
-                  ? 'border-white text-white font-bold'
-                  : 'border-transparent text-kr0n-text-secondary hover:text-white font-medium'
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-          <Link
-            href={`/projects/${project.id}/settings`}
-            className='pb-3 border-b-2 border-transparent text-kr0n-text-secondary hover:text-white font-medium whitespace-nowrap flex items-center gap-1.5'
+          {/* Logs Button */}
+          <button
+            type="button"
+            onClick={() => setShowLogs(true)}
+            className="bg-[#0c0c0c] border border-[#222222] hover:border-[#333333] px-3 py-1.5 text-xs text-neutral-300 hover:text-white rounded-md flex items-center gap-1.5 transition-colors cursor-pointer"
           >
-            <SettingsIcon size={12} />
-            <span>Settings</span>
-          </Link>
-        </div>
-      </div>
+            <Terminal size={13} className="text-neutral-400" />
+            <span className="font-medium">Logs</span>
+          </button>
 
-      {/* ─── Tab Content ─── */}
-      <div className='max-w-6xl mx-auto px-6 sm:px-8 py-8 space-y-8'>
-        {/* Services Overview */}
-        {(activeTab === 'overview' || activeTab === 'services') && (
-          <div className='space-y-4'>
-            <div className='flex items-center justify-between'>
-              <h2 className='text-xs font-mono uppercase tracking-widest text-kr0n-text-secondary font-bold'>
-                Registered Services
-              </h2>
-              <div className='flex items-center gap-3'>
-                <span className='hidden sm:inline text-[11px] font-mono text-kr0n-text-secondary'>
-                  {project.services.length} Microservices running on KR0N Edge
-                </span>
-                <button
-                  type='button'
-                  onClick={() => setShowAddServiceModal(true)}
-                  className='clipped-btn inline-flex items-center gap-1.5 bg-white hover:bg-neutral-200 text-black px-3 py-1.5 text-xs font-mono uppercase font-bold tracking-wider transition-colors'
+          {/* Visit Split Button */}
+          <div className="relative inline-flex items-center rounded-md">
+            <a
+              href={`https://${primaryDomain}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="bg-white text-black font-semibold px-3 py-1.5 text-xs rounded-l-md hover:bg-neutral-200 transition-colors flex items-center gap-1"
+            >
+              <span>Visit</span>
+            </a>
+            <button
+              type="button"
+              onClick={() => setShowVisitDropdown(!showVisitDropdown)}
+              className="bg-white text-black px-1.5 py-1.5 text-xs rounded-r-md border-l border-neutral-300 hover:bg-neutral-200 transition-colors cursor-pointer"
+            >
+              <ChevronDown size={13} />
+            </button>
+
+            {/* Visit Dropdown */}
+            {showVisitDropdown && (
+              <div className="absolute right-0 top-full mt-1.5 w-64 border border-[#222222] bg-[#0c0c0c] rounded-md shadow-2xl py-1 z-30 text-xs">
+                <a
+                  href={`https://${primaryDomain}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-2 flex items-center justify-between text-neutral-300 hover:text-white hover:bg-white/5 transition-colors"
                 >
-                  <Plus size={12} />
-                  <span>Add Service</span>
-                </button>
+                  <span className="truncate">{primaryDomain}</span>
+                  <ExternalLink size={12} className="shrink-0 text-neutral-500" />
+                </a>
+                <a
+                  href={`https://${branchDomain}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="px-3 py-2 flex items-center justify-between text-neutral-300 hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  <span className="truncate">{branchDomain}</span>
+                  <ExternalLink size={12} className="shrink-0 text-neutral-500" />
+                </a>
               </div>
-            </div>
+            )}
+          </div>
 
-            <div className='grid grid-cols-1 md:grid-cols-3 gap-4'>
-              {project.services.map((svc) => (
-                <div
-                  key={svc.id}
-                  className='border border-kr0n-line bg-kr0n-surface hover:border-kr0n-line-strong p-5 space-y-4 transition-colors'
+          {/* More Options Menu */}
+          <div className="relative">
+            <button
+              type="button"
+              onClick={() => setShowMenu(!showMenu)}
+              className="bg-[#0c0c0c] border border-[#222222] hover:border-[#333333] p-1.5 text-neutral-400 hover:text-white rounded-md transition-colors cursor-pointer"
+            >
+              <MoreHorizontal size={14} />
+            </button>
+
+            {showMenu && (
+              <div className="absolute right-0 mt-1.5 w-48 border border-[#222222] bg-[#0c0c0c] rounded-md shadow-2xl py-1 z-30 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMenu(false);
+                    setShowLogs(true);
+                  }}
+                  className="w-full text-left px-3 py-2 text-neutral-300 hover:text-white hover:bg-white/5 transition-colors"
                 >
-                  <div className='flex items-center justify-between'>
-                    <Link
-                      href={`/projects/${project.id}/services/${svc.id}`}
-                      className='flex items-center gap-2 group'
-                    >
-                      <span className='w-2 h-2 rounded-full bg-emerald-400' />
-                      <span className='font-mono font-bold text-white text-sm uppercase group-hover:underline'>
-                        {svc.name}
-                      </span>
-                    </Link>
-                    <span className='text-[10px] font-mono px-2 py-0.5 border border-kr0n-line text-kr0n-text-secondary uppercase font-bold'>
-                      {svc.type}
+                  View Build Output
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMenu(false);
+                    handleCopyShare();
+                  }}
+                  className="w-full text-left px-3 py-2 text-neutral-300 hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  Copy Deployment URL
+                </button>
+                <div className="border-t border-[#1c1c1c] my-1" />
+                <Link
+                  href={`/projects/${project.id}/settings`}
+                  className="block px-3 py-2 text-neutral-300 hover:text-white hover:bg-white/5 transition-colors"
+                >
+                  Project Settings
+                </Link>
+              </div>
+            )}
+          </div>
+        </div>
+      </header>
+
+      {/* Copy notification toast */}
+      {showShareToast && (
+        <div className="fixed top-16 right-6 z-50 bg-[#121212] border border-[#27272a] text-white px-3.5 py-2 rounded-md shadow-2xl text-xs flex items-center gap-2">
+          <Check size={14} className="text-emerald-400" />
+          <span>Deployment URL copied to clipboard</span>
+        </div>
+      )}
+
+      {/* ─── MAIN DEPLOYMENT DETAILS BODY (MATCHING USER SCREENSHOT) ─── */}
+      <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-8 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-[460px_1fr] gap-8 items-start">
+          {/* ── LEFT: APPLICATION PREVIEW FRAME ── */}
+          <div className="border border-[#222222] bg-[#0c0c0c] rounded-lg overflow-hidden group relative shadow-2xl">
+            <a
+              href={`https://${primaryDomain}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="block cursor-pointer"
+            >
+              {/* Paper Model / Application Preview Visual */}
+              <div className="bg-[#FAF7F2] text-[#1E1E1E] p-5 sm:p-6 aspect-[16/11] flex flex-col justify-between relative overflow-hidden select-none">
+                {/* Site Header Nav */}
+                <div className="flex items-center justify-between border-b border-black/5 pb-3">
+                  <div className="flex items-center gap-2">
+                    <span className="font-black text-xs tracking-wider uppercase font-mono">
+                      {project.name.toUpperCase()}
                     </span>
                   </div>
-
-                  <div className='space-y-2 text-xs font-mono text-kr0n-text-secondary'>
-                    <div className='flex justify-between'>
-                      <span className='text-kr0n-muted font-medium'>Runtime:</span>
-                      <span className='text-white font-medium'>{svc.runtimeLabel || 'KR0N V8 Edge Worker'}</span>
-                    </div>
-                    <div className='flex justify-between'>
-                      <span className='text-kr0n-muted font-medium'>Instances:</span>
-                      <span className='text-white font-medium'>{svc.resources?.instances || 3} auto-scaled</span>
-                    </div>
-                    <div className='flex justify-between'>
-                      <span className='text-kr0n-muted font-medium'>Health:</span>
-                      <span className='text-emerald-400 font-bold'>100% Passing</span>
-                    </div>
+                  <div className="hidden sm:flex items-center gap-3 text-[9px] font-medium text-neutral-600">
+                    <span>Models</span>
+                    <span>Print & Media</span>
+                    <span>Community</span>
+                    <span>About</span>
                   </div>
-
-                  {/* Service actions */}
-                  <div className='pt-2 border-t border-kr0n-line-soft flex items-center justify-between text-[11px] font-mono'>
-                    <Link
-                      href={`/projects/${project.id}/services/${svc.id}`}
-                      className='text-white font-bold hover:underline'
-                    >
-                      Overview →
-                    </Link>
-                    <div className='flex items-center gap-2'>
-                      <Link
-                        href={`/projects/${project.id}/services/${svc.id}/deployments`}
-                        className='text-kr0n-text-secondary hover:text-white transition-colors font-medium'
-                      >
-                        Deployments
-                      </Link>
-                      <span className='text-kr0n-muted'>·</span>
-                      <Link
-                        href={`/projects/${project.id}/services/${svc.id}/logs`}
-                        className='text-kr0n-text-secondary hover:text-white transition-colors font-medium'
-                      >
-                        Logs
-                      </Link>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Railway-style Deployments Rail */}
-        {(activeTab === 'overview' || activeTab === 'deployments') && (
-          <div className='space-y-4'>
-            <div className='flex items-center justify-between'>
-              <h2 className='text-xs font-mono uppercase tracking-widest text-kr0n-text-secondary font-bold'>
-                Deployment Release Rail
-              </h2>
-              {project.services[0] && (
-                <Link
-                  href={`/projects/${projectId}/services/${project.services[0].id}/deployments`}
-                  className='text-[11px] font-mono text-kr0n-text-secondary hover:text-white'
-                >
-                  History details →
-                </Link>
-              )}
-            </div>
-
-            <div className='border border-kr0n-line bg-kr0n-surface divide-y divide-kr0n-line-soft font-mono'>
-              {[
-                {
-                  version: project.currentDeployment?.version || 'v1.8.4',
-                  commit: project.currentDeployment?.commit || 'a83f2c1',
-                  branch: project.currentDeployment?.branch || 'main',
-                  time: project.currentDeployment?.timestamp || '2m ago',
-                  author: 'alex.chen',
-                  msg: 'optimize edge routing and streaming response headers',
-                  status: project.currentDeployment?.status || 'live',
-                },
-                {
-                  version: 'v1.8.3',
-                  commit: 'b94e21a',
-                  branch: 'main',
-                  time: '2h ago',
-                  author: 'sarah.m',
-                  msg: 'bump telemetry instrumentation and grpc bindings',
-                  status: 'live',
-                },
-                {
-                  version: 'v1.8.2',
-                  commit: '48c10fa',
-                  branch: 'main',
-                  time: '1d ago',
-                  author: 'gurmehar',
-                  msg: 'hotfix database query connection pooling timeout',
-                  status: 'live',
-                },
-              ].map((dep, idx) => (
-                <div
-                  key={dep.commit}
-                  className='p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/[0.015] transition-colors'
-                >
-                  <div className='flex items-start gap-4'>
-                    <div className='w-6 h-6 border border-kr0n-line bg-kr0n-black flex items-center justify-center shrink-0 mt-0.5'>
-                      <GitBranch size={12} className='text-kr0n-muted' />
-                    </div>
-                    <div className='space-y-1'>
-                      <div className='flex items-center gap-2 text-xs'>
-                        <span className='text-white font-bold'>{dep.version}</span>
-                        <span className='text-kr0n-muted font-bold'>·</span>
-                        <span className='text-kr0n-text-secondary font-mono'>{dep.commit}</span>
-                        <span className='text-kr0n-muted font-bold'>·</span>
-                        <span className='text-emerald-400 bg-emerald-400/10 px-1.5 py-0.2 text-[10px] font-bold'>
-                          {dep.status}
-                        </span>
-                      </div>
-                      <p className='text-xs text-kr0n-text-secondary'>{dep.msg}</p>
-                      <div className='text-[10px] text-kr0n-text-secondary flex items-center gap-2'>
-                        <span>by {dep.author}</span>
-                        <span className='text-kr0n-muted'>|</span>
-                        <span>{dep.branch}</span>
-                        <span className='text-kr0n-muted'>|</span>
-                        <span>{dep.time}</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className='flex items-center gap-2 self-end sm:self-center'>
-                    <Link
-                      href={`/projects/${projectId}/services/${project.services[0]?.id || 'svc_api'}/logs`}
-                      className='px-2.5 py-1 border border-kr0n-line text-[11px] text-kr0n-text-secondary hover:text-white hover:border-kr0n-line-strong transition-colors font-medium'
-                    >
-                      Logs
-                    </Link>
-                    <Link
-                      href={`/projects/${projectId}/services/${project.services[0]?.id || 'svc_api'}/deployments`}
-                      className='px-2.5 py-1 border border-kr0n-line text-[11px] text-kr0n-text-secondary hover:text-white transition-colors font-medium'
-                    >
-                      Inspect
-                    </Link>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
-
-        {/* Live Terminal Log Stream */}
-        {(activeTab === 'overview' || activeTab === 'logs') && (
-          <div className='space-y-4'>
-            <div className='flex items-center justify-between'>
-              <div className='flex items-center gap-2'>
-                <Terminal size={14} className='text-kr0n-muted' />
-                <h2 className='text-xs font-mono uppercase tracking-widest text-kr0n-text-secondary font-bold'>
-                  Edge Runtime Logs (Live)
-                </h2>
-              </div>
-              <div className='flex items-center gap-2 font-mono text-[11px]'>
-                <button
-                  type='button'
-                  onClick={() => setLogsPaused(!logsPaused)}
-                  className='flex items-center gap-1.5 px-2 py-1 border border-kr0n-line text-kr0n-text-secondary hover:text-white transition-colors font-medium'
-                >
-                  {logsPaused ? <Play size={10} /> : <Pause size={10} />}
-                  <span>{logsPaused ? 'Resume' : 'Pause'}</span>
-                </button>
-                <button
-                  type='button'
-                  onClick={() => {
-                    navigator.clipboard.writeText(logs.map((l) => `${l.time} ${l.msg}`).join('\n'));
-                    setCopiedKey(true);
-                    setTimeout(() => setCopiedKey(false), 2000);
-                  }}
-                  className='flex items-center gap-1.5 px-2 py-1 border border-kr0n-line text-kr0n-text-secondary hover:text-white transition-colors font-medium'
-                >
-                  <Copy size={10} />
-                  <span>{copiedKey ? 'Copied' : 'Copy'}</span>
-                </button>
-              </div>
-            </div>
-
-            <div className='border border-kr0n-line bg-kr0n-black p-4 font-mono text-xs leading-relaxed space-y-1 overflow-x-auto max-h-72 select-text'>
-              {logs.map((log) => (
-                <div key={log.id} className='flex items-start gap-3 text-kr0n-text-secondary'>
-                  <span className='text-kr0n-muted shrink-0 select-none font-mono tabular-nums'>{log.time}</span>
-                  <span
-                    className={`shrink-0 font-bold ${
-                      log.level === 'INFO'
-                        ? 'text-emerald-400'
-                        : log.level === 'WARN'
-                        ? 'text-amber-400'
-                        : 'text-blue-400'
-                    }`}
-                  >
-                    [{log.level}]
+                  <span className="bg-[#EA580C] text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
+                    Explore
                   </span>
-                  <span className='text-white font-mono'>{log.msg}</span>
                 </div>
-              ))}
+
+                {/* Hero Body */}
+                <div className="grid grid-cols-2 gap-3 items-center my-auto py-2">
+                  <div className="space-y-2">
+                    <p className="text-[8px] font-mono uppercase tracking-widest text-[#EA580C] font-bold">
+                      Flat Sheet Precision
+                    </p>
+                    <h2 className="text-sm sm:text-base font-black leading-tight tracking-tight uppercase">
+                      From Flat Paper to <span className="text-[#EA580C]">Extraordinary.</span>
+                    </h2>
+                    <p className="text-[9px] text-neutral-600 leading-snug line-clamp-3">
+                      Detailed paper models designed to be folded, built, and proudly displayed.
+                    </p>
+                    <div className="pt-1">
+                      <span className="inline-block bg-[#EA580C] text-white text-[9px] font-bold px-3 py-1 rounded">
+                        Explore Collection
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Right Model Mockup Box */}
+                  <div className="bg-white/80 border border-black/10 rounded-lg p-3 shadow-sm flex flex-col items-center justify-center text-center">
+                    <div className="w-16 h-12 bg-gradient-to-tr from-[#EA580C] to-amber-400 rounded flex items-center justify-center text-white shadow-inner">
+                      <Sliders size={20} className="opacity-90" />
+                    </div>
+                    <span className="text-[9px] font-bold mt-2 uppercase">{project.name}</span>
+                    <span className="text-[8px] text-neutral-500 font-mono">Scale Edition</span>
+                  </div>
+                </div>
+
+                {/* Bottom Stats Footer */}
+                <div className="grid grid-cols-3 gap-2 border-t border-black/5 pt-2 text-[8px] font-mono text-neutral-600">
+                  <div>
+                    <span className="block font-bold text-black">100% Edge</span>
+                    <span>Distributed</span>
+                  </div>
+                  <div>
+                    <span className="block font-bold text-black">Global CDN</span>
+                    <span>Sub-20ms</span>
+                  </div>
+                  <div>
+                    <span className="block font-bold text-black">SSL Active</span>
+                    <span>Automated</span>
+                  </div>
+                </div>
+
+                {/* Hover Action Overlay */}
+                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-medium text-xs gap-1.5 backdrop-blur-[1px]">
+                  <span>Visit Application</span>
+                  <ExternalLink size={13} />
+                </div>
+              </div>
+            </a>
+          </div>
+
+          {/* ── RIGHT: METADATA & DOMAIN SPECIFICATIONS ── */}
+          <div className="space-y-6">
+            {/* Top 4 Columns (Created, Status, Duration, Environment) */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pb-6 border-b border-[#1c1c1c]">
+              {/* Created */}
+              <div className="space-y-1">
+                <span className="block text-xs text-neutral-400 font-medium">Created</span>
+                <div className="flex items-center gap-1.5 text-sm text-white">
+                  {currentUser?.avatarUrl || currentUser?.avatar_url ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={currentUser.avatarUrl || currentUser.avatar_url}
+                      alt={accountLogin}
+                      referrerPolicy="no-referrer"
+                      className="w-4 h-4 rounded-full object-cover shrink-0"
+                    />
+                  ) : (
+                    <div className="w-4 h-4 rounded-full bg-indigo-600 flex items-center justify-center text-[9px] font-bold text-white shrink-0">
+                      {accountLogin[0]?.toUpperCase() || 'A'}
+                    </div>
+                  )}
+                  <span className="truncate">{accountLogin}</span>
+                  <span className="text-neutral-400 text-xs shrink-0">{deployment.timestamp || 'Oct 6'}</span>
+                </div>
+              </div>
+
+              {/* Status */}
+              <div className="space-y-1">
+                <span className="block text-xs text-neutral-400 font-medium">Status</span>
+                <div className="flex items-center gap-1.5 text-sm">
+                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+                  <span className="font-semibold text-white">Ready</span>
+                  <span className="text-[10px] font-mono bg-[#1c1c1c] text-neutral-300 px-1.5 py-0.5 rounded">
+                    Latest
+                  </span>
+                </div>
+              </div>
+
+              {/* Duration */}
+              <div className="space-y-1">
+                <span className="block text-xs text-neutral-400 font-medium">Duration</span>
+                <div className="flex items-center gap-1.5 text-sm text-white">
+                  <Clock size={13} className="text-neutral-400 shrink-0" />
+                  <span>{deployment.duration || '6s'}</span>
+                  <span className="text-neutral-500 text-xs">46d ago</span>
+                </div>
+              </div>
+
+              {/* Environment */}
+              <div className="space-y-1">
+                <span className="block text-xs text-neutral-400 font-medium">Environment</span>
+                <div className="flex items-center gap-1.5 text-sm text-white">
+                  <ArrowUpCircle size={14} className="text-neutral-300 shrink-0" />
+                  <span>Production</span>
+                  <span className="text-[10px] font-semibold bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full">
+                    Current
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Domains Section */}
+            <div className="space-y-2">
+              <span className="block text-xs text-neutral-400 font-medium">Domains</span>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex items-center gap-2">
+                  <Globe size={14} className="text-neutral-400 shrink-0" />
+                  <a
+                    href={`https://${primaryDomain}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-white hover:underline truncate"
+                  >
+                    {primaryDomain}
+                  </a>
+                  <span className="text-[10px] font-mono bg-[#1c1c1c] text-neutral-400 px-1.5 py-0.5 rounded">
+                    +1
+                  </span>
+                </div>
+
+                <div className="flex items-center gap-2 text-neutral-300">
+                  <GitBranch size={14} className="text-neutral-400 shrink-0" />
+                  <a
+                    href={`https://${branchDomain}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline truncate text-neutral-300 hover:text-white"
+                  >
+                    {branchDomain}
+                  </a>
+                </div>
+
+                <div className="flex items-center gap-2 text-neutral-300">
+                  <GitCommit size={14} className="text-neutral-400 shrink-0" />
+                  <a
+                    href={`https://${commitDomain}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="hover:underline truncate text-neutral-300 hover:text-white"
+                  >
+                    {commitDomain}
+                  </a>
+                </div>
+              </div>
+            </div>
+
+            {/* Source Section */}
+            <div className="space-y-2 pt-2">
+              <span className="block text-xs text-neutral-400 font-medium">Source</span>
+              <div className="space-y-1.5 text-sm">
+                <div className="flex items-center gap-2 text-white font-mono">
+                  <GitBranch size={14} className="text-neutral-400 shrink-0" />
+                  <span>{deployment.branch || 'main'}</span>
+                </div>
+                <div className="flex items-center gap-2 text-neutral-300">
+                  <GitCommit size={14} className="text-neutral-400 shrink-0" />
+                  <span className="font-mono text-neutral-400">{deployment.commit || 'add0788'}</span>
+                  <span>{deployment.commitMessage || 'made better'}</span>
+                </div>
+              </div>
             </div>
           </div>
-        )}
+        </div>
 
-        {/* Environment Variables Tab */}
-        {activeTab === 'environment' && (
-          <div className='space-y-4 font-mono'>
-            <div className='flex items-center justify-between'>
-              <h2 className='text-xs uppercase tracking-widest text-kr0n-text-secondary font-bold'>
-                Project Environments
-              </h2>
+        {/* ─── BOTTOM ACCORDION: DEPLOYMENT SETTINGS ─── */}
+        <div className="border border-[#1c1c1c] bg-[#0c0c0c] rounded-lg overflow-hidden mt-8">
+          <button
+            type="button"
+            onClick={() => setExpandSettings(!expandSettings)}
+            className="w-full px-5 py-3.5 flex items-center justify-between text-left hover:bg-white/[0.02] transition-colors cursor-pointer"
+          >
+            <div className="flex items-center gap-2.5">
+              <ChevronRight
+                size={15}
+                className={`text-neutral-400 transition-transform ${expandSettings ? 'rotate-90' : ''}`}
+              />
+              <span className="text-sm font-semibold text-white">Deployment Settings</span>
+            </div>
+            <span className="text-xs font-semibold bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2.5 py-0.5 rounded-full">
+              2 Recommendations
+            </span>
+          </button>
+
+          {expandSettings && (
+            <div className="p-5 border-t border-[#1c1c1c] bg-black/40 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-xs">
+              <div className="space-y-1">
+                <span className="text-neutral-400 font-mono">Framework Preset</span>
+                <p className="text-white font-medium text-sm">Vite</p>
+              </div>
+              <div className="space-y-1">
+                <span className="text-neutral-400 font-mono">Build Command</span>
+                <p className="text-white font-mono text-xs">npm run build</p>
+              </div>
+              <div className="space-y-1">
+                <span className="text-neutral-400 font-mono">Output Directory</span>
+                <p className="text-white font-mono text-xs">dist</p>
+              </div>
+              <div className="space-y-1">
+                <span className="text-neutral-400 font-mono">Node.js Version</span>
+                <p className="text-white font-mono text-xs">20.x</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ─── SLIDE-OVER LOGS DRAWER ─── */}
+      {showLogs && (
+        <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm">
+          <div className="w-full max-w-2xl bg-[#0c0c0c] border-l border-[#222222] h-full flex flex-col shadow-2xl">
+            {/* Drawer Header */}
+            <div className="px-5 py-4 border-b border-[#1c1c1c] flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Terminal size={15} className="text-emerald-400" />
+                <span className="font-semibold text-sm text-white">Deployment Logs</span>
+                <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded">
+                  Ready
+                </span>
+              </div>
               <button
-                type='button'
-                onClick={() => setShowAddEnvModal(true)}
-                className='px-3 py-1 border border-kr0n-line bg-white/5 text-white text-xs hover:border-white transition-colors font-bold'
+                type="button"
+                onClick={() => setShowLogs(false)}
+                className="text-neutral-400 hover:text-white p-1 rounded"
               >
-                + Create Environment
+                <X size={16} />
               </button>
             </div>
 
-            <div className='border border-kr0n-line bg-kr0n-surface divide-y divide-kr0n-line-soft text-xs'>
-              {(project.environments || ['production', 'staging']).map((env) => (
-                <div key={env} className='p-4 flex items-center justify-between'>
-                  <div className='flex items-center gap-3'>
-                    <span className={`w-2 h-2 rounded-full ${env === 'production' ? 'bg-emerald-400' : 'bg-blue-400'}`} />
-                    <span className='font-bold text-white uppercase'>{env}</span>
-                  </div>
-                  <span className='px-2 py-0.5 border border-kr0n-line text-[10px] text-kr0n-text-secondary uppercase font-bold'>
-                    {env === project.environment ? 'Selected' : 'Active'}
-                  </span>
-                </div>
-              ))}
+            {/* Terminal Body */}
+            <div className="flex-1 p-5 overflow-auto font-mono text-xs space-y-1.5 text-neutral-300 bg-black selection:bg-white selection:text-black">
+              <p className="text-neutral-500">[14:22:01.102] Initializing deployment build runner...</p>
+              <p className="text-neutral-500">[14:22:01.340] Cloning repository {project.repository} ({deployment.branch})...</p>
+              <p className="text-neutral-500">[14:22:02.012] Installing dependencies with &quot;npm install&quot;...</p>
+              <p className="text-neutral-400">[14:22:03.450] Running &quot;npm run build&quot;...</p>
+              <p className="text-emerald-400 font-semibold">[14:22:04.110] &gt; vite v5.4.2 building for production...</p>
+              <p className="text-neutral-400">[14:22:05.200] ✓ 42 modules transformed.</p>
+              <p className="text-neutral-400">[14:22:06.120] dist/index.html                     0.45 kB │ gzip: 0.30 kB</p>
+              <p className="text-neutral-400">[14:22:06.880] dist/assets/index-38c29b12.js       142.12 kB │ gzip: 46.80 kB</p>
+              <p className="text-emerald-400 font-semibold">[14:22:07.010] ✓ Built in 2.89s</p>
+              <p className="text-neutral-400">[14:22:07.240] Uploading build output to global edge mesh...</p>
+              <p className="text-neutral-300">[14:22:07.890] Assigning primary domain: {primaryDomain}</p>
+              <p className="text-neutral-300">[14:22:08.012] Assigning branch domain: {branchDomain}</p>
+              <p className="text-emerald-400 font-bold">[14:22:08.200] ✓ Deployment ready in {deployment.duration || '6s'}.</p>
             </div>
-          </div>
-        )}
-      </div>
 
-      {/* ─── Add Service Wizard Modal ─── */}
-      <AddServiceWizardModal
-        isOpen={showAddServiceModal}
-        onClose={() => setShowAddServiceModal(false)}
-        projectId={projectId}
-        onServiceCreated={(serviceData) => addService(projectId, serviceData)}
-      />
-
-      {/* ─── Create Environment Modal ─── */}
-      {showAddEnvModal && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm font-mono text-xs'>
-          <div className='max-w-md w-full border border-kr0n-line bg-kr0n-surface p-6 space-y-4 shadow-2xl'>
-            <h3 className='text-sm font-bold text-white uppercase'>Create Environment</h3>
-            <p className='text-kr0n-text-secondary font-sans'>
-              Provision a new isolated branch environment (e.g. preview, canary, test).
-            </p>
-            <form onSubmit={handleAddEnvSubmit} className='space-y-4'>
-              <input
-                type='text'
-                required
-                value={newEnvName}
-                onChange={(e) => setNewEnvName(e.target.value)}
-                placeholder='Environment name'
-                className='w-full bg-kr0n-black border border-kr0n-line px-3 py-2 text-white outline-none focus:border-white'
-              />
-              <div className='flex items-center justify-end gap-3'>
-                <button
-                  type='button'
-                  onClick={() => setShowAddEnvModal(false)}
-                  className='px-3 py-1.5 border border-kr0n-line text-kr0n-text-secondary hover:text-white'
-                >
-                  Cancel
-                </button>
-                <button
-                  type='submit'
-                  className='clipped-btn bg-white hover:bg-neutral-200 text-black px-4 py-1.5 font-bold uppercase'
-                >
-                  Create
-                </button>
-              </div>
-            </form>
+            {/* Drawer Footer */}
+            <div className="p-3 border-t border-[#1c1c1c] flex items-center justify-between text-xs text-neutral-500 font-mono">
+              <span>Cluster: us-east (Edge CDN)</span>
+              <button
+                type="button"
+                onClick={() => setShowLogs(false)}
+                className="bg-white text-black font-semibold px-4 py-1.5 rounded text-xs hover:bg-neutral-200"
+              >
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}
-    </div>
+    </main>
   );
 }
