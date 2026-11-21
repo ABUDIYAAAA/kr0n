@@ -472,6 +472,8 @@ export default function GitHubProjectPicker() {
   const [presetId, setPresetId] = useState('vite');
   const [showPresetMenu, setShowPresetMenu] = useState(false);
   const presetMenuRef = useRef(null);
+  const [showTeamMenu, setShowTeamMenu] = useState(false);
+  const teamMenuRef = useRef(null);
   const [expandBuildSettings, setExpandBuildSettings] = useState(false);
   const [buildOverride, setBuildOverride] = useState(false);
   const [customBuildCommand, setCustomBuildCommand] = useState('');
@@ -729,6 +731,9 @@ export default function GitHubProjectPicker() {
       }
       if (accountMenuRef.current && !accountMenuRef.current.contains(event.target)) {
         setShowAccountMenu(false);
+      }
+      if (teamMenuRef.current && !teamMenuRef.current.contains(event.target)) {
+        setShowTeamMenu(false);
       }
     }
     document.addEventListener('mousedown', handleClickOutside);
@@ -1267,12 +1272,16 @@ export default function GitHubProjectPicker() {
 
           {/* Team / Workspace & Project Name Grid */}
           <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto_1fr] items-center gap-3">
-            {/* Vercel Team / Workspace */}
-            <div>
+            {/* Vercel Team / Workspace Dropdown */}
+            <div className="relative" ref={teamMenuRef}>
               <label className="block text-xs text-neutral-400 font-medium mb-1.5">
                 Vercel Team
               </label>
-              <div className="border border-[#222222] bg-[#121212] rounded-md px-3 py-2 flex items-center justify-between text-sm text-white">
+              <button
+                type="button"
+                onClick={() => setShowTeamMenu((prev) => !prev)}
+                className="w-full border border-[#222222] bg-[#121212] hover:border-[#333333] rounded-md px-3 py-2 flex items-center justify-between text-sm text-white transition-colors cursor-pointer text-left focus:outline-none focus:border-neutral-500"
+              >
                 <div className="flex items-center gap-2 min-w-0">
                   <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 shrink-0" />
                   <span className="truncate text-xs font-medium">{teamDisplayName}</span>
@@ -1280,8 +1289,58 @@ export default function GitHubProjectPicker() {
                     Hobby
                   </span>
                 </div>
-                <ChevronDown size={14} className="text-neutral-400 shrink-0 ml-1" />
-              </div>
+                <ChevronDown
+                  size={14}
+                  className={`text-neutral-400 shrink-0 ml-1 transition-transform duration-150 ${
+                    showTeamMenu ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {showTeamMenu && (
+                <div className="absolute left-0 right-0 mt-1.5 border border-[#222222] bg-[#0c0c0c] rounded-md shadow-2xl py-1 z-30 max-h-60 overflow-y-auto divide-y divide-[#181818]">
+                  <div className="px-3 py-1.5 text-neutral-400 font-mono text-[10px] uppercase">
+                    Select Team Workspace
+                  </div>
+                  {(organizations.length > 0
+                    ? organizations
+                    : [{ id: selectedOrgId || 'default', name: teamDisplayName }]
+                  ).map((org) => {
+                    const isSelected = org.id === selectedOrgId;
+                    return (
+                      <button
+                        key={org.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedOrgId(org.id);
+                          setShowTeamMenu(false);
+                          if (org.id !== selectedOrgId) {
+                            refreshGitHubState(org.id);
+                          }
+                        }}
+                        className={`w-full px-3 py-2 flex items-center justify-between transition-colors text-left cursor-pointer ${
+                          isSelected
+                            ? 'bg-white/[0.08] text-white font-medium'
+                            : 'text-neutral-300 hover:text-white hover:bg-white/[0.04]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 min-w-0">
+                          <span
+                            className={`w-2 h-2 rounded-full shrink-0 ${
+                              isSelected ? 'bg-emerald-400' : 'bg-neutral-600'
+                            }`}
+                          />
+                          <span className="text-xs truncate">{org.name}</span>
+                          <span className="text-[9px] bg-neutral-800 text-neutral-400 px-1 rounded font-mono">
+                            Hobby
+                          </span>
+                        </div>
+                        {isSelected && <Check size={13} className="text-white shrink-0 ml-2" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
 
             {/* Separator Slash */}
