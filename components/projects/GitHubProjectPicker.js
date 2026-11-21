@@ -10,6 +10,7 @@ import {
   Folder,
   FolderOpen,
   FolderTree,
+  ChevronLeft,
   ChevronDown,
   ChevronRight,
   Plus,
@@ -461,6 +462,8 @@ export default function GitHubProjectPicker() {
 
   // Search Filter & Account Dropdown
   const [search, setSearch] = useState('');
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 8;
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const accountMenuRef = useRef(null);
 
@@ -875,6 +878,11 @@ export default function GitHubProjectPicker() {
       return (a.name || '').localeCompare(b.name || '');
     });
 
+  const totalPages = Math.max(1, Math.ceil(filteredRepos.length / PAGE_SIZE));
+  const currentPage = Math.min(page, totalPages);
+  const startIndex = (currentPage - 1) * PAGE_SIZE;
+  const paginatedRepos = filteredRepos.slice(startIndex, startIndex + PAGE_SIZE);
+
   const currentPreset =
     APPLICATION_PRESETS.find((p) => p.id === presetId) || APPLICATION_PRESETS[0];
 
@@ -1074,7 +1082,10 @@ export default function GitHubProjectPicker() {
                 type="text"
                 placeholder="Search"
                 value={search}
-                onChange={(e) => setSearch(e.target.value)}
+                onChange={(e) => {
+                  setSearch(e.target.value);
+                  setPage(1);
+                }}
                 className="w-full bg-transparent text-sm outline-none text-white placeholder:text-neutral-500"
               />
             </div>
@@ -1105,30 +1116,104 @@ export default function GitHubProjectPicker() {
                 No repositories found matching &ldquo;{search}&rdquo;
               </div>
             ) : (
-              filteredRepos.map((r) => (
-                <div
-                  key={r.id || r.name}
-                  className="px-4 py-3.5 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
-                >
-                  {/* Left: Icon + Name + Lock + Date */}
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <RepoIcon type={r.type} name={r.name} />
-                    <span className="font-medium text-sm text-white truncate">{r.name}</span>
-                    {r.private && <Lock size={12} className="text-neutral-400 shrink-0 ml-0.5" />}
-                    <span className="text-neutral-400 text-sm shrink-0">
-                      · {r.updatedDate || 'Recently'}
-                    </span>
-                  </div>
-
-                  {/* Right: White Import Button */}
-                  <button
-                    onClick={() => handleSelectRepo(r)}
-                    className="bg-white text-black font-semibold text-sm px-5 py-1.5 rounded-md hover:bg-neutral-200 active:scale-[0.98] transition-all shrink-0 cursor-pointer"
+              <>
+                {paginatedRepos.map((r) => (
+                  <div
+                    key={r.id || r.name}
+                    className="px-4 py-3.5 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
                   >
-                    Import
-                  </button>
-                </div>
-              ))
+                    {/* Left: Icon + Name + Lock + Date */}
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <RepoIcon type={r.type} name={r.name} />
+                      <span className="font-medium text-sm text-white truncate">{r.name}</span>
+                      {r.private && <Lock size={12} className="text-neutral-400 shrink-0 ml-0.5" />}
+                      <span className="text-neutral-400 text-sm shrink-0">
+                        · {r.updatedDate || 'Recently'}
+                      </span>
+                    </div>
+
+                    {/* Right: White Import Button */}
+                    <button
+                      onClick={() => handleSelectRepo(r)}
+                      className="bg-white text-black font-semibold text-sm px-5 py-1.5 rounded-md hover:bg-neutral-200 active:scale-[0.98] transition-all shrink-0 cursor-pointer"
+                    >
+                      Import
+                    </button>
+                  </div>
+                ))}
+
+                {/* Pagination Footer */}
+                {filteredRepos.length > PAGE_SIZE && (
+                  <div className="px-4 py-3 bg-[#0c0c0c] flex items-center justify-between border-t border-[#1c1c1c] text-xs">
+                    <span className="text-neutral-400 font-mono text-[11px]">
+                      Showing <span className="text-white font-medium">{startIndex + 1}</span>–
+                      <span className="text-white font-medium">
+                        {Math.min(startIndex + PAGE_SIZE, filteredRepos.length)}
+                      </span>{' '}
+                      of <span className="text-white font-medium">{filteredRepos.length}</span> repositories
+                    </span>
+
+                    <div className="flex items-center gap-1.5">
+                      <button
+                        type="button"
+                        disabled={currentPage <= 1}
+                        onClick={() => setPage((p) => Math.max(1, p - 1))}
+                        className="px-2.5 py-1 rounded border border-[#222222] bg-[#121212] text-neutral-300 hover:text-white hover:border-[#333333] disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer font-medium"
+                      >
+                        <ChevronLeft size={13} />
+                        <span>Prev</span>
+                      </button>
+
+                      {/* Page number indicators */}
+                      <div className="flex items-center gap-1 px-1">
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                          .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                          .reduce((acc, p, idx, arr) => {
+                            if (idx > 0 && p - arr[idx - 1] > 1) {
+                              acc.push('ellipsis-' + p);
+                            }
+                            acc.push(p);
+                            return acc;
+                          }, [])
+                          .map((item) => {
+                            if (typeof item === 'string') {
+                              return (
+                                <span key={item} className="px-1 text-neutral-600 font-mono">
+                                  …
+                                </span>
+                              );
+                            }
+                            const isCurrent = item === currentPage;
+                            return (
+                              <button
+                                key={item}
+                                type="button"
+                                onClick={() => setPage(item)}
+                                className={`w-7 h-7 rounded text-xs font-mono transition-colors cursor-pointer flex items-center justify-center ${
+                                  isCurrent
+                                    ? 'bg-white text-black font-semibold'
+                                    : 'text-neutral-400 hover:text-white hover:bg-white/5 border border-transparent hover:border-[#222222]'
+                                }`}
+                              >
+                                {item}
+                              </button>
+                            );
+                          })}
+                      </div>
+
+                      <button
+                        type="button"
+                        disabled={currentPage >= totalPages}
+                        onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                        className="px-2.5 py-1 rounded border border-[#222222] bg-[#121212] text-neutral-300 hover:text-white hover:border-[#333333] disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer font-medium"
+                      >
+                        <span>Next</span>
+                        <ChevronRight size={13} />
+                      </button>
+                    </div>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </div>
