@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   Search,
@@ -94,9 +94,9 @@ const APPLICATION_PRESETS = [
 // Helper to render framework / repo icon
 function RepoIcon({ type, name = '' }) {
   const lower = (type || name).toLowerCase();
-  if (lower.includes('vite') || lower.includes('vue')) {
+  if (lower.includes('vite')) {
     return (
-      <div className="w-5 h-5 rounded-full flex items-center justify-center bg-purple-500/20 border border-purple-500/40 text-purple-300">
+      <div className="w-5 h-5 rounded-full flex items-center justify-center bg-purple-500/20 border border-purple-500/40 text-purple-300 shrink-0">
         <svg viewBox="0 0 24 24" width="13" height="13" fill="currentColor">
           <path d="M12 2L2 14h9l-1 8 10-12h-9l1-8z" />
         </svg>
@@ -105,15 +105,51 @@ function RepoIcon({ type, name = '' }) {
   }
   if (lower.includes('next') || lower.includes('react')) {
     return (
-      <div className="w-5 h-5 rounded-full flex items-center justify-center bg-white/10 border border-white/30 text-white">
+      <div className="w-5 h-5 rounded-full flex items-center justify-center bg-white/10 border border-white/30 text-white shrink-0">
         <svg viewBox="0 0 24 24" width="11" height="11" fill="currentColor">
           <path d="M12 3L22 21H2L12 3z" />
         </svg>
       </div>
     );
   }
+  if (lower.includes('remix')) {
+    return (
+      <div className="w-5 h-5 rounded-full flex items-center justify-center bg-blue-500/20 border border-blue-500/40 text-blue-300 shrink-0">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+          <path d="M12 2a10 10 0 1 0 10 10A10 10 0 0 0 12 2zm1 14.5h-2v-5h2zm0-7h-2V7.5h2z" />
+        </svg>
+      </div>
+    );
+  }
+  if (lower.includes('nuxt') || lower.includes('vue')) {
+    return (
+      <div className="w-5 h-5 rounded-full flex items-center justify-center bg-emerald-500/20 border border-emerald-500/40 text-emerald-300 shrink-0">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+          <path d="M12 3L1 21h22L12 3zm0 5l6.5 11h-13L12 8z" />
+        </svg>
+      </div>
+    );
+  }
+  if (lower.includes('node')) {
+    return (
+      <div className="w-5 h-5 rounded-full flex items-center justify-center bg-green-500/20 border border-green-500/40 text-green-300 shrink-0">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+          <path d="M12 2L3 7v10l9 5 9-5V7l-9-5zm0 2.2l6.8 3.8-3.3 1.9-6.8-3.8 3.3-1.9z" />
+        </svg>
+      </div>
+    );
+  }
+  if (lower.includes('python')) {
+    return (
+      <div className="w-5 h-5 rounded-full flex items-center justify-center bg-amber-500/20 border border-amber-500/40 text-amber-300 shrink-0">
+        <svg viewBox="0 0 24 24" width="12" height="12" fill="currentColor">
+          <path d="M11.9 2C8.6 2 6.7 3.5 6.7 5.8v2.4h5.2v.7H4.3c-2.3 0-4.3 1.9-4.3 5.2 0 3.3 1.8 5.1 5.1 5.1h2.2v-2.5c0-2.3 1.9-4.3 4.3-4.3h5.2v-.7h-5.2c-2.3 0-4.3-1.9-4.3-4.3V5.8c0-2.3 2.3-3.8 4.6-3.8z" />
+        </svg>
+      </div>
+    );
+  }
   return (
-    <div className="w-5 h-5 rounded-full flex items-center justify-center bg-neutral-800 border border-neutral-700 text-neutral-300">
+    <div className="w-5 h-5 rounded-full flex items-center justify-center bg-neutral-800 border border-neutral-700 text-neutral-300 shrink-0">
       <GitBranch size={11} />
     </div>
   );
@@ -426,10 +462,13 @@ export default function GitHubProjectPicker() {
   // Search Filter & Account Dropdown
   const [search, setSearch] = useState('');
   const [showAccountMenu, setShowAccountMenu] = useState(false);
+  const accountMenuRef = useRef(null);
 
   // Configuration Form State (Screen 2)
   const [projectName, setProjectName] = useState('');
   const [presetId, setPresetId] = useState('vite');
+  const [showPresetMenu, setShowPresetMenu] = useState(false);
+  const presetMenuRef = useRef(null);
   const [expandBuildSettings, setExpandBuildSettings] = useState(false);
   const [buildOverride, setBuildOverride] = useState(false);
   const [customBuildCommand, setCustomBuildCommand] = useState('');
@@ -678,6 +717,20 @@ export default function GitHubProjectPicker() {
       });
     }
   }, [selectedOrgId, linkExistingInstallation]);
+
+  // Close custom dropdown menus when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (presetMenuRef.current && !presetMenuRef.current.contains(event.target)) {
+        setShowPresetMenu(false);
+      }
+      if (accountMenuRef.current && !accountMenuRef.current.contains(event.target)) {
+        setShowAccountMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // ─── 3. FETCH BRANCHES & DIRS ON REPO SELECTION ─────────────────────
   useEffect(() => {
@@ -951,7 +1004,7 @@ export default function GitHubProjectPicker() {
           {/* Account Selector & Search Bar Row */}
           <div className="flex items-center gap-3">
             {/* Account Selector Pill */}
-            <div className="relative">
+            <div className="relative" ref={accountMenuRef}>
               <button
                 type="button"
                 onClick={() => setShowAccountMenu(!showAccountMenu)}
@@ -1202,27 +1255,55 @@ export default function GitHubProjectPicker() {
             </div>
 
             {/* Application Preset */}
-            <div>
+            <div className="relative" ref={presetMenuRef}>
               <label className="block text-xs text-neutral-400 font-medium mb-1.5">
                 Application Preset
               </label>
-              <div className="border border-[#222222] bg-[#121212] rounded-md px-3 py-2 flex items-center justify-between text-sm text-white">
-                <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setShowPresetMenu((prev) => !prev)}
+                className="w-full border border-[#222222] bg-[#121212] hover:border-[#333333] rounded-md px-3 py-2 flex items-center justify-between text-sm text-white transition-colors cursor-pointer text-left focus:outline-none focus:border-neutral-500"
+              >
+                <div className="flex items-center gap-2.5 min-w-0">
                   <RepoIcon type={currentPreset.id} />
-                  <select
-                    value={presetId}
-                    onChange={(e) => setPresetId(e.target.value)}
-                    className="bg-transparent text-sm outline-none text-white cursor-pointer"
-                  >
-                    {APPLICATION_PRESETS.map((p) => (
-                      <option key={p.id} value={p.id} className="bg-[#121212] text-white">
-                        {p.name}
-                      </option>
-                    ))}
-                  </select>
+                  <span className="font-medium text-sm text-white truncate">{currentPreset.name}</span>
                 </div>
-                <ChevronDown size={14} className="text-neutral-400 pointer-events-none" />
-              </div>
+                <ChevronDown
+                  size={14}
+                  className={`text-neutral-400 transition-transform duration-150 shrink-0 ${
+                    showPresetMenu ? 'rotate-180' : ''
+                  }`}
+                />
+              </button>
+
+              {showPresetMenu && (
+                <div className="absolute left-0 right-0 mt-1.5 border border-[#222222] bg-[#0c0c0c] rounded-md shadow-2xl py-1 z-30 max-h-64 overflow-y-auto divide-y divide-[#181818]">
+                  {APPLICATION_PRESETS.map((p) => {
+                    const isSelected = p.id === presetId;
+                    return (
+                      <button
+                        key={p.id}
+                        type="button"
+                        onClick={() => {
+                          setPresetId(p.id);
+                          setShowPresetMenu(false);
+                        }}
+                        className={`w-full px-3 py-2.5 flex items-center justify-between transition-colors text-left cursor-pointer ${
+                          isSelected
+                            ? 'bg-white/[0.08] text-white font-medium'
+                            : 'text-neutral-300 hover:text-white hover:bg-white/[0.04]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5 min-w-0">
+                          <RepoIcon type={p.id} />
+                          <span className="text-sm truncate">{p.name}</span>
+                        </div>
+                        {isSelected && <Check size={14} className="text-white shrink-0 ml-2" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              )}
             </div>
           </div>
 
