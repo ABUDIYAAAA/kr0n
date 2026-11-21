@@ -133,13 +133,13 @@ export default function GlobalSettingsPage() {
   useEffect(() => {
     let active = true;
 
-    const stored = getStoredUser();
-    if (stored) {
-      if (stored.displayName || stored.name) setProfileName(stored.displayName || stored.name);
-      if (stored.email) setProfileEmail(stored.email);
-    }
-
     async function loadBackendData() {
+      const stored = getStoredUser();
+      if (stored && active) {
+        if (stored.displayName || stored.name) setProfileName(stored.displayName || stored.name);
+        if (stored.email) setProfileEmail(stored.email);
+      }
+
       if (!isAuthenticated()) return;
 
       try {

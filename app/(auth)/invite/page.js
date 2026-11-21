@@ -19,7 +19,7 @@ import {
   Users,
   Check,
 } from 'lucide-react';
-import { getStoredUser, isAuthenticated, acceptInvite, getMe, logout } from '@/lib/auth';
+import { getStoredUser, isAuthenticated, acceptInvite, getMe, logout, useAuthUser } from '@/lib/auth';
 import { useKr0nStore } from '@/lib/kr0n-state';
 
 function RoleBadge({ role }) {
@@ -93,8 +93,16 @@ function InviteContent() {
   const inviterParam = searchParams.get('inviter') || 'Team Owner';
 
   const [token, setToken] = useState(tokenParam);
-  const [currentUser, setCurrentUser] = useState(() => (typeof window !== 'undefined' ? getStoredUser() : null));
-  const [isLoggedIn, setIsLoggedIn] = useState(() => (typeof window !== 'undefined' ? isAuthenticated() : false));
+  const [prevTokenParam, setPrevTokenParam] = useState(tokenParam);
+  if (prevTokenParam !== tokenParam) {
+    setPrevTokenParam(tokenParam);
+    setToken(tokenParam);
+  }
+
+  const authUser = useAuthUser();
+  const [liveUser, setLiveUser] = useState(null);
+  const currentUser = liveUser || authUser;
+  const isLoggedIn = !!currentUser;
   const [isLoading, setIsLoading] = useState(false);
   const [status, setStatus] = useState('pending'); // 'pending' | 'accepted' | 'declined'
   const [error, setError] = useState('');
@@ -104,27 +112,16 @@ function InviteContent() {
   useEffect(() => {
     let mounted = true;
     if (isAuthenticated()) {
-      setIsLoggedIn(true);
       getMe()
         .then((user) => {
-          if (mounted && user) setCurrentUser(user);
+          if (mounted && user) setLiveUser(user);
         })
         .catch(() => {});
-    } else {
-      setIsLoggedIn(false);
-      setCurrentUser(null);
     }
     return () => {
       mounted = false;
     };
   }, []);
-
-  // Update token from URL if it changes
-  useEffect(() => {
-    if (tokenParam) {
-      setToken(tokenParam);
-    }
-  }, [tokenParam]);
 
   // Countdown timer when accepted
   useEffect(() => {
