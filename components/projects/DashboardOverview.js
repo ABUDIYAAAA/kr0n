@@ -13,7 +13,7 @@ import {
   GitBranch,
 } from 'lucide-react';
 import { useKr0nStore } from '@/lib/kr0n-state';
-import { getStoredUser, getMe } from '@/lib/auth';
+import { getMe, useAuthUser } from '@/lib/auth';
 
 function getGreeting() {
   const hour = new Date().getHours();
@@ -22,55 +22,18 @@ function getGreeting() {
   return 'Good evening';
 }
 
-const RECENT_ACTIVITY = [
-  {
-    id: 'act_1',
-    project: 'Orvea',
-    action: 'Deployed',
-    version: 'v1.8.4',
-    environment: 'production',
-    time: '2m ago',
-    status: 'success',
-  },
-  {
-    id: 'act_2',
-    project: 'Orvea',
-    action: 'Deploying',
-    version: 'v1.9.0-rc.2',
-    environment: 'staging',
-    time: '1m ago',
-    status: 'in_progress',
-  },
-  {
-    id: 'act_3',
-    project: 'Atlas',
-    action: 'Deployed',
-    version: 'v3.2.1',
-    environment: 'production',
-    time: '14m ago',
-    status: 'success',
-  },
-  {
-    id: 'act_4',
-    project: 'Nebula',
-    action: 'Health alert',
-    version: 'v2.1.0',
-    environment: 'production',
-    time: '48m ago',
-    status: 'warning',
-  },
-];
-
 export default function DashboardOverview() {
-  const { projects } = useKr0nStore();
-  const [currentUser, setCurrentUser] = useState(() => (typeof window !== 'undefined' ? getStoredUser() : null));
+  const { projects = [], deployments = {}, alerts = [] } = useKr0nStore();
+  const authUser = useAuthUser();
+  const [liveUser, setLiveUser] = useState(null);
+  const currentUser = liveUser || authUser;
 
   useEffect(() => {
     let mounted = true;
     getMe()
       .then((user) => {
         if (mounted && user) {
-          setCurrentUser(user);
+          setLiveUser(user);
         }
       })
       .catch(() => {});
@@ -93,6 +56,75 @@ export default function DashboardOverview() {
     (p) => p.status === 'warning' || p.status === 'failed'
   ).length;
 
+  // Derive real recent activities from alerts and deployments
+  const recentActivity = [];
+
+  (alerts || []).forEach((alert, idx) => {
+    recentActivity.push({
+      id: alert.id || `alert_${alert.timestamp || idx}`,
+      project: alert.projectName || alert.project || 'System',
+      action: alert.title || 'Health alert',
+      version: alert.serviceName || alert.service || 'system',
+      environment: alert.environment || 'production',
+      time: alert.timestamp || alert.time || 'Recently',
+      status: alert.severity === 'critical' || alert.status === 'firing' ? 'warning' : 'success',
+      timestampSort: alert.createdAt ? new Date(alert.createdAt).getTime() : 0,
+    });
+  });
+
+  Object.entries(deployments || {}).forEach(([key, depList]) => {
+    if (Array.isArray(depList)) {
+      const proj = (projects || []).find((p) => p.id === key || p.services?.some((s) => s.id === key));
+      depList.forEach((dep) => {
+        recentActivity.push({
+          id: dep.id,
+          project: proj?.name || dep.projectName || 'Project',
+          action:
+            dep.status === 'ready' || dep.status === 'success'
+              ? 'Deployed'
+              : dep.status === 'building'
+              ? 'Deploying'
+              : 'Failed',
+          version: dep.version || 'v1.0.0',
+          environment: dep.environment || proj?.environment || 'production',
+          time: dep.timestamp || 'Just now',
+          status:
+            dep.status === 'ready' || dep.status === 'success'
+              ? 'success'
+              : dep.status === 'building'
+              ? 'in_progress'
+              : 'failed',
+          timestampSort: dep.createdAt ? new Date(dep.createdAt).getTime() : 0,
+        });
+      });
+    }
+  });
+
+  (projects || []).forEach((p) => {
+    if (p.currentDeployment && !recentActivity.some((a) => a.id === p.currentDeployment.id)) {
+      recentActivity.push({
+        id: p.currentDeployment.id,
+        project: p.name,
+        action:
+          p.currentDeployment.status === 'ready' || p.currentDeployment.status === 'success'
+            ? 'Deployed'
+            : p.currentDeployment.status === 'building'
+            ? 'Deploying'
+            : 'Failed',
+        version: p.currentDeployment.version || 'v1.0.0',
+        environment: p.environment || 'production',
+        time: p.currentDeployment.timestamp || p.updatedAt || 'Just now',
+        status:
+          p.currentDeployment.status === 'ready' || p.currentDeployment.status === 'success'
+            ? 'success'
+            : p.currentDeployment.status === 'building'
+            ? 'in_progress'
+            : 'failed',
+        timestampSort: 0,
+      });
+    }
+  });
+
   return (
     <div className='flex-1 overflow-auto'>
       {/* ─── Hero Section ─── */}
@@ -108,18 +140,8 @@ export default function DashboardOverview() {
               {headingText}
             </h1>
             <p className='text-xs font-mono uppercase tracking-wider text-kr0n-muted'>
-              KR0N Edge Application Workspace &mdash; 5 clusters active
+              KR0N Edge Application Workspace &mdash; {projects.length} {projects.length === 1 ? 'project' : 'projects'} active
             </p>
-          </div>
-
-          <div className='flex items-center gap-3'>
-            <Link
-              href='/projects'
-              className='clipped-btn inline-flex items-center gap-2 bg-white hover:bg-neutral-200 text-black px-4 py-2 text-xs font-mono uppercase tracking-wider font-bold transition-colors'
-            >
-              <span>Launch Workspace</span>
-              <ArrowRight size={13} />
-            </Link>
           </div>
         </motion.div>
       </div>
@@ -193,43 +215,55 @@ export default function DashboardOverview() {
             </Link>
           </div>
 
-          <div className='bg-kr0n-surface border border-kr0n-line divide-y divide-kr0n-line-soft'>
-            {RECENT_ACTIVITY.map((act) => (
-              <div
-                key={act.id}
-                className='flex items-center justify-between px-4 py-3 hover:bg-white/[0.015] transition-colors'
-              >
-                <div className='flex items-center gap-3 min-w-0'>
-                  <span
-                    className={`w-2 h-2 rounded-full shrink-0 ${
-                      act.status === 'success'
-                        ? 'bg-emerald-400'
-                        : act.status === 'in_progress'
-                        ? 'bg-blue-400 animate-pulse'
-                        : act.status === 'warning'
-                        ? 'bg-amber-400'
-                        : 'bg-red-400'
-                    }`}
-                  />
-                  <div className='min-w-0'>
-                    <div className='text-xs text-white truncate'>
-                      <span className='font-bold'>{act.project}</span>
-                      <span className='text-kr0n-muted mx-1.5'>·</span>
-                      <span className='text-kr0n-text-secondary'>{act.action}</span>
-                    </div>
-                    <div className='text-[11px] font-mono text-kr0n-muted flex items-center gap-2 mt-0.5 font-medium'>
-                      <span className='text-kr0n-text-secondary font-mono'>{act.version}</span>
-                      <span className='text-kr0n-line-strong'>|</span>
-                      <span>{act.environment}</span>
+          {recentActivity.length === 0 ? (
+            <div className='bg-kr0n-surface border border-kr0n-line p-8 text-center'>
+              <Activity size={24} className='mx-auto text-kr0n-muted mb-2 opacity-50' />
+              <div className='text-xs font-mono uppercase tracking-wider text-kr0n-text-secondary'>
+                No recent activity
+              </div>
+              <div className='text-[11px] font-mono text-kr0n-muted mt-1'>
+                Deployments and service events will appear here.
+              </div>
+            </div>
+          ) : (
+            <div className='bg-kr0n-surface border border-kr0n-line divide-y divide-kr0n-line-soft'>
+              {recentActivity.slice(0, 5).map((act) => (
+                <div
+                  key={act.id}
+                  className='flex items-center justify-between px-4 py-3 hover:bg-white/[0.015] transition-colors'
+                >
+                  <div className='flex items-center gap-3 min-w-0'>
+                    <span
+                      className={`w-2 h-2 rounded-full shrink-0 ${
+                        act.status === 'success'
+                          ? 'bg-emerald-400'
+                          : act.status === 'in_progress'
+                          ? 'bg-blue-400 animate-pulse'
+                          : act.status === 'warning'
+                          ? 'bg-amber-400'
+                          : 'bg-red-400'
+                      }`}
+                    />
+                    <div className='min-w-0'>
+                      <div className='text-xs text-white truncate'>
+                        <span className='font-bold'>{act.project}</span>
+                        <span className='text-kr0n-muted mx-1.5'>·</span>
+                        <span className='text-kr0n-text-secondary'>{act.action}</span>
+                      </div>
+                      <div className='text-[11px] font-mono text-kr0n-muted flex items-center gap-2 mt-0.5 font-medium'>
+                        <span className='text-kr0n-text-secondary font-mono'>{act.version}</span>
+                        <span className='text-kr0n-line-strong'>|</span>
+                        <span>{act.environment}</span>
+                      </div>
                     </div>
                   </div>
+                  <span className='text-[11px] font-mono text-kr0n-muted shrink-0 ml-4 font-medium'>
+                    {act.time}
+                  </span>
                 </div>
-                <span className='text-[11px] font-mono text-kr0n-muted shrink-0 ml-4 font-medium'>
-                  {act.time}
-                </span>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </motion.div>
 
         {/* ─── Recent Projects ─── */}
@@ -253,52 +287,77 @@ export default function DashboardOverview() {
           </div>
 
           <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3'>
-            {projects.filter(
-              (p, i, arr) => arr.findIndex((x) => x.name === p.name) === i
-            )
-              .slice(0, 4)
-              .map((project, i) => (
-                <motion.div
-                  key={project.id}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.3, delay: 0.3 + i * 0.05 }}
+            {projects.length === 0 ? (
+              <div className='col-span-full bg-kr0n-surface border border-kr0n-line p-8 text-center'>
+                <div className='text-xs font-mono uppercase tracking-wider text-kr0n-text-secondary'>
+                  No projects deployed
+                </div>
+                <div className='text-[11px] font-mono text-kr0n-muted mt-1 mb-4'>
+                  Create or import a project to launch your services.
+                </div>
+                <Link
+                  href='/projects'
+                  className='clipped-btn inline-flex items-center gap-2 bg-white hover:bg-neutral-200 text-black px-3 py-1.5 text-xs font-mono uppercase tracking-wider font-bold transition-colors'
                 >
-                  <Link
-                    href={`/projects/${project.id}`}
-                    className='block bg-kr0n-surface border border-kr0n-line hover:border-kr0n-line-strong p-4 space-y-3 transition-colors group'
+                  <span>Launch Workspace</span>
+                  <ArrowRight size={12} />
+                </Link>
+              </div>
+            ) : (
+              projects
+                .filter(
+                  (p, i, arr) => arr.findIndex((x) => x.name === p.name) === i
+                )
+                .slice(0, 4)
+                .map((project, i) => (
+                  <motion.div
+                    key={project.id}
+                    initial={{ opacity: 0, y: 8 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.3, delay: 0.3 + i * 0.05 }}
                   >
-                    <div className='flex items-center justify-between'>
-                      <div className='flex items-center gap-2'>
-                        <span
-                          className={`w-2 h-2 rounded-full ${
-                            project.status === 'healthy'
-                              ? 'bg-emerald-400'
-                              : project.status === 'warning'
-                              ? 'bg-amber-400'
-                              : 'bg-red-400'
-                          }`}
+                    <Link
+                      href={`/projects/${project.id}`}
+                      className='block bg-kr0n-surface border border-kr0n-line hover:border-kr0n-line-strong p-4 space-y-3 transition-colors group'
+                    >
+                      <div className='flex items-center justify-between'>
+                        <div className='flex items-center gap-2'>
+                          <span
+                            className={`w-2 h-2 rounded-full ${
+                              project.status === 'healthy'
+                                ? 'bg-emerald-400'
+                                : project.status === 'warning'
+                                ? 'bg-amber-400'
+                                : 'bg-red-400'
+                            }`}
+                          />
+                          <span className='text-sm font-bold text-white uppercase tracking-wider'>
+                            {project.name}
+                          </span>
+                        </div>
+                        <ArrowRight
+                          size={13}
+                          className='text-kr0n-muted group-hover:text-white transition-colors'
                         />
-                        <span className='text-sm font-bold text-white uppercase tracking-wider'>
-                          {project.name}
-                        </span>
                       </div>
-                      <ArrowRight
-                        size={13}
-                        className='text-kr0n-muted group-hover:text-white transition-colors'
-                      />
-                    </div>
-                    <p className='text-xs text-kr0n-text-secondary'>{project.description}</p>
-                    <div className='flex items-center gap-3 text-[11px] font-mono text-kr0n-text-secondary font-medium'>
-                      <span>{project.services.length} services</span>
-                      <span className='text-kr0n-line-strong'>|</span>
-                      <span>{project.environment}</span>
-                      <span className='text-kr0n-line-strong'>|</span>
-                      <span className='text-white font-mono'>{project.currentDeployment.version}</span>
-                    </div>
-                  </Link>
-                </motion.div>
-              ))}
+                      <p className='text-xs text-kr0n-text-secondary'>{project.description}</p>
+                      <div className='flex items-center gap-3 text-[11px] font-mono text-kr0n-text-secondary font-medium'>
+                        <span>{project.services?.length || 0} services</span>
+                        <span className='text-kr0n-line-strong'>|</span>
+                        <span>{project.environment}</span>
+                        {project.currentDeployment?.version && (
+                          <>
+                            <span className='text-kr0n-line-strong'>|</span>
+                            <span className='text-white font-mono'>
+                              {project.currentDeployment.version}
+                            </span>
+                          </>
+                        )}
+                      </div>
+                    </Link>
+                  </motion.div>
+                ))
+            )}
           </div>
         </motion.div>
       </div>
