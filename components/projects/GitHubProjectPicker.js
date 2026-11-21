@@ -8,6 +8,8 @@ import {
   Lock,
   GitBranch,
   Folder,
+  FolderOpen,
+  FolderTree,
   ChevronDown,
   ChevronRight,
   Plus,
@@ -18,6 +20,7 @@ import {
   AlertCircle,
   ExternalLink,
   Check,
+  X,
 } from 'lucide-react';
 import { githubApi } from '@/lib/github-api';
 import {
@@ -116,6 +119,257 @@ function RepoIcon({ type, name = '' }) {
   );
 }
 
+function formatLastModified(r) {
+  const ts = r.pushed_at || r.updated_at;
+  if (!ts) return 'Recently';
+  try {
+    const diffMs = Date.now() - new Date(ts).getTime();
+    if (isNaN(diffMs)) return 'Recently';
+    const diffSec = Math.floor(diffMs / 1000);
+    if (diffSec < 60) return 'Just now';
+    const diffMin = Math.floor(diffSec / 60);
+    if (diffMin < 60) return `${diffMin}m ago`;
+    const diffHour = Math.floor(diffMin / 60);
+    if (diffHour < 24) return `${diffHour}h ago`;
+    const diffDay = Math.floor(diffHour / 24);
+    if (diffDay < 30) return `${diffDay}d ago`;
+    return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+  } catch {
+    return 'Recently';
+  }
+}
+
+function DirectoryMapModal({
+  onClose,
+  repoName,
+  branch,
+  rootNode,
+  directories = [],
+  selectedDir,
+  onSelectDir,
+}) {
+  const [tempSelected, setTempSelected] = useState(selectedDir || './');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [expandedPaths, setExpandedPaths] = useState(new Set(['/']));
+
+  function toggleExpand(path, e) {
+    e.stopPropagation();
+    setExpandedPaths((prev) => {
+      const next = new Set(prev);
+      if (next.has(path)) {
+        next.delete(path);
+      } else {
+        next.add(path);
+      }
+      return next;
+    });
+  }
+
+  function handleConfirm() {
+    onSelectDir(tempSelected);
+    onClose();
+  }
+
+  const filteredDirs = searchQuery.trim()
+    ? directories.filter((d) =>
+        d.toLowerCase().includes(searchQuery.toLowerCase().trim())
+      )
+    : [];
+
+  function renderNode(node, depth = 0) {
+    if (!node) return null;
+    const pathFormatted = node.path === '/' ? './' : node.path.replace(/^\//, '');
+    const isSelected = tempSelected === pathFormatted || tempSelected === node.path;
+    const hasChildren = node.children && node.children.length > 0;
+    const isExpanded = expandedPaths.has(node.path);
+
+    return (
+      <div key={node.path} className="select-none">
+        <div
+          onClick={() => setTempSelected(pathFormatted)}
+          style={{ paddingLeft: `${depth * 18 + 12}px` }}
+          className={`flex items-center justify-between py-1.5 pr-3 rounded-md cursor-pointer text-xs font-mono transition-colors group ${
+            isSelected
+              ? 'bg-white/10 text-white font-medium border border-white/20'
+              : 'text-neutral-300 hover:bg-white/[0.04] hover:text-white'
+          }`}
+        >
+          <div className="flex items-center gap-2 truncate">
+            {hasChildren ? (
+              <button
+                type="button"
+                onClick={(e) => toggleExpand(node.path, e)}
+                className="w-4 h-4 flex items-center justify-center text-neutral-500 hover:text-white shrink-0"
+              >
+                {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
+              </button>
+            ) : (
+              <span className="w-4 shrink-0" />
+            )}
+
+            {isExpanded ? (
+              <FolderOpen size={14} className="text-amber-400 shrink-0" />
+            ) : (
+              <Folder size={14} className="text-neutral-400 shrink-0" />
+            )}
+
+            <span className="truncate">
+              {node.path === '/' ? './ (repository root)' : node.name}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 shrink-0">
+            {node.path !== '/' && (
+              <span className="text-[10px] text-neutral-500 font-sans group-hover:text-neutral-400">
+                {pathFormatted}
+              </span>
+            )}
+            {isSelected && <Check size={13} className="text-white" />}
+          </div>
+        </div>
+
+        {hasChildren && isExpanded && (
+          <div className="space-y-0.5 mt-0.5">
+            {node.children.map((child) => renderNode(child, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
+      onClick={onClose}
+    >
+      <div
+        className="bg-[#0c0c0c] border border-[#222222] rounded-xl max-w-lg w-full shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="p-4 border-b border-[#1c1c1c] flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-8 h-8 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-white">
+              <FolderTree size={16} />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-white">Select Root Directory</h2>
+              <p className="text-[11px] text-neutral-400 flex items-center gap-1.5 font-mono">
+                <span>{repoName}</span>
+                <span>•</span>
+                <GitBranch size={10} className="inline text-neutral-500" />
+                <span>{branch}</span>
+              </p>
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-neutral-400 hover:text-white p-1 rounded-md hover:bg-neutral-900 transition-colors cursor-pointer"
+          >
+            <X size={16} />
+          </button>
+        </div>
+
+        {/* Search */}
+        <div className="p-3 border-b border-[#1c1c1c] bg-[#0f0f0f]">
+          <div className="relative">
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+            <input
+              type="text"
+              placeholder="Search directories in repository..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full bg-[#141414] border border-[#222222] focus:border-[#444444] rounded-md pl-8 pr-3 py-1.5 text-xs text-white placeholder-neutral-500 outline-none font-mono"
+            />
+          </div>
+        </div>
+
+        {/* Tree content */}
+        <div className="p-3 overflow-y-auto max-h-[380px] space-y-1">
+          {searchQuery.trim() ? (
+            filteredDirs.length === 0 ? (
+              <div className="py-8 text-center text-xs text-neutral-500 font-sans">
+                No directories matching &ldquo;{searchQuery}&rdquo;
+              </div>
+            ) : (
+              filteredDirs.map((dir) => {
+                const isSelected = tempSelected === dir;
+                return (
+                  <div
+                    key={dir}
+                    onClick={() => setTempSelected(dir)}
+                    className={`flex items-center justify-between px-3 py-2 rounded-md cursor-pointer text-xs font-mono transition-colors ${
+                      isSelected
+                        ? 'bg-white/10 text-white font-medium border border-white/20'
+                        : 'text-neutral-300 hover:bg-white/[0.04] hover:text-white'
+                    }`}
+                  >
+                    <div className="flex items-center gap-2 truncate">
+                      <Folder size={14} className="text-neutral-400 shrink-0" />
+                      <span className="truncate">{dir}</span>
+                    </div>
+                    {isSelected && <Check size={13} className="text-white shrink-0" />}
+                  </div>
+                );
+              })
+            )
+          ) : rootNode ? (
+            renderNode(rootNode)
+          ) : (
+            directories.map((dir) => {
+              const isSelected = tempSelected === dir;
+              return (
+                <div
+                  key={dir}
+                  onClick={() => setTempSelected(dir)}
+                  className={`flex items-center justify-between px-3 py-2 rounded-md cursor-pointer text-xs font-mono transition-colors ${
+                    isSelected
+                      ? 'bg-white/10 text-white font-medium border border-white/20'
+                      : 'text-neutral-300 hover:bg-white/[0.04] hover:text-white'
+                  }`}
+                >
+                  <div className="flex items-center gap-2 truncate">
+                    <Folder size={14} className="text-neutral-400 shrink-0" />
+                    <span className="truncate">{dir}</span>
+                  </div>
+                  {isSelected && <Check size={13} className="text-white shrink-0" />}
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="p-3.5 border-t border-[#1c1c1c] bg-[#0f0f0f] flex items-center justify-between gap-3">
+          <div className="text-xs truncate">
+            <span className="text-neutral-500 font-sans">Selected: </span>
+            <code className="text-white font-mono bg-neutral-900 px-1.5 py-0.5 rounded border border-neutral-800">
+              {tempSelected}
+            </code>
+          </div>
+          <div className="flex items-center gap-2 shrink-0">
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-3 py-1.5 rounded-md text-xs font-medium text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+            >
+              Cancel
+            </button>
+            <button
+              type="button"
+              onClick={handleConfirm}
+              className="bg-white text-black font-semibold text-xs px-4 py-1.5 rounded-md hover:bg-neutral-200 transition-colors cursor-pointer"
+            >
+              Continue
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function GitHubProjectPicker() {
   const router = useRouter();
   const { addProject } = useKr0nStore();
@@ -142,10 +396,13 @@ export default function GitHubProjectPicker() {
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState('main');
   const [directories, setDirectories] = useState(['./']);
+  const [dirEntries, setDirEntries] = useState([]);
+  const [dirTreeRoot, setDirTreeRoot] = useState(null);
   const [selectedDir, setSelectedDir] = useState('./');
+  const [isDirModalOpen, setIsDirModalOpen] = useState(false);
 
   // Manual installation ID input fallback (e.g. if GitHub Setup URL did not auto-redirect)
-  const [manualInstallId, setManualInstallId] = useState('184138371');
+  const [manualInstallId, setManualInstallId] = useState('');
 
   // Search Filter & Account Dropdown
   const [search, setSearch] = useState('');
@@ -212,12 +469,7 @@ export default function GitHubProjectPicker() {
         setRepos(
           apiRepos.map((r, idx) => ({
             ...r,
-            updatedDate: r.updated_at
-              ? new Date(r.updated_at).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                })
-              : 'Recently',
+            updatedDate: formatLastModified(r),
           }))
         );
       } else {
@@ -437,12 +689,16 @@ export default function GitHubProjectPicker() {
         const dirs = data?.directories || [];
         if (dirs.length > 0) {
           setDirectories(dirs.map((d) => (d === '/' ? './' : d)));
+          setDirEntries(data?.entries || []);
+          setDirTreeRoot(data?.root || null);
           setSelectedDir('./');
         }
       })
       .catch(() => {
         if (active) {
           setDirectories(['./']);
+          setDirEntries([]);
+          setDirTreeRoot(null);
           setSelectedDir('./');
         }
       });
@@ -631,7 +887,7 @@ export default function GitHubProjectPicker() {
               <div className="flex gap-2">
                 <input
                   type="text"
-                  placeholder="Installation ID or URL (e.g. 184138371)"
+                  placeholder="Installation ID or URL (e.g. 184229460)"
                   value={manualInstallId}
                   onChange={(e) => setManualInstallId(e.target.value)}
                   className="flex-1 bg-[#121212] border border-[#222222] focus:border-[#444444] rounded px-3 py-2 text-xs text-white outline-none font-mono"
@@ -887,22 +1143,31 @@ export default function GitHubProjectPicker() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             {/* Root Directory */}
             <div>
-              <label className="block text-xs text-neutral-400 font-medium mb-1.5">
-                Root Directory
-              </label>
-              <div className="border border-[#222222] bg-[#121212] rounded-md px-3 py-2 flex items-center gap-2 text-sm text-white">
-                <Folder size={14} className="text-neutral-400 shrink-0" />
-                <select
-                  value={selectedDir}
-                  onChange={(e) => setSelectedDir(e.target.value)}
-                  className="bg-transparent w-full text-sm outline-none text-white cursor-pointer"
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="text-xs text-neutral-400 font-medium">
+                  Root Directory
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setIsDirModalOpen(true)}
+                  className="text-[11px] text-blue-400 hover:text-blue-300 font-medium cursor-pointer transition-colors"
                 >
-                  {directories.map((d) => (
-                    <option key={d} value={d} className="bg-[#121212] text-white">
-                      {d}
-                    </option>
-                  ))}
-                </select>
+                  Edit / Browse Map
+                </button>
+              </div>
+              <div
+                onClick={() => setIsDirModalOpen(true)}
+                className="border border-[#222222] hover:border-[#333333] bg-[#121212] rounded-md px-3 py-2 flex items-center justify-between text-sm text-white cursor-pointer transition-colors group"
+              >
+                <div className="flex items-center gap-2 truncate">
+                  <Folder size={14} className="text-neutral-400 group-hover:text-white shrink-0 transition-colors" />
+                  <span className="font-mono text-xs text-white truncate">
+                    {selectedDir || './'}
+                  </span>
+                </div>
+                <span className="text-[11px] text-neutral-500 group-hover:text-neutral-300 shrink-0 font-sans">
+                  Select
+                </span>
               </div>
             </div>
 
@@ -1120,6 +1385,19 @@ export default function GitHubProjectPicker() {
             )}
           </button>
         </div>
+      )}
+
+      {/* Interactive Directory Map Modal */}
+      {isDirModalOpen && (
+        <DirectoryMapModal
+          onClose={() => setIsDirModalOpen(false)}
+          repoName={selectedRepo?.name || 'Repository'}
+          branch={selectedBranch || 'main'}
+          rootNode={dirTreeRoot}
+          directories={directories}
+          selectedDir={selectedDir}
+          onSelectDir={(dir) => setSelectedDir(dir)}
+        />
       )}
     </main>
   );
