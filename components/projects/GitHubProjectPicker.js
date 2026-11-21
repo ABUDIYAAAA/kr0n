@@ -407,8 +407,11 @@ export default function GitHubProjectPicker() {
     if (!selectedRepo || !selectedOrgId) return;
     let active = true;
 
+    const instIdParam = activeInstallation?.installation_id ? `&installation_id=${activeInstallation.installation_id}` : '';
+    const instIdQuery = activeInstallation?.installation_id ? `?installation_id=${activeInstallation.installation_id}` : '';
+
     githubApi(
-      `orgs/${selectedOrgId}/github/repositories/${encodeURIComponent(selectedRepo.owner)}/${encodeURIComponent(selectedRepo.name)}/branches`
+      `orgs/${selectedOrgId}/github/repositories/${encodeURIComponent(selectedRepo.owner)}/${encodeURIComponent(selectedRepo.name)}/branches${instIdQuery}`
     )
       .then((data) => {
         if (!active) return;
@@ -427,7 +430,7 @@ export default function GitHubProjectPicker() {
       });
 
     githubApi(
-      `orgs/${selectedOrgId}/github/repositories/${encodeURIComponent(selectedRepo.owner)}/${encodeURIComponent(selectedRepo.name)}/directories?ref=${selectedBranch}`
+      `orgs/${selectedOrgId}/github/repositories/${encodeURIComponent(selectedRepo.owner)}/${encodeURIComponent(selectedRepo.name)}/directories?ref=${selectedBranch}${instIdParam}`
     )
       .then((data) => {
         if (!active) return;
@@ -447,7 +450,7 @@ export default function GitHubProjectPicker() {
     return () => {
       active = false;
     };
-  }, [selectedRepo, selectedOrgId, selectedBranch]);
+  }, [selectedRepo, selectedOrgId, selectedBranch, activeInstallation?.installation_id]);
 
   // Handle clicking "Import" on a repository (Screen 1 -> Screen 2)
   function handleSelectRepo(r) {
