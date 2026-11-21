@@ -65,24 +65,24 @@ export default function ProjectDeploymentDetailPage({ params }) {
   const foundProject = projects.find((p) => p.id === projectId);
   const project = foundProject || {
     id: projectId,
-    name: projectId.replace(/^proj_/, '').replace(/_[a-z0-9]+$/, '') || 'foldbyfold',
-    url: `${projectId.replace(/^proj_/, '').replace(/_[a-z0-9]+$/, '') || 'foldbyfold-rho'}.vercel.app`,
-    repository: 'arpittripathi755/foldbyfold',
+    name: projectId.replace(/^proj_/, '').replace(/_[a-z0-9]+$/, '') || 'my-project',
+    url: `${projectId.replace(/^proj_/, '').replace(/_[a-z0-9]+$/, '') || 'my-project'}.vercel.app`,
+    repository: '',
     environment: 'production',
     currentDeployment: {
       version: 'v1.0.0',
       branch: 'main',
-      commit: 'add0788',
-      commitMessage: 'made better',
+      commit: 'initial',
+      commitMessage: 'initial setup',
       duration: '6s',
-      timestamp: 'Oct 6',
+      timestamp: 'Just now',
       status: 'ready',
     },
     services: [
       {
         id: 'svc_web',
         name: 'web',
-        runtime: 'Vite',
+        runtime: 'Node.js',
         buildCommand: 'npm run build',
         outputDir: 'dist',
       },
@@ -90,7 +90,7 @@ export default function ProjectDeploymentDetailPage({ params }) {
   };
 
   const accountLogin =
-    currentUser?.displayName || currentUser?.display_name || currentUser?.name || 'arpittripathi755';
+    currentUser?.displayName || currentUser?.display_name || currentUser?.name || 'kr0n-user';
   const cleanName = project.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
   const primaryDomain = project.url || `${cleanName}.vercel.app`;
   const branchDomain = `${cleanName}-git-main-${accountLogin}-4325s-projects.vercel.app`;
