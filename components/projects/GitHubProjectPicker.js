@@ -448,6 +448,7 @@ export default function GitHubProjectPicker() {
 
   // Repositories State (ONLY REAL REPOSITORIES FROM GITHUB)
   const [repos, setRepos] = useState([]);
+  const [fetchingRepos, setFetchingRepos] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState(null);
   const [branches, setBranches] = useState([]);
   const [selectedBranch, setSelectedBranch] = useState('main');
@@ -519,28 +520,33 @@ export default function GitHubProjectPicker() {
         setIsGitHubConnected(true);
         const inst = instList[0];
         setActiveInstallation(inst);
+        setFetchingRepos(true);
 
-        // Fetch real repositories from GitHub
-        const repoData = await githubApi(
-          `orgs/${orgId}/github/repositories?installation_id=${inst.installation_id}`
-        ).catch((err) => {
-          console.warn('[kr0n] Failed to fetch repositories:', err?.message);
-          return { repositories: [] };
-        });
+        try {
+          // Fetch real repositories from GitHub
+          const repoData = await githubApi(
+            `orgs/${orgId}/github/repositories?installation_id=${inst.installation_id}`
+          ).catch((err) => {
+            console.warn('[kr0n] Failed to fetch repositories:', err?.message);
+            return { repositories: [] };
+          });
 
-        const apiRepos = repoData?.repositories || [];
-        const sorted = [...apiRepos].sort((a, b) => {
-          const timeA = getRepoTimestamp(a);
-          const timeB = getRepoTimestamp(b);
-          if (timeB !== timeA) return timeB - timeA;
-          return (a.name || '').localeCompare(b.name || '');
-        });
-        setRepos(
-          sorted.map((r) => ({
-            ...r,
-            updatedDate: formatLastModified(r),
-          }))
-        );
+          const apiRepos = repoData?.repositories || [];
+          const sorted = [...apiRepos].sort((a, b) => {
+            const timeA = getRepoTimestamp(a);
+            const timeB = getRepoTimestamp(b);
+            if (timeB !== timeA) return timeB - timeA;
+            return (a.name || '').localeCompare(b.name || '');
+          });
+          setRepos(
+            sorted.map((r) => ({
+              ...r,
+              updatedDate: formatLastModified(r),
+            }))
+          );
+        } finally {
+          setFetchingRepos(false);
+        }
       } else {
         setIsGitHubConnected(false);
         setRepos([]);
@@ -1082,7 +1088,11 @@ export default function GitHubProjectPicker() {
 
             {/* Search Input Box */}
             <div className="flex-1 flex items-center gap-2.5 bg-[#0c0c0c] border border-[#222222] focus-within:border-[#444444] rounded-md px-3.5 py-2 text-sm text-white transition-colors">
-              <Search size={15} className="text-neutral-500 shrink-0" />
+              {fetchingRepos ? (
+                <Loader2 size={15} className="text-neutral-400 animate-spin shrink-0" />
+              ) : (
+                <Search size={15} className="text-neutral-500 shrink-0" />
+              )}
               <input
                 type="text"
                 placeholder="Search"
@@ -1098,7 +1108,23 @@ export default function GitHubProjectPicker() {
 
           {/* Repository List Box */}
           <div className="border border-[#222222] bg-[#0c0c0c] rounded-lg divide-y divide-[#1c1c1c] overflow-hidden">
-            {repos.length === 0 ? (
+            {fetchingRepos ? (
+              <div className="divide-y divide-[#181818]">
+                {[...Array(6)].map((_, i) => (
+                  <div
+                    key={i}
+                    className="px-4 py-3.5 flex items-center justify-between animate-pulse"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <div className="w-5 h-5 rounded-full bg-neutral-800" />
+                      <div className="h-4 w-36 sm:w-48 bg-neutral-800 rounded" />
+                      <div className="h-3 w-16 bg-neutral-900 rounded hidden sm:block" />
+                    </div>
+                    <div className="h-7 w-16 bg-neutral-800/80 rounded-md" />
+                  </div>
+                ))}
+              </div>
+            ) : repos.length === 0 ? (
               <div className="p-8 text-center space-y-3">
                 <p className="text-sm text-neutral-400">
                   No repositories found for this account.
