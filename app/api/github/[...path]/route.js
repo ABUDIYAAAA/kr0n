@@ -164,16 +164,26 @@ async function handleGitHubDirectFallback(target, query, headers, base) {
     }
 
     const data = await ghRes.json();
-    const repos = (data.repositories || []).map((r) => ({
-      id: r.id,
-      name: r.name,
-      full_name: r.full_name,
-      private: Boolean(r.private),
-      owner: r.owner?.login || r.full_name?.split('/')[0] || '',
-      default_branch: r.default_branch || 'main',
-      html_url: r.html_url || `https://github.com/${r.full_name}`,
-      updated_at: r.updated_at || new Date().toISOString(),
-    }));
+    const repos = (data.repositories || [])
+      .map((r) => ({
+        id: r.id,
+        name: r.name,
+        full_name: r.full_name,
+        private: Boolean(r.private),
+        owner: r.owner?.login || r.full_name?.split('/')[0] || '',
+        default_branch: r.default_branch || 'main',
+        html_url: r.html_url || `https://github.com/${r.full_name}`,
+        description: r.description || '',
+        language: r.language || '',
+        updated_at: r.updated_at || '',
+        pushed_at: r.pushed_at || r.updated_at || '',
+      }))
+      .sort((a, b) => {
+        const timeA = new Date(a.pushed_at || a.updated_at || 0).getTime() || 0;
+        const timeB = new Date(b.pushed_at || b.updated_at || 0).getTime() || 0;
+        if (timeB !== timeA) return timeB - timeA;
+        return (a.name || '').localeCompare(b.name || '');
+      });
 
     return NextResponse.json({ repositories: repos }, {
       status: 200,

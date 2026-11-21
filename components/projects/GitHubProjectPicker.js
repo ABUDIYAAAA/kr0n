@@ -119,11 +119,28 @@ function RepoIcon({ type, name = '' }) {
   );
 }
 
+function getRepoTimestamp(r) {
+  if (!r) return 0;
+  const candidates = [r.pushed_at, r.updated_at, r.created_at];
+  for (const c of candidates) {
+    if (!c) continue;
+    if (typeof c === 'string') {
+      const ms = new Date(c).getTime();
+      if (!isNaN(ms) && ms > 0) return ms;
+    } else if (typeof c === 'number') {
+      return c > 1e11 ? c : c * 1000;
+    } else if (typeof c === 'object' && c.seconds) {
+      return Number(c.seconds) * 1000;
+    }
+  }
+  return 0;
+}
+
 function formatLastModified(r) {
-  const ts = r.pushed_at || r.updated_at;
-  if (!ts) return 'Recently';
+  const ms = getRepoTimestamp(r);
+  if (!ms) return 'Recently';
   try {
-    const diffMs = Date.now() - new Date(ts).getTime();
+    const diffMs = Date.now() - ms;
     if (isNaN(diffMs)) return 'Recently';
     const diffSec = Math.floor(diffMs / 1000);
     if (diffSec < 60) return 'Just now';
@@ -133,7 +150,7 @@ function formatLastModified(r) {
     if (diffHour < 24) return `${diffHour}h ago`;
     const diffDay = Math.floor(diffHour / 24);
     if (diffDay < 30) return `${diffDay}d ago`;
-    return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    return new Date(ms).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
   } catch {
     return 'Recently';
   }
@@ -468,8 +485,14 @@ export default function GitHubProjectPicker() {
         });
 
         const apiRepos = repoData?.repositories || [];
+        const sorted = [...apiRepos].sort((a, b) => {
+          const timeA = getRepoTimestamp(a);
+          const timeB = getRepoTimestamp(b);
+          if (timeB !== timeA) return timeB - timeA;
+          return (a.name || '').localeCompare(b.name || '');
+        });
         setRepos(
-          apiRepos.map((r, idx) => ({
+          sorted.map((r) => ({
             ...r,
             updatedDate: formatLastModified(r),
           }))
@@ -790,9 +813,14 @@ export default function GitHubProjectPicker() {
   const teamDisplayName =
     organizations.find((o) => o.id === selectedOrgId)?.name || `${accountLogin}'s Team`;
 
-  const filteredRepos = repos.filter((r) =>
-    r.name.toLowerCase().includes(search.trim().toLowerCase())
-  );
+  const filteredRepos = repos
+    .filter((r) => r.name.toLowerCase().includes(search.trim().toLowerCase()))
+    .sort((a, b) => {
+      const timeA = getRepoTimestamp(a);
+      const timeB = getRepoTimestamp(b);
+      if (timeB !== timeA) return timeB - timeA;
+      return (a.name || '').localeCompare(b.name || '');
+    });
 
   const currentPreset =
     APPLICATION_PRESETS.find((p) => p.id === presetId) || APPLICATION_PRESETS[0];
