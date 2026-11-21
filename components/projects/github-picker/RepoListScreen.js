@@ -10,6 +10,7 @@ import {
   Plus,
   Loader2,
   Check,
+  Trash2,
 } from 'lucide-react';
 import { RepoIcon } from './constants';
 
@@ -33,6 +34,7 @@ export default function RepoListScreen({
   startIndex,
   PAGE_SIZE,
   handleSelectRepo,
+  disconnectGitHubInstallation,
 }) {
   return (
     <div className="w-full max-w-3xl space-y-5">
@@ -101,6 +103,18 @@ export default function RepoListScreen({
               >
                 <Plus size={13} /> Add Another GitHub Account
               </button>
+              {disconnectGitHubInstallation && (
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowAccountMenu(false);
+                    disconnectGitHubInstallation();
+                  }}
+                  className="w-full text-left px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors flex items-center gap-2 cursor-pointer border-t border-[#1c1c1c] mt-1"
+                >
+                  <Trash2 size={13} /> Disconnect GitHub Account
+                </button>
+              )}
             </div>
           )}
         </div>

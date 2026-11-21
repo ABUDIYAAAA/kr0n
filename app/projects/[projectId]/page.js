@@ -2,6 +2,7 @@
 
 import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Share2,
@@ -19,6 +20,8 @@ import {
   X,
   Sliders,
   RefreshCw,
+  Trash2,
+  AlertTriangle,
 } from 'lucide-react';
 import { useKr0nStore } from '@/lib/kr0n-state';
 import { getMe, useAuthUser } from '@/lib/auth';
@@ -26,8 +29,9 @@ import { getMe, useAuthUser } from '@/lib/auth';
 export default function ProjectDeploymentDetailPage({ params }) {
   const unwrappedParams = use(params);
   const { projectId } = unwrappedParams;
+  const router = useRouter();
 
-  const { projects } = useKr0nStore();
+  const { projects, deleteProject } = useKr0nStore();
   const authUser = useAuthUser();
   const [liveUser, setLiveUser] = useState(null);
   const currentUser = liveUser || authUser;
@@ -38,6 +42,8 @@ export default function ProjectDeploymentDetailPage({ params }) {
   const [showShareToast, setShowShareToast] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
   const [showVisitDropdown, setShowVisitDropdown] = useState(false);
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [confirmDeleteName, setConfirmDeleteName] = useState('');
 
   // Sync current user profile
   useEffect(() => {
@@ -104,6 +110,12 @@ export default function ProjectDeploymentDetailPage({ params }) {
       setShowShareToast(true);
       setTimeout(() => setShowShareToast(false), 3000);
     }
+  }
+
+  function handleDeleteProject() {
+    deleteProject(project.id);
+    setShowDeleteModal(false);
+    router.push('/projects');
   }
 
   return (
@@ -227,6 +239,18 @@ export default function ProjectDeploymentDetailPage({ params }) {
                 >
                   Project Settings
                 </Link>
+                <div className="border-t border-[#1c1c1c] my-1" />
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowMenu(false);
+                    setShowDeleteModal(true);
+                  }}
+                  className="w-full text-left px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors flex items-center gap-2 cursor-pointer"
+                >
+                  <Trash2 size={12} className="shrink-0" />
+                  <span>Delete Project</span>
+                </button>
               </div>
             )}
           </div>
@@ -540,6 +564,52 @@ export default function ProjectDeploymentDetailPage({ params }) {
                 className="bg-white text-black font-semibold px-4 py-1.5 rounded text-xs hover:bg-neutral-200"
               >
                 Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* ─── Delete Project Confirmation Modal ─── */}
+      {showDeleteModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm font-mono text-xs">
+          <div className="max-w-md w-full border border-red-500/40 bg-[#0c0c0c] p-6 space-y-4 shadow-2xl rounded-lg">
+            <div className="flex items-center gap-2 text-red-400 font-bold uppercase">
+              <AlertTriangle size={16} />
+              <span>Confirm Project Deletion</span>
+            </div>
+            <p className="text-neutral-400 font-sans leading-relaxed">
+              This will permanently delete project <strong className="text-white">{project.name}</strong> ({project.id}) and all of its associated deployments and settings. This action cannot be undone.
+            </p>
+            <div className="space-y-1.5">
+              <label className="block text-neutral-400">
+                Type <strong className="text-white">{project.name}</strong> to confirm:
+              </label>
+              <input
+                type="text"
+                value={confirmDeleteName}
+                onChange={(e) => setConfirmDeleteName(e.target.value)}
+                placeholder={project.name}
+                className="w-full bg-black border border-[#222222] px-3 py-2 text-white outline-none focus:border-red-500/60 rounded"
+              />
+            </div>
+            <div className="flex items-center justify-end gap-3 pt-2">
+              <button
+                type="button"
+                onClick={() => {
+                  setShowDeleteModal(false);
+                  setConfirmDeleteName('');
+                }}
+                className="px-3 py-1.5 border border-[#222222] text-neutral-400 hover:text-white rounded hover:bg-white/5 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={confirmDeleteName !== project.name}
+                onClick={handleDeleteProject}
+                className="bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-1.5 font-bold uppercase rounded transition-colors cursor-pointer"
+              >
+                Permanently Delete Project
               </button>
             </div>
           </div>

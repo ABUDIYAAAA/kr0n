@@ -125,10 +125,7 @@ export default function GitHubProjectPicker() {
           // Fetch real repositories from GitHub
           const repoData = await githubApi(
             `orgs/${orgId}/github/repositories?installation_id=${inst.installation_id}`
-          ).catch((err) => {
-            console.warn('[kr0n] Failed to fetch repositories:', err?.message);
-            return { repositories: [] };
-          });
+          );
 
           const apiRepos = repoData?.repositories || [];
           const sorted = [...apiRepos].sort((a, b) => {
@@ -143,6 +140,13 @@ export default function GitHubProjectPicker() {
               updatedDate: formatLastModified(r),
             }))
           );
+        } catch (err) {
+          console.warn('[kr0n] Failed to fetch repositories (app uninstalled or invalid token):', err?.message);
+          // Auto-recover: if the app was uninstalled on GitHub, reset connection to prompt reconnect
+          setIsGitHubConnected(false);
+          setActiveInstallation(null);
+          setInstallations([]);
+          setRepos([]);
         } finally {
           setFetchingRepos(false);
         }
@@ -315,6 +319,28 @@ export default function GitHubProjectPicker() {
       setConnecting(false);
     }
   }, [selectedOrgId, currentUser, refreshGitHubState]);
+
+  // Disconnect GitHub installation from organization workspace
+  const disconnectGitHubInstallation = useCallback(async () => {
+    if (!selectedOrgId || !activeInstallation?.installation_id) return;
+    try {
+      setLoading(true);
+      await githubApi(
+        `orgs/${selectedOrgId}/github/installations/${activeInstallation.installation_id}`,
+        { method: 'DELETE' }
+      );
+      await refreshGitHubState(selectedOrgId);
+    } catch (err) {
+      console.error('[kr0n] Failed to disconnect GitHub:', err);
+      // Auto-recover local state
+      setIsGitHubConnected(false);
+      setActiveInstallation(null);
+      setInstallations([]);
+      setRepos([]);
+    } finally {
+      setLoading(false);
+    }
+  }, [selectedOrgId, activeInstallation, refreshGitHubState]);
 
   // Auto-link if installation_id is passed in query params
   useEffect(() => {
@@ -553,6 +579,7 @@ export default function GitHubProjectPicker() {
           startIndex={startIndex}
           PAGE_SIZE={PAGE_SIZE}
           handleSelectRepo={handleSelectRepo}
+          disconnectGitHubInstallation={disconnectGitHubInstallation}
         />
       )}
 
@@ -616,9 +643,17 @@ export default function GitHubProjectPicker() {
           repoName={selectedRepo?.name || 'Repository'}
           branch={selectedBranch || 'main'}
           rootNode={dirTreeRoot}
+          dirEntries={dirEntries}
           directories={directories}
           selectedDir={selectedDir}
-          onSelectDir={(dir) => setSelectedDir(dir)}
+          defaultPresetId={presetId}
+          repoLanguage={selectedRepo?.language}
+          onSelectDir={(dir, detectedPreset) => {
+            setSelectedDir(dir);
+            if (detectedPreset) {
+              setPresetId(detectedPreset);
+            }
+          }}
         />
       )}
     </main>

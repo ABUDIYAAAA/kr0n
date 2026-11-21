@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Search,
   Folder,
@@ -11,15 +11,27 @@ import {
   GitBranch,
   Check,
   X,
+  Loader2,
 } from 'lucide-react';
+import { APPLICATION_PRESETS, RepoIcon } from './constants';
 
-export function buildDirectoryTree(directories = []) {
+function normalizePath(p) {
+  if (!p) return './';
+  const trimmed = p.trim();
+  if (trimmed === '' || trimmed === '.' || trimmed === './' || trimmed === '/') {
+    return './';
+  }
+  return trimmed.startsWith('./') ? trimmed : `./${trimmed.replace(/^\/+/, '')}`;
+}
+
+export function buildDirectoryTree(directories = [], dirEntries = []) {
   const root = {
     id: 'root',
     name: './',
     label: './ (repository root)',
     path: './',
     children: [],
+    detectedPreset: '',
   };
 
   const nodeMap = new Map();
@@ -27,6 +39,23 @@ export function buildDirectoryTree(directories = []) {
   nodeMap.set('.', root);
   nodeMap.set('./', root);
   nodeMap.set('/', root);
+
+  // Index entries by normalized path
+  const entryPresetMap = new Map();
+  if (Array.isArray(dirEntries)) {
+    dirEntries.forEach((e) => {
+      const p = normalizePath(e.path);
+      const preset = e.detected_preset || e.detectedPreset || '';
+      if (preset) {
+        entryPresetMap.set(p, preset);
+        entryPresetMap.set(e.path, preset);
+      }
+    });
+  }
+
+  if (entryPresetMap.has('./') || entryPresetMap.has('/')) {
+    root.detectedPreset = entryPresetMap.get('./') || entryPresetMap.get('/') || '';
+  }
 
   const cleanPaths = (directories || [])
     .map((d) => (typeof d === 'string' ? d.trim() : ''))
@@ -55,6 +84,7 @@ export function buildDirectoryTree(directories = []) {
       if (!node) {
         const isLeaf = index === segments.length - 1;
         const nodePath = isLeaf ? rawPath : (rawPath.startsWith('./') ? `./${currentKey}` : `/${currentKey}`);
+        const norm = normalizePath(nodePath);
 
         node = {
           id: currentKey,
@@ -62,6 +92,7 @@ export function buildDirectoryTree(directories = []) {
           label: seg,
           path: nodePath,
           children: [],
+          detectedPreset: entryPresetMap.get(norm) || entryPresetMap.get(nodePath) || '',
         };
         nodeMap.set(currentKey, node);
         parent.children.push(node);
@@ -103,22 +134,170 @@ export default function DirectoryMapModal({
   repoName,
   branch,
   rootNode,
+  dirEntries = [],
   directories = [],
   selectedDir,
   onSelectDir,
+  defaultPresetId = 'auto',
+  repoLanguage = '',
 }) {
   const [tempSelected, setTempSelected] = useState(selectedDir || './');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Build hierarchical directory tree from directories list
-  const treeRoot = rootNode && rootNode.children && rootNode.children.length > 0
-    ? rootNode
-    : buildDirectoryTree(directories);
+  // Build hierarchical directory tree from directories list and entries
+  const treeRoot = useMemo(() => {
+    if (rootNode && rootNode.children && rootNode.children.length > 0) {
+      return rootNode;
+    }
+    return buildDirectoryTree(directories, dirEntries);
+  }, [rootNode, directories, dirEntries]);
 
   // Initial expanded state: unfold root and ancestor path of selected directory
   const [expandedPaths, setExpandedPaths] = useState(() =>
     getInitialExpandedPaths(selectedDir)
   );
+
+  // Progressive loading simulation: simulate streaming directory scanning with real loaders
+  const [loadedDirs, setLoadedDirs] = useState(() => new Set());
+  const timerRef = useRef(null);
+
+  // Quick heuristic fallback if backend did not include detectedPreset
+  function inferPresetFallback(path) {
+    const norm = normalizePath(path);
+    if (norm === './') {
+      return defaultPresetId && defaultPresetId !== 'auto' ? defaultPresetId : '';
+    }
+
+    const lower = norm.toLowerCase();
+
+    // Check specific framework folder clues
+    if (lower.includes('next')) return 'nextjs';
+    if (lower.includes('nuxt')) return 'nuxt';
+    if (lower.includes('svelte')) return 'sveltekit';
+    if (lower.includes('astro')) return 'astro';
+    if (lower.includes('remix')) return 'remix';
+    if (lower.includes('vite')) return 'vite';
+    if (lower.includes('vue')) return 'vue';
+    if (lower.includes('django') || lower.includes('flask') || lower.includes('fastapi')) return 'python';
+    if (lower.includes('golang') || lower.includes('go-')) return 'go';
+    if (lower.includes('cargo') || lower.includes('rust')) return 'rust';
+    if (lower.includes('rails') || lower.includes('ruby')) return 'ruby';
+    if (lower.includes('laravel') || lower.includes('php')) return 'php';
+    if (lower.includes('spring') || lower.includes('java')) return 'java';
+    if (lower.includes('dotnet') || lower.includes('csharp')) return 'dotnet';
+    if (lower.includes('docker')) return 'dockerfile';
+
+    // Frontends
+    if (lower.endsWith('/web') || lower.endsWith('/frontend') || lower.endsWith('/client') || lower.endsWith('/ui')) {
+      return 'nextjs';
+    }
+
+    // Backends
+    if (lower.endsWith('/api') || lower.endsWith('/backend') || lower.endsWith('/server') || lower.endsWith('/service')) {
+      const l = (repoLanguage || '').toLowerCase();
+      if (l === 'go') return 'go';
+      if (l === 'python') return 'python';
+      if (l === 'rust') return 'rust';
+      if (l === 'ruby') return 'ruby';
+      if (l === 'php') return 'php';
+      if (l === 'java') return 'java';
+      if (l === 'c#') return 'dotnet';
+      return 'nodejs';
+    }
+
+    // Explicit non-build directories
+    if (
+      lower.includes('/docs') ||
+      lower.includes('/assets') ||
+      lower.includes('/images') ||
+      lower.includes('/scripts') ||
+      lower.includes('/public') ||
+      lower.includes('/tests') ||
+      lower.includes('/spec') ||
+      lower.includes('/pkg') ||
+      lower.includes('/internal')
+    ) {
+      return '';
+    }
+
+    return '';
+  }
+
+  // Pre-indexed preset map
+  const presetByPath = useMemo(() => {
+    const map = new Map();
+
+    if (Array.isArray(dirEntries)) {
+      dirEntries.forEach((e) => {
+        const p = normalizePath(e.path);
+        const preset = e.detected_preset || e.detectedPreset || '';
+        if (preset) {
+          map.set(p, preset);
+          map.set(e.path, preset);
+        }
+      });
+    }
+
+    function collectFromTree(n) {
+      if (!n) return;
+      const p = normalizePath(n.path);
+      const pr = n.detected_preset || n.detectedPreset || '';
+      if (pr && !map.has(p)) {
+        map.set(p, pr);
+        map.set(n.path, pr);
+      }
+      if (n.children) {
+        n.children.forEach(collectFromTree);
+      }
+    }
+    collectFromTree(treeRoot);
+
+    return map;
+  }, [dirEntries, treeRoot]);
+
+  // Lookup helper for preset for a given path
+  function getDetectedPreset(path) {
+    const norm = normalizePath(path);
+    if (presetByPath.has(norm)) {
+      return presetByPath.get(norm);
+    }
+    if (presetByPath.has(path)) {
+      return presetByPath.get(path);
+    }
+    return inferPresetFallback(path);
+  }
+
+  // Staggered loading effect on mount: progressively resolve directory build strategies
+  useEffect(() => {
+    const allPaths = ['./'];
+    if (Array.isArray(directories)) {
+      directories.forEach((d) => allPaths.push(d));
+    }
+
+    let currentIndex = 0;
+    const batchSize = 3;
+    const interval = 60; // 60ms stagger per batch for dynamic feel
+
+    timerRef.current = setInterval(() => {
+      setLoadedDirs((prev) => {
+        const next = new Set(prev);
+        for (let i = 0; i < batchSize && currentIndex < allPaths.length; i++) {
+          next.add(allPaths[currentIndex]);
+          next.add(normalizePath(allPaths[currentIndex]));
+          currentIndex++;
+        }
+        return next;
+      });
+
+      if (currentIndex >= allPaths.length) {
+        clearInterval(timerRef.current);
+      }
+    }, interval);
+
+    return () => {
+      if (timerRef.current) clearInterval(timerRef.current);
+    };
+  }, [directories]);
 
   function toggleExpand(node, e) {
     if (e) e.stopPropagation();
@@ -154,15 +333,53 @@ export default function DirectoryMapModal({
   }
 
   function handleConfirm() {
-    onSelectDir(tempSelected);
+    const detected = getDetectedPreset(tempSelected);
+    onSelectDir(tempSelected, detected);
     onClose();
   }
 
   const filteredDirs = searchQuery.trim()
-    ? directories.filter((d) =>
+    ? (directories || []).filter((d) =>
         d.toLowerCase().includes(searchQuery.toLowerCase().trim())
       )
     : [];
+
+  const tempNorm = normalizePath(tempSelected);
+  const selectedPresetId = getDetectedPreset(tempNorm);
+  const selectedPresetSpec = APPLICATION_PRESETS.find((p) => p.id === selectedPresetId);
+
+  function renderPresetBadge(path) {
+    const norm = normalizePath(path);
+    const isLoaded = loadedDirs.has(norm) || loadedDirs.has(path);
+
+    // Loader state while scanning directory for build strategy
+    if (!isLoaded) {
+      return (
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-neutral-900/90 border border-neutral-800 text-[10px] text-neutral-400 font-mono animate-pulse shrink-0">
+          <Loader2 size={10} className="animate-spin text-neutral-400 shrink-0" />
+          <span>Detecting...</span>
+        </div>
+      );
+    }
+
+    const presetId = getDetectedPreset(path);
+    if (presetId) {
+      const spec = APPLICATION_PRESETS.find((p) => p.id === presetId);
+      return (
+        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/[0.06] border border-white/10 text-[10px] text-white shrink-0 shadow-sm animate-in fade-in duration-200">
+          <RepoIcon type={presetId} />
+          <span className="font-medium font-sans">{spec?.name || presetId}</span>
+        </div>
+      );
+    }
+
+    // No build strategy in this folder
+    return (
+      <span className="text-[10px] text-neutral-500 font-sans italic shrink-0">
+        No build strategy
+      </span>
+    );
+  }
 
   function renderTreeNode(node, depth = 0) {
     if (!node) return null;
@@ -170,7 +387,7 @@ export default function DirectoryMapModal({
     const isExpanded = expandedPaths.has(node.path) || (node.id && expandedPaths.has(node.id));
     const isSelected =
       tempSelected === node.path ||
-      (node.path === './' && (tempSelected === './' || tempSelected === '.' || tempSelected === '/'));
+      normalizePath(tempSelected) === normalizePath(node.path);
 
     const isRoot = node.id === 'root' || node.path === './' || node.path === '/';
 
@@ -179,7 +396,6 @@ export default function DirectoryMapModal({
         <div
           onClick={() => {
             setTempSelected(node.path);
-            // Slowly unfold: auto-expand this directory when selected so child folders appear
             if (hasChildren && !isExpanded) {
               setExpandedPaths((prev) => new Set([...prev, node.path, node.id || '']));
             }
@@ -191,8 +407,8 @@ export default function DirectoryMapModal({
               : 'text-neutral-300 hover:bg-white/[0.04] hover:text-white'
           }`}
         >
-          <div className="flex items-center gap-1.5 truncate min-w-0">
-            {/* Dropdown Chevron Toggle */}
+          <div className="flex items-center gap-2 truncate min-w-0 mr-2">
+            {/* Expand / Collapse Chevron */}
             {hasChildren ? (
               <button
                 type="button"
@@ -232,12 +448,9 @@ export default function DirectoryMapModal({
             )}
           </div>
 
-          <div className="flex items-center gap-2 shrink-0 ml-2">
-            {!isRoot && (
-              <span className="text-[10px] text-neutral-500 font-sans opacity-0 group-hover:opacity-100 transition-opacity">
-                {node.path}
-              </span>
-            )}
+          {/* Right side: Loader / Detected Preset Badge & Selected Checkmark */}
+          <div className="flex items-center gap-2.5 shrink-0 ml-2">
+            {renderPresetBadge(node.path)}
             {isSelected && <Check size={13} className="text-white shrink-0" />}
           </div>
         </div>
@@ -330,7 +543,7 @@ export default function DirectoryMapModal({
           </div>
         )}
 
-        {/* Tree content */}
+        {/* Tree Content */}
         <div className="p-3 overflow-y-auto max-h-[380px] space-y-1">
           {searchQuery.trim() ? (
             filteredDirs.length === 0 ? (
@@ -339,7 +552,9 @@ export default function DirectoryMapModal({
               </div>
             ) : (
               filteredDirs.map((dir) => {
-                const isSelected = tempSelected === dir;
+                const isSelected =
+                  tempSelected === dir ||
+                  normalizePath(tempSelected) === normalizePath(dir);
                 const parts = dir.replace(/^\.?\//, '').split('/');
                 return (
                   <div
@@ -356,7 +571,7 @@ export default function DirectoryMapModal({
                         : 'text-neutral-300 hover:bg-white/[0.04] hover:text-white'
                     }`}
                   >
-                    <div className="flex items-center gap-2 truncate">
+                    <div className="flex items-center gap-2 truncate min-w-0 mr-2">
                       <Folder size={14} className="text-amber-400 shrink-0" />
                       <div className="truncate">
                         {parts.length > 1 && (
@@ -369,7 +584,10 @@ export default function DirectoryMapModal({
                         </span>
                       </div>
                     </div>
-                    {isSelected && <Check size={13} className="text-white shrink-0" />}
+                    <div className="flex items-center gap-2.5 shrink-0 ml-2">
+                      {renderPresetBadge(dir)}
+                      {isSelected && <Check size={13} className="text-white shrink-0" />}
+                    </div>
                   </div>
                 );
               })
@@ -379,15 +597,25 @@ export default function DirectoryMapModal({
           )}
         </div>
 
-        {/* Footer */}
-        <div className="p-3.5 border-t border-[#1c1c1c] bg-[#0f0f0f] flex items-center justify-between gap-3">
-          <div className="text-xs truncate">
-            <span className="text-neutral-500 font-sans">Selected: </span>
-            <code className="text-white font-mono bg-neutral-900 px-1.5 py-0.5 rounded border border-neutral-800">
+        {/* Footer with Selected Directory and Detected Build Strategy */}
+        <div className="p-3.5 border-t border-[#1c1c1c] bg-[#0f0f0f] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="text-xs truncate flex items-center gap-2 min-w-0">
+            <span className="text-neutral-500 font-sans shrink-0">Selected:</span>
+            <code className="text-white font-mono bg-neutral-900 px-1.5 py-0.5 rounded border border-neutral-800 truncate">
               {tempSelected}
             </code>
+            {selectedPresetSpec ? (
+              <span className="inline-flex items-center gap-1.5 text-[11px] font-sans text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded shrink-0">
+                <RepoIcon type={selectedPresetSpec.id} />
+                <span>{selectedPresetSpec.name}</span>
+              </span>
+            ) : (
+              <span className="text-[11px] text-neutral-500 italic shrink-0">
+                No build strategy
+              </span>
+            )}
           </div>
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-2 shrink-0 justify-end">
             <button
               type="button"
               onClick={onClose}
@@ -398,9 +626,14 @@ export default function DirectoryMapModal({
             <button
               type="button"
               onClick={handleConfirm}
-              className="bg-white text-black font-semibold text-xs px-4 py-1.5 rounded-md hover:bg-neutral-200 transition-colors cursor-pointer"
+              className="bg-white text-black font-semibold text-xs px-4 py-1.5 rounded-md hover:bg-neutral-200 transition-colors cursor-pointer flex items-center gap-1.5"
             >
-              Continue
+              <span>Select Directory</span>
+              {selectedPresetSpec && (
+                <span className="text-[10px] font-mono text-neutral-600 bg-neutral-200 px-1 rounded">
+                  +{selectedPresetSpec.name}
+                </span>
+              )}
             </button>
           </div>
         </div>
