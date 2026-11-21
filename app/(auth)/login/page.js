@@ -61,14 +61,18 @@ export default function LoginPage() {
 
   // Check if user is already logged in
   useEffect(() => {
+    const search = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const redirectParam = search?.get('redirect');
+    const destination = redirectParam || '/dashboard';
+
     if (isAuthenticated()) {
-      router.replace("/dashboard");
+      router.replace(destination);
       return;
     }
     getMe()
       .then((user) => {
         if (user) {
-          router.replace("/dashboard");
+          router.replace(destination);
         }
       })
       .catch(() => {});
@@ -95,6 +99,13 @@ export default function LoginPage() {
       }
       setSuccessMsg("Signed in successfully. Redirecting...");
       
+      const search = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+      const redirectParam = search?.get('redirect');
+      if (redirectParam) {
+        router.push(redirectParam);
+        return;
+      }
+
       const targetUrl = getRedirectUrl();
       if (targetUrl && !targetUrl.includes('/callback')) {
         router.push(targetUrl);
@@ -175,6 +186,13 @@ export default function LoginPage() {
       setSuccessMsg(`Authenticated with ${provider === "github" ? "GitHub" : "Google"}! Redirecting...`);
 
       setTimeout(() => {
+        const search = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+        const redirectParam = search?.get('redirect');
+        if (redirectParam) {
+          router.push(redirectParam);
+          return;
+        }
+
         const targetUrl = getRedirectUrl();
         if (targetUrl && !targetUrl.includes("/callback")) {
           router.push(targetUrl);

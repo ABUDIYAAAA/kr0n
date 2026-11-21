@@ -21,14 +21,16 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { useKr0nStore } from '@/lib/kr0n-state';
-import { getStoredUser, getMe } from '@/lib/auth';
+import { getMe, useAuthUser } from '@/lib/auth';
 
 export default function ProjectDeploymentDetailPage({ params }) {
   const unwrappedParams = use(params);
   const { projectId } = unwrappedParams;
 
   const { projects } = useKr0nStore();
-  const [currentUser, setCurrentUser] = useState(() => getStoredUser());
+  const authUser = useAuthUser();
+  const [liveUser, setLiveUser] = useState(null);
+  const currentUser = liveUser || authUser;
 
   // UI state
   const [showLogs, setShowLogs] = useState(false);
@@ -43,7 +45,7 @@ export default function ProjectDeploymentDetailPage({ params }) {
     (async () => {
       try {
         const me = await getMe();
-        if (active && me) setCurrentUser(me);
+        if (active && me) setLiveUser(me);
       } catch {
         // Safe ignore
       }

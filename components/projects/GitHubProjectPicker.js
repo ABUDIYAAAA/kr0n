@@ -27,7 +27,7 @@ import {
   getOrganizations,
   createOrganization,
   getMe,
-  getStoredUser,
+  useAuthUser,
 } from '@/lib/auth';
 import { useKr0nStore } from '@/lib/kr0n-state';
 
@@ -378,7 +378,9 @@ export default function GitHubProjectPicker() {
   const [step, setStep] = useState('select');
 
   // User & Organization State
-  const [currentUser, setCurrentUser] = useState(() => getStoredUser());
+  const authUser = useAuthUser();
+  const [liveUser, setLiveUser] = useState(null);
+  const currentUser = liveUser || authUser;
   const [organizations, setOrganizations] = useState([]);
   const [selectedOrgId, setSelectedOrgId] = useState('');
 
@@ -491,7 +493,7 @@ export default function GitHubProjectPicker() {
     (async () => {
       try {
         const me = await getMe().catch(() => null);
-        if (active && me) setCurrentUser(me);
+        if (active && me) setLiveUser(me);
 
         // Fetch organizations
         let orgList = await getOrganizations().catch(() => []);

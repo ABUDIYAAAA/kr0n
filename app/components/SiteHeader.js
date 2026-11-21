@@ -3,39 +3,30 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { Search, Menu, X, ArrowUpRight, LogOut, User } from 'lucide-react';
-import { getStoredUser, getMe, isAuthenticated, logout } from '@/lib/auth';
+import { getMe, logout, useAuthUser } from '@/lib/auth';
 
 export default function SiteHeader({ onOpenCommand }) {
 	const [mobileOpen, setMobileOpen] = useState(false);
-	const [currentUser, setCurrentUser] = useState(() => (typeof window !== 'undefined' && isAuthenticated() ? getStoredUser() : null));
+	const authUser = useAuthUser();
+	const [liveUser, setLiveUser] = useState(null);
+	const currentUser = liveUser || authUser;
 
 	useEffect(() => {
-		const updateAuth = () => {
-			if (isAuthenticated()) {
-				setCurrentUser(getStoredUser());
-			} else {
-				setCurrentUser(null);
-			}
-		};
-
-		window.addEventListener('kr0n_auth_change', updateAuth);
-
 		let mounted = true;
 		getMe().then((user) => {
 			if (mounted && user) {
-				setCurrentUser(user);
+				setLiveUser(user);
 			}
 		}).catch(() => {});
 
 		return () => {
 			mounted = false;
-			window.removeEventListener('kr0n_auth_change', updateAuth);
 		};
 	}, []);
 
 	const handleLogout = async () => {
 		await logout();
-		setCurrentUser(null);
+		setLiveUser(null);
 	};
 
 	const links = [

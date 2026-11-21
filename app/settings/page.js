@@ -97,9 +97,8 @@ export default function GlobalSettingsPage() {
   const [passwordChangeSuccess, setPasswordChangeSuccess] = useState('');
 
   // Profile fields (sync with authenticated user if available)
-  const storedUser = typeof window !== 'undefined' ? getStoredUser() : null;
-  const [profileName, setProfileName] = useState(storedUser?.displayName || settings.profile.fullName);
-  const [profileEmail, setProfileEmail] = useState(storedUser?.email || settings.profile.email);
+  const [profileName, setProfileName] = useState(settings.profile.fullName);
+  const [profileEmail, setProfileEmail] = useState(settings.profile.email);
   const [profileTimezone, setProfileTimezone] = useState(settings.profile.timezone);
   const [profileSaved, setProfileSaved] = useState(false);
 
@@ -133,6 +132,12 @@ export default function GlobalSettingsPage() {
   // ─── Load Initial Live Data from Backend ───
   useEffect(() => {
     let active = true;
+
+    const stored = getStoredUser();
+    if (stored) {
+      if (stored.displayName || stored.name) setProfileName(stored.displayName || stored.name);
+      if (stored.email) setProfileEmail(stored.email);
+    }
 
     async function loadBackendData() {
       if (!isAuthenticated()) return;

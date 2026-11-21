@@ -25,7 +25,7 @@ import {
 import { useState, useEffect, useCallback } from 'react';
 import { APP_NAV_ITEMS } from '@/lib/projects-data';
 import { useKr0nStore } from '@/lib/kr0n-state';
-import { getStoredUser, getMe, logout } from '@/lib/auth';
+import { getMe, logout, useAuthUser } from '@/lib/auth';
 import CommandPalette from '@/components/navigation/CommandPalette';
 
 const ICON_MAP = {
@@ -44,21 +44,17 @@ export default function AppShell({ children }) {
   const router = useRouter();
   const [mobileNavOpen, setMobileNavOpen] = useState(false);
   const [commandPaletteOpen, setCommandPaletteOpen] = useState(false);
-  const [currentUser, setCurrentUser] = useState(() => (typeof window !== 'undefined' ? getStoredUser() : null));
+  const authUser = useAuthUser();
+  const [liveUser, setLiveUser] = useState(null);
+  const currentUser = liveUser || authUser;
   const { projects, alerts, syncAuthUser } = useKr0nStore();
-
-  useEffect(() => {
-    const handleAuthChange = () => setCurrentUser(getStoredUser());
-    window.addEventListener('kr0n_auth_change', handleAuthChange);
-    return () => window.removeEventListener('kr0n_auth_change', handleAuthChange);
-  }, []);
 
   useEffect(() => {
     let mounted = true;
     getMe()
       .then((user) => {
         if (mounted && user) {
-          setCurrentUser(user);
+          setLiveUser(user);
           if (syncAuthUser) {
             syncAuthUser(user);
           }
@@ -72,7 +68,7 @@ export default function AppShell({ children }) {
 
   const handleLogout = async () => {
     await logout();
-    setCurrentUser(null);
+    setLiveUser(null);
     router.push('/login');
   };
 
