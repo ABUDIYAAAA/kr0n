@@ -26,6 +26,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { APP_NAV_ITEMS } from '@/lib/projects-data';
 import { useKr0nStore } from '@/lib/kr0n-state';
 import { getMe, logout, useAuthUser } from '@/lib/auth';
+import { useWorkspace } from '@/lib/workspace-context';
 import CommandPalette from '@/components/navigation/CommandPalette';
 
 const ICON_MAP = {
@@ -48,6 +49,12 @@ export default function AppShell({ children }) {
   const [liveUser, setLiveUser] = useState(null);
   const currentUser = liveUser || authUser;
   const { projects, alerts, syncAuthUser } = useKr0nStore();
+  const {
+    organizations,
+    activeOrg,
+    setActiveOrgId,
+    resetWorkspace,
+  } = useWorkspace();
 
   useEffect(() => {
     let mounted = true;
@@ -68,6 +75,7 @@ export default function AppShell({ children }) {
 
   const handleLogout = async () => {
     await logout();
+    resetWorkspace();
     setLiveUser(null);
     router.push('/login');
   };
@@ -375,6 +383,24 @@ export default function AppShell({ children }) {
           </Link>
 
           <span className='text-kr0n-muted select-none hidden sm:inline'>/</span>
+
+          {organizations.length > 0 && (
+            <>
+              <select
+                value={activeOrg?.id || ''}
+                onChange={(e) => setActiveOrgId(e.target.value)}
+                aria-label='Active Organization'
+                className='hidden sm:inline-block bg-kr0n-surface border border-kr0n-line hover:border-kr0n-line-strong text-white text-xs font-mono uppercase tracking-wider px-2.5 py-1 outline-none transition-colors'
+              >
+                {organizations.map((org) => (
+                  <option key={org.id} value={org.id} className='bg-kr0n-black text-white'>
+                    {org.name} ({org.role_id || 'member'})
+                  </option>
+                ))}
+              </select>
+              <span className='text-kr0n-muted select-none hidden sm:inline'>/</span>
+            </>
+          )}
 
           {/* Breadcrumb context */}
           <nav className='hidden sm:flex items-center gap-1.5 text-xs font-mono uppercase tracking-wider text-kr0n-text-secondary'>
