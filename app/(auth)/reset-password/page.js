@@ -4,7 +4,7 @@ import { useState, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
-import { confirmPasswordReset } from "@/lib/auth";
+import { confirmPasswordReset, validatePasswordPolicy } from "@/lib/auth";
 
 function ResetPasswordContent() {
   const router = useRouter();
@@ -33,8 +33,9 @@ function ResetPasswordContent() {
       return;
     }
 
-    if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters");
+    const passCheck = validatePasswordPolicy(newPassword);
+    if (!passCheck.valid) {
+      setError(passCheck.error);
       return;
     }
 

@@ -38,6 +38,7 @@ import {
   createApiToken as apiCreateApiToken,
   revokeApiToken as apiRevokeApiToken,
   getAuditLogs,
+  validatePasswordPolicy,
 } from '@/lib/auth';
 import { githubApi } from '@/lib/github-api';
 
@@ -140,13 +141,13 @@ export default function GlobalSettingsPage() {
         if (stored.email) setProfileEmail(stored.email);
       }
 
-      if (!isAuthenticated()) return;
-
       try {
-        const [orgsList, sessionsList, meData] = await Promise.all([
-          getOrganizations(),
-          getSessions(),
-          getMe().catch(() => null),
+        const meData = await getMe().catch(() => null);
+        if (!active || !meData) return;
+
+        const [orgsList, sessionsList] = await Promise.all([
+          getOrganizations().catch(() => []),
+          getSessions().catch(() => []),
         ]);
 
         if (!active) return;
@@ -244,8 +245,9 @@ export default function GlobalSettingsPage() {
       setPasswordChangeError('New passwords do not match');
       return;
     }
-    if (newPassword.length < 8) {
-      setPasswordChangeError('New password must be at least 8 characters');
+    const passCheck = validatePasswordPolicy(newPassword);
+    if (!passCheck.valid) {
+      setPasswordChangeError(passCheck.error);
       return;
     }
 

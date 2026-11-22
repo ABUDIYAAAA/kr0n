@@ -7,45 +7,12 @@ import { Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
 import {
   login,
   loginWithOAuth,
-  startGitHubOAuth,
   requestPasswordReset,
-  confirmPasswordReset,
-  getRedirectUrl,
+  resolveAuthRedirect,
   getMe,
-  isAuthenticated,
 } from "@/lib/auth";
 import { useKr0nStore } from "@/lib/kr0n-state";
-
-function GithubIcon({ className = "w-4 h-4" }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden="true">
-      <path
-        fillRule="evenodd"
-        clipRule="evenodd"
-        d="M12 2C6.477 2 2 6.484 2 12.017c0 4.425 2.865 8.18 6.839 9.504.5.092.682-.217.682-.483 0-.237-.008-.868-.013-1.703-2.782.605-3.369-1.343-3.369-1.343-.454-1.158-1.11-1.466-1.11-1.466-.908-.62.069-.608.069-.608 1.003.07 1.53 1.032 1.53 1.032.892 1.53 2.341 1.088 2.91.832.092-.647.35-1.088.636-1.338-2.22-.253-4.555-1.113-4.555-4.951 0-1.093.39-1.988 1.029-2.688-.103-.253-.446-1.272.098-2.65 0 0 .84-.27 2.75 1.026A9.564 9.564 0 0112 6.844c.85.004 1.705.115 2.504.337 1.909-1.296 2.747-1.027 2.747-1.027.546 1.379.202 2.398.1 2.651.64.7 1.028 1.595 1.028 2.688 0 3.848-2.339 4.695-4.566 4.943.359.309.678.92.678 1.855 0 1.338-.012 2.419-.012 2.747 0 .268.18.58.688.482A10.019 10.019 0 0022 12.017C22 6.484 17.522 2 12 2z"
-      />
-    </svg>
-  );
-}
-
-function GoogleIcon({ className = "w-4 h-4" }) {
-  return (
-    <svg
-      className={className}
-      viewBox="0 0 24 24"
-      fill="currentColor"
-      aria-hidden="true">
-      <path d="M21.35 11.1h-9.17v2.96h5.27c-.23 1.21-.92 2.24-1.95 2.93v2.44h3.15c1.84-1.7 2.9-4.2 2.9-7.22 0-.38-.04-.75-.1-1.11z" />
-      <path d="M12.18 21c2.62 0 4.82-.87 6.43-2.36l-3.15-2.44c-.87.58-1.98.93-3.28.93-2.52 0-4.66-1.7-5.42-3.99H3.5v2.52C5.12 18.82 8.38 21 12.18 21z" />
-      <path d="M6.76 13.14c-.2-.58-.31-1.2-.31-1.84s.11-1.26.31-1.84V6.94H3.5A9.974 9.974 0 002.18 11.3c0 1.61.39 3.14 1.32 4.36l3.26-2.52z" />
-      <path d="M12.18 5.71c1.43 0 2.71.49 3.72 1.45l2.79-2.79C16.99 2.8 14.79 2 12.18 2 8.38 2 5.12 4.18 3.5 7.36l3.26 2.52c.76-2.29 2.9-3.99 5.42-3.99z" />
-    </svg>
-  );
-}
+import OAuthButtons from "@/components/auth/OAuthButtons";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -58,17 +25,22 @@ export default function LoginPage() {
   const [socialLoading, setSocialLoading] = useState(null);
   const [error, setError] = useState("");
   const [successMsg, setSuccessMsg] = useState("");
+  const [showForgot, setShowForgot] = useState(false);
+  const [forgotSent, setForgotSent] = useState(false);
 
-  // Check if user is already logged in
   useEffect(() => {
-    const search = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-    const redirectParam = search?.get('redirect');
-    const destination = redirectParam || '/dashboard';
-
-    if (isAuthenticated()) {
-      router.replace(destination);
+    const search =
+      typeof window !== "undefined"
+        ? new URLSearchParams(window.location.search)
+        : null;
+    const resetTokenParam = search?.get("token");
+    if (resetTokenParam) {
+      router.replace(`/reset-password?token=${encodeURIComponent(resetTokenParam)}`);
       return;
     }
+
+    const destination = resolveAuthRedirect();
+
     getMe()
       .then((user) => {
         if (user) {
@@ -77,13 +49,6 @@ export default function LoginPage() {
       })
       .catch(() => {});
   }, [router]);
-
-  // Forgot password sub-flow states
-  const [showForgot, setShowForgot] = useState(false);
-  const [forgotSent, setForgotSent] = useState(false);
-  const [resetToken, setResetToken] = useState("");
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmNewPassword, setConfirmNewPassword] = useState("");
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -98,22 +63,8 @@ export default function LoginPage() {
         syncAuthUser(authData.user);
       }
       setSuccessMsg("Signed in successfully. Redirecting...");
-      
-      const search = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-      const redirectParam = search?.get('redirect');
-      if (redirectParam) {
-        router.push(redirectParam);
-        return;
-      }
-
-      const targetUrl = getRedirectUrl();
-      if (targetUrl && !targetUrl.includes('/callback')) {
-        router.push(targetUrl);
-      } else {
-        router.push("/dashboard");
-      }
+      router.push(resolveAuthRedirect());
     } catch (err) {
-      console.error("[kr0n-login] Login error:", err);
       setError(err.message || "Failed to sign in. Please verify your credentials.");
     } finally {
       setIsLoading(false);
@@ -130,41 +81,11 @@ export default function LoginPage() {
     try {
       await requestPasswordReset(email);
       setForgotSent(true);
-      setSuccessMsg("Password reset token dispatched. Please check your inbox or Mailpit.");
+      setSuccessMsg(
+        "Password reset instructions sent. Check your inbox for the reset link."
+      );
     } catch (err) {
-      console.error("[kr0n-forgot] Request error:", err);
       setError(err.message || "Failed to send reset link.");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const handleConfirmReset = async (e) => {
-    e.preventDefault();
-    setError("");
-    setSuccessMsg("");
-
-    if (!resetToken || !newPassword) return;
-
-    if (newPassword !== confirmNewPassword) {
-      setError("Passwords do not match");
-      return;
-    }
-    if (newPassword.length < 8) {
-      setError("Password must be at least 8 characters");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      await confirmPasswordReset(resetToken, newPassword);
-      setSuccessMsg("Password updated successfully! You can now sign in.");
-      setShowForgot(false);
-      setForgotSent(false);
-      setPassword(newPassword);
-    } catch (err) {
-      console.error("[kr0n-reset] Confirm error:", err);
-      setError(err.message || "Failed to reset password. Token may be invalid or expired.");
     } finally {
       setIsLoading(false);
     }
@@ -176,32 +97,8 @@ export default function LoginPage() {
     setSocialLoading(provider);
 
     try {
-      const res = await loginWithOAuth(provider);
-      if (res?.type === "redirect") {
-        return;
-      }
-      if (res?.user) {
-        syncAuthUser(res.user);
-      }
-      setSuccessMsg(`Authenticated with ${provider === "github" ? "GitHub" : "Google"}! Redirecting...`);
-
-      setTimeout(() => {
-        const search = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
-        const redirectParam = search?.get('redirect');
-        if (redirectParam) {
-          router.push(redirectParam);
-          return;
-        }
-
-        const targetUrl = getRedirectUrl();
-        if (targetUrl && !targetUrl.includes("/callback")) {
-          router.push(targetUrl);
-        } else {
-          router.push("/projects");
-        }
-      }, 500);
+      await loginWithOAuth(provider, { redirect: resolveAuthRedirect() });
     } catch (err) {
-      console.error(`[kr0n-oauth] ${provider} error:`, err);
       setError(err.message || `Unable to authenticate with ${provider}.`);
       setSocialLoading(null);
     }
@@ -210,7 +107,6 @@ export default function LoginPage() {
   return (
     <div className="min-h-screen bg-[#090B0E] text-[#F3F4F6] flex items-center justify-center p-4">
       <div className="w-full max-w-sm border border-[#242930] bg-[#0D1014] p-6 sm:p-8">
-        {/* Header */}
         <div className="mb-6 text-center">
           <Link
             href="/"
@@ -222,7 +118,6 @@ export default function LoginPage() {
           </h1>
         </div>
 
-        {/* Status Alerts */}
         {error && (
           <div className="border border-red-500/40 bg-red-500/10 p-2.5 text-xs font-mono text-red-400 mb-4 flex items-start gap-2">
             <AlertCircle size={15} className="shrink-0 mt-0.5 text-red-400" />
@@ -239,36 +134,12 @@ export default function LoginPage() {
 
         {!showForgot ? (
           <>
-            {/* Social Buttons */}
-            <div className="space-y-2">
-              <button
-                type="button"
-                onClick={() => handleOAuth("google")}
-                disabled={!!socialLoading || isLoading}
-                className="clipped-btn w-full border border-[#242930] bg-[#111419] hover:bg-[#15191E] hover:border-[#363D47] text-white py-2.5 px-3 text-xs font-mono uppercase tracking-wider flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
-                <GoogleIcon className="w-4 h-4" />
-                <span>
-                  {socialLoading === "google"
-                    ? "Connecting..."
-                    : "Continue with Google"}
-                </span>
-              </button>
+            <OAuthButtons
+              onSelectProvider={handleOAuth}
+              socialLoading={socialLoading}
+              disabled={isLoading}
+            />
 
-              <button
-                type="button"
-                onClick={() => handleOAuth("github")}
-                disabled={!!socialLoading || isLoading}
-                className="clipped-btn w-full border border-[#242930] bg-[#111419] hover:bg-[#15191E] hover:border-[#363D47] text-white py-2.5 px-3 text-xs font-mono uppercase tracking-wider flex items-center justify-center gap-2 transition-colors disabled:opacity-50">
-                <GithubIcon className="w-4 h-4" />
-                <span>
-                  {socialLoading === "github"
-                    ? "Connecting..."
-                    : "Continue with GitHub"}
-                </span>
-              </button>
-            </div>
-
-            {/* Divider */}
             <div className="relative flex items-center justify-center my-5">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-[#242930]" />
@@ -278,7 +149,6 @@ export default function LoginPage() {
               </span>
             </div>
 
-            {/* Credentials Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
                 <label className="block text-xs font-mono text-[#C4C8CE] mb-1">
@@ -342,7 +212,6 @@ export default function LoginPage() {
               </button>
             </form>
 
-            {/* Footer Link */}
             <div className="text-center text-xs font-mono text-[#858C95] mt-6 pt-4 border-t border-[#1A1E24]">
               <span>Don&apos;t have an account? </span>
               <Link href="/signup" className="text-white hover:underline">
@@ -351,7 +220,6 @@ export default function LoginPage() {
             </div>
           </>
         ) : (
-          /* Forgot Password Flow */
           <div className="space-y-4">
             {!forgotSent ? (
               <form onSubmit={handleForgot} className="space-y-4">
@@ -378,63 +246,16 @@ export default function LoginPage() {
                 </button>
               </form>
             ) : (
-              <form onSubmit={handleConfirmReset} className="space-y-3.5">
-                <div className="text-xs font-mono text-[#858C95] mb-2 leading-relaxed">
-                  Enter the verification token received in your email along with your new password:
-                </div>
-
-                <div>
-                  <label className="block text-xs font-mono text-[#C4C8CE] mb-1">
-                    Reset Token
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={resetToken}
-                    onChange={(e) => setResetToken(e.target.value)}
-                    placeholder="Paste token from email"
-                    disabled={isLoading}
-                    className="w-full bg-[#090B0E] border border-[#242930] hover:border-[#363D47] focus:border-white text-sm font-mono text-white px-3 py-2 outline-none transition-colors placeholder:text-[#4E5560]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-mono text-[#C4C8CE] mb-1">
-                    New Password
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Minimum 8 characters"
-                    disabled={isLoading}
-                    className="w-full bg-[#090B0E] border border-[#242930] hover:border-[#363D47] focus:border-white text-sm font-mono text-white px-3 py-2 outline-none transition-colors placeholder:text-[#4E5560]"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-mono text-[#C4C8CE] mb-1">
-                    Confirm New Password
-                  </label>
-                  <input
-                    type="password"
-                    required
-                    value={confirmNewPassword}
-                    onChange={(e) => setConfirmNewPassword(e.target.value)}
-                    placeholder="Re-enter password"
-                    disabled={isLoading}
-                    className="w-full bg-[#090B0E] border border-[#242930] hover:border-[#363D47] focus:border-white text-sm font-mono text-white px-3 py-2 outline-none transition-colors placeholder:text-[#4E5560]"
-                  />
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={isLoading}
-                  className="clipped-btn w-full bg-white hover:bg-neutral-200 text-black py-2.5 text-xs font-mono uppercase font-bold tracking-wider transition-colors disabled:opacity-50">
-                  {isLoading ? "Updating..." : "Update Password"}
-                </button>
-              </form>
+              <div className="space-y-3">
+                <p className="text-xs font-mono text-[#858C95] leading-relaxed">
+                  Follow the link in your email, or enter your reset token directly on the password reset page.
+                </p>
+                <Link
+                  href="/reset-password"
+                  className="clipped-btn block w-full text-center bg-white hover:bg-neutral-200 text-black py-2.5 text-xs font-mono uppercase font-bold tracking-wider transition-colors">
+                  Enter Reset Token
+                </Link>
+              </div>
             )}
 
             <button

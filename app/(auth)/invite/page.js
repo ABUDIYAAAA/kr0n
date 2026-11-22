@@ -111,13 +111,11 @@ function InviteContent() {
   // Sync session state
   useEffect(() => {
     let mounted = true;
-    if (isAuthenticated()) {
-      getMe()
-        .then((user) => {
-          if (mounted && user) setLiveUser(user);
-        })
-        .catch(() => {});
-    }
+    getMe()
+      .then((user) => {
+        if (mounted && user) setLiveUser(user);
+      })
+      .catch(() => {});
     return () => {
       mounted = false;
     };
