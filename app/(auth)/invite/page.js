@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback, Suspense } from 'react';
 import Link from 'next/link';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { motion } from 'motion/react';
 import {
   Building2,
   Shield,
@@ -12,18 +11,16 @@ import {
   Loader2,
   ArrowRight,
   UserCheck,
-  KeyRound,
   LogOut,
-  Sparkles,
-  Users,
   Check,
 } from 'lucide-react';
 import { acceptInvite, getMe, logout, useAuthUser } from '@/lib/auth';
 import { useWorkspace } from '@/lib/workspace-context';
+import AuthCard, { AuthBanner } from '@/components/auth/AuthCard';
 
 const ROLE_CONFIG = {
   owner: {
-    color: 'text-amber-400 bg-amber-500/10 border-amber-500/30',
+    badge: 'text-amber-300 bg-amber-500/10 border-amber-500/25',
     permissions: [
       'Full administrative control over organization, members, and projects',
       'Manage GitHub App installations, API tokens, and audit logs',
@@ -31,7 +28,7 @@ const ROLE_CONFIG = {
     ],
   },
   admin: {
-    color: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/30',
+    badge: 'text-emerald-300 bg-emerald-500/10 border-emerald-500/25',
     permissions: [
       'Create, configure, and delete projects and build settings',
       'Invite members, manage roles, and provision API tokens',
@@ -39,7 +36,7 @@ const ROLE_CONFIG = {
     ],
   },
   member: {
-    color: 'text-blue-400 bg-blue-500/10 border-blue-500/30',
+    badge: 'text-sky-300 bg-sky-500/10 border-sky-500/25',
     permissions: [
       'Read access to organization projects, build configurations, and repositories',
       'Collaborate within the shared organization workspace',
@@ -57,11 +54,11 @@ function getRoleMeta(role) {
 }
 
 function RoleBadge({ role }) {
-  const { normalized, color } = getRoleMeta(role);
+  const { normalized, badge } = getRoleMeta(role);
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 text-xs font-mono uppercase font-bold border ${color}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-md text-xs font-mono border ${badge}`}
     >
       <Shield size={12} />
       {normalized}
@@ -73,15 +70,14 @@ function RolePermissions({ role }) {
   const { permissions } = getRoleMeta(role);
 
   return (
-    <div className='bg-[#0A0D10] border border-[#1F242C] p-3.5 space-y-2 text-left'>
-      <div className='text-[10px] font-mono text-[#858C95] uppercase tracking-wider font-bold flex items-center gap-1.5'>
-        <Sparkles size={11} className='text-amber-400' />
-        Included Role Permissions
+    <div className='rounded-lg bg-kr0n-black border border-kr0n-line-soft p-4 space-y-2.5 text-left'>
+      <div className='text-xs font-medium text-kr0n-muted'>
+        Included permissions
       </div>
-      <ul className='space-y-1.5'>
+      <ul className='space-y-2'>
         {permissions.map((p, idx) => (
-          <li key={idx} className='text-xs font-mono text-[#C4C8CE] flex items-start gap-2'>
-            <Check size={13} className='text-emerald-400 shrink-0 mt-0.5' />
+          <li key={idx} className='text-xs text-kr0n-text-secondary flex items-start gap-2 leading-relaxed'>
+            <Check size={13} className='text-kr0n-healthy shrink-0 mt-0.5' />
             <span>{p}</span>
           </li>
         ))}
@@ -116,7 +112,7 @@ function InviteContent() {
   const isLoggedIn = Boolean(currentUser);
   const [isCheckingAuth, setIsCheckingAuth] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [status, setStatus] = useState('pending'); // 'pending' | 'accepted' | 'declined'
+  const [status, setStatus] = useState('pending');
   const [acceptedOrg, setAcceptedOrg] = useState(null);
   const [error, setError] = useState('');
   const [countdown, setCountdown] = useState(3);
@@ -161,7 +157,7 @@ function InviteContent() {
       return;
     }
     if (!isLoggedIn) {
-      setError('Please sign in to your account before accepting this invitation.');
+      setError('Sign in to your account before accepting this invitation.');
       return;
     }
 
@@ -179,7 +175,7 @@ function InviteContent() {
     } catch (err) {
       setError(
         err?.message ||
-          'Failed to accept invitation. The invite token may be expired, revoked, or issued for another email address.'
+          'Failed to accept invitation. The token may be expired, revoked, or issued for another email address.'
       );
     } finally {
       setIsLoading(false);
@@ -197,197 +193,159 @@ function InviteContent() {
     router.push(`/login?redirect=${encodeURIComponent(currentInvitePath)}`);
   };
 
-  const resolvedOrgName = acceptedOrg?.name || orgParam || 'Organization Workspace';
+  const resolvedOrgName = acceptedOrg?.name || orgParam || 'Organization';
   const resolvedRole = acceptedOrg?.role_id || roleParam || 'member';
 
   if (status === 'accepted') {
     return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3 }}
-        className='w-full max-w-md border border-emerald-500/30 bg-[#0D1014] p-6 sm:p-8 space-y-6 text-center'
+      <AuthCard
+        title={`Joined ${resolvedOrgName}`}
+        subtitle={`You now have ${resolvedRole} access to this workspace.`}
+        maxWidth='max-w-md'
       >
-        <div className='w-12 h-12 bg-emerald-500/10 border border-emerald-500/30 rounded-full flex items-center justify-center mx-auto text-emerald-400'>
-          <CheckCircle2 size={24} />
+        <div className='w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/25 flex items-center justify-center mx-auto text-emerald-400'>
+          <CheckCircle2 size={20} />
         </div>
 
-        <div className='space-y-1.5'>
-          <h1 className='text-lg font-mono font-bold uppercase tracking-wider text-white'>
-            Welcome to {resolvedOrgName}!
-          </h1>
-          <p className='text-xs font-mono text-[#858C95]'>
-            You have joined as <span className='text-emerald-400 uppercase'>{resolvedRole}</span>.
-          </p>
-        </div>
-
-        <div className='p-4 bg-[#090B0E] border border-[#1F242C] space-y-2 text-left'>
-          <div className='flex items-center justify-between text-xs font-mono'>
-            <span className='text-[#858C95]'>Organization:</span>
-            <span className='text-white font-bold'>{resolvedOrgName}</span>
+        <dl className='rounded-lg bg-kr0n-black border border-kr0n-line-soft divide-y divide-kr0n-line-soft text-xs'>
+          <div className='px-4 py-2.5 flex items-center justify-between gap-4'>
+            <dt className='text-kr0n-muted'>Organization</dt>
+            <dd className='font-medium text-kr0n-text'>{resolvedOrgName}</dd>
           </div>
           {acceptedOrg?.slug && (
-            <div className='flex items-center justify-between text-xs font-mono'>
-              <span className='text-[#858C95]'>Slug:</span>
-              <span className='text-[#C4C8CE]'>{acceptedOrg.slug}</span>
+            <div className='px-4 py-2.5 flex items-center justify-between gap-4'>
+              <dt className='text-kr0n-muted'>Slug</dt>
+              <dd className='font-mono text-kr0n-text-secondary'>{acceptedOrg.slug}</dd>
             </div>
           )}
-          <div className='flex items-center justify-between text-xs font-mono'>
-            <span className='text-[#858C95]'>Assigned Role:</span>
-            <RoleBadge role={resolvedRole} />
+          <div className='px-4 py-2.5 flex items-center justify-between gap-4'>
+            <dt className='text-kr0n-muted'>Role</dt>
+            <dd><RoleBadge role={resolvedRole} /></dd>
           </div>
-          <div className='flex items-center justify-between text-xs font-mono'>
-            <span className='text-[#858C95]'>Account:</span>
-            <span className='text-white truncate max-w-[200px]'>
-              {currentUser?.email || 'Authenticated User'}
-            </span>
+          <div className='px-4 py-2.5 flex items-center justify-between gap-4'>
+            <dt className='text-kr0n-muted'>Account</dt>
+            <dd className='font-mono text-kr0n-text-secondary truncate max-w-[200px]'>
+              {currentUser?.email || 'Authenticated user'}
+            </dd>
           </div>
-        </div>
+        </dl>
 
-        <div className='space-y-3 pt-2'>
+        <div className='space-y-2.5'>
           <Link
             href='/dashboard'
-            className='clipped-btn w-full inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-200 text-black py-2.5 text-xs font-mono uppercase font-bold tracking-wider transition-colors'
+            className='w-full h-10 rounded-lg inline-flex items-center justify-center gap-2 bg-kr0n-text hover:bg-white text-kr0n-black text-sm font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-colors duration-150'
           >
-            <span>Open Dashboard ({countdown}s)</span>
-            <ArrowRight size={13} />
+            <span>Open console ({countdown}s)</span>
+            <ArrowRight size={14} />
           </Link>
           <Link
             href='/projects'
-            className='clipped-btn w-full inline-flex items-center justify-center gap-2 border border-[#242930] hover:border-[#363D47] bg-[#111419] text-[#C4C8CE] hover:text-white py-2 text-xs font-mono uppercase tracking-wider transition-colors'
+            className='w-full h-10 rounded-lg inline-flex items-center justify-center border border-kr0n-line bg-kr0n-surface-2 hover:bg-kr0n-surface-3 hover:border-kr0n-line-strong text-sm font-medium text-kr0n-text-secondary hover:text-kr0n-text transition-colors duration-150'
           >
-            Go to Projects Workspace
+            Go to projects
           </Link>
         </div>
-      </motion.div>
+      </AuthCard>
     );
   }
 
   if (status === 'declined') {
     return (
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96 }}
-        animate={{ opacity: 1, scale: 1 }}
-        transition={{ duration: 0.3 }}
-        className='w-full max-w-md border border-[#242930] bg-[#0D1014] p-6 sm:p-8 space-y-6 text-center'
+      <AuthCard
+        title='Invitation declined'
+        subtitle='You chose not to accept this invitation. You can reopen it below or return home.'
+        maxWidth='max-w-md'
       >
-        <div className='w-12 h-12 bg-red-500/10 border border-red-500/30 rounded-full flex items-center justify-center mx-auto text-red-400'>
-          <AlertCircle size={24} />
+        <div className='w-10 h-10 rounded-full bg-red-500/10 border border-red-500/25 flex items-center justify-center mx-auto text-red-400'>
+          <AlertCircle size={20} />
         </div>
 
-        <div className='space-y-1.5'>
-          <h1 className='text-lg font-mono font-bold uppercase tracking-wider text-white'>
-            Invitation Declined
-          </h1>
-          <p className='text-xs font-mono text-[#858C95]'>
-            You chose not to accept this invitation. You can reopen it below or return home.
-          </p>
-        </div>
-
-        <div className='pt-2 flex flex-col gap-2'>
+        <div className='space-y-2.5'>
           <button
             type='button'
             onClick={() => setStatus('pending')}
-            className='clipped-btn w-full inline-flex items-center justify-center gap-2 border border-[#242930] hover:border-[#363D47] bg-[#111419] text-[#C4C8CE] hover:text-white py-2 text-xs font-mono uppercase tracking-wider transition-colors'
+            className='w-full h-10 rounded-lg border border-kr0n-line bg-kr0n-surface-2 hover:bg-kr0n-surface-3 hover:border-kr0n-line-strong text-sm font-medium text-kr0n-text transition-colors duration-150 cursor-pointer'
           >
-            Reopen Invitation
+            Reopen invitation
           </button>
           <Link
             href='/'
-            className='text-xs font-mono text-[#858C95] hover:text-white transition-colors py-1'
+            className='block text-center text-sm text-kr0n-muted hover:text-kr0n-text transition-colors duration-150 py-1'
           >
-            Return to Homepage
+            Return home
           </Link>
         </div>
-      </motion.div>
+      </AuthCard>
     );
   }
 
   return (
-    <div className='w-full max-w-md border border-[#242930] bg-[#0D1014] p-6 sm:p-8 space-y-6'>
-      <div className='text-center space-y-1 border-b border-[#1F242C] pb-5'>
-        <Link href='/' className='text-xl font-bold tracking-wider text-white inline-block font-mono'>
-          KR0N
-        </Link>
-        <div className='flex items-center justify-center gap-1.5 text-[11px] font-mono text-[#858C95] uppercase tracking-wider'>
-          <Users size={12} className='text-emerald-400' />
-          <span>Organization Invitation</span>
+    <AuthCard
+      title={orgParam || 'Organization invitation'}
+      subtitle={
+        inviterParam
+          ? `Invited by ${inviterParam}`
+          : 'Accept this invitation to join the organization on kr0n.'
+      }
+      maxWidth='max-w-md'
+    >
+      <div className='flex items-center justify-between rounded-lg bg-kr0n-black border border-kr0n-line-soft px-4 py-3'>
+        <div className='flex items-center gap-3 min-w-0'>
+          <div className='w-9 h-9 rounded-lg bg-kr0n-surface-2 border border-kr0n-line flex items-center justify-center text-kr0n-text shrink-0'>
+            <Building2 size={17} />
+          </div>
+          <div className='min-w-0'>
+            <div className='text-sm font-medium text-kr0n-text truncate'>
+              {orgParam || 'Organization workspace'}
+            </div>
+            <div className='text-xs text-kr0n-muted'>Assigned role</div>
+          </div>
         </div>
-      </div>
-
-      <div className='text-center space-y-3'>
-        <div className='w-14 h-14 bg-[#111419] border border-[#242930] flex items-center justify-center mx-auto text-white shadow-inner'>
-          <Building2 size={28} className='text-white' />
-        </div>
-
-        <div className='space-y-1'>
-          <h2 className='text-xl font-mono font-bold text-white tracking-tight'>
-            {orgParam || 'Join Organization'}
-          </h2>
-          {inviterParam ? (
-            <p className='text-xs font-mono text-[#858C95]'>
-              Invited by <span className='text-white font-medium'>{inviterParam}</span>
-            </p>
-          ) : (
-            <p className='text-xs font-mono text-[#858C95]'>
-              Accept this invitation to join the organization on KR0N.
-            </p>
-          )}
-        </div>
-
-        <div className='flex items-center justify-center gap-2 pt-1'>
-          <span className='text-xs font-mono text-[#858C95]'>Role:</span>
-          <RoleBadge role={roleParam} />
-        </div>
+        <RoleBadge role={roleParam} />
       </div>
 
       <RolePermissions role={roleParam} />
 
-      {error && (
-        <div className='border border-red-500/40 bg-red-500/10 p-3 text-xs font-mono text-red-400 flex items-start gap-2'>
-          <AlertCircle size={15} className='shrink-0 mt-0.5 text-red-400' />
-          <span className='leading-tight'>{error}</span>
-        </div>
-      )}
+      <AuthBanner type='error' message={error} />
 
       {!tokenParam && (
-        <div className='space-y-1.5 text-left'>
-          <label className='block text-xs font-mono text-[#C4C8CE] flex items-center gap-1.5'>
-            <KeyRound size={12} className='text-[#858C95]' />
-            Invitation Token
+        <div className='space-y-1.5'>
+          <label
+            htmlFor='invite-token'
+            className='block text-xs font-medium text-kr0n-text-secondary'
+          >
+            Invitation token
           </label>
           <input
+            id='invite-token'
             type='text'
             value={token}
             onChange={(e) => setToken(e.target.value)}
-            placeholder='Paste your invitation token from the invite email'
-            className='w-full bg-[#090B0E] border border-[#242930] hover:border-[#363D47] focus:border-white text-xs font-mono text-white px-3 py-2 outline-none transition-colors placeholder:text-[#4E5560]'
+            placeholder='Paste invitation token from email'
+            className='w-full h-10 rounded-lg bg-kr0n-black border border-kr0n-line hover:border-kr0n-line-strong focus:border-kr0n-accent text-sm font-mono text-kr0n-text px-3 outline-none transition-colors duration-150'
           />
         </div>
       )}
 
       {isCheckingAuth ? (
         <div className='py-4 text-center space-y-2'>
-          <Loader2 size={18} className='animate-spin text-white mx-auto' />
-          <p className='text-xs font-mono text-[#858C95]'>Checking session...</p>
+          <Loader2 size={18} className='animate-spin text-kr0n-muted mx-auto' />
+          <p className='text-xs text-kr0n-muted'>Checking session...</p>
         </div>
       ) : isLoggedIn ? (
-        <div className='space-y-4 pt-1'>
-          <div className='bg-[#090B0E] border border-[#1F242C] p-3 flex items-center justify-between'>
+        <div className='space-y-4'>
+          <div className='rounded-lg bg-kr0n-black border border-kr0n-line-soft p-3 flex items-center justify-between gap-3'>
             <div className='flex items-center gap-2.5 min-w-0'>
-              <div className='w-8 h-8 rounded-full bg-emerald-500/20 border border-emerald-500/40 text-emerald-400 font-mono font-bold text-xs flex items-center justify-center shrink-0'>
+              <div className='w-8 h-8 rounded-md bg-kr0n-surface-2 border border-kr0n-line text-kr0n-text font-mono text-xs flex items-center justify-center shrink-0'>
                 {currentUser?.email?.[0]?.toUpperCase() || 'U'}
               </div>
               <div className='min-w-0'>
-                <div className='text-xs font-mono text-white truncate flex items-center gap-1.5'>
-                  <span>
-                    {currentUser?.display_name ||
-                      currentUser?.displayName ||
-                      currentUser?.email?.split('@')[0]}
-                  </span>
-                  <span className='w-1.5 h-1.5 rounded-full bg-emerald-400 shrink-0' />
+                <div className='text-xs font-medium text-kr0n-text truncate'>
+                  {currentUser?.display_name ||
+                    currentUser?.displayName ||
+                    currentUser?.email?.split('@')[0]}
                 </div>
-                <div className='text-[10px] font-mono text-[#858C95] truncate'>
+                <div className='text-xs text-kr0n-muted truncate'>
                   {currentUser?.email}
                 </div>
               </div>
@@ -396,10 +354,9 @@ function InviteContent() {
             <button
               type='button'
               onClick={handleSwitchAccount}
-              title='Switch Account'
-              className='text-[10px] font-mono text-[#858C95] hover:text-white flex items-center gap-1 transition-colors'
+              className='text-xs text-kr0n-muted hover:text-kr0n-text inline-flex items-center gap-1 transition-colors duration-150 shrink-0 cursor-pointer'
             >
-              <LogOut size={11} />
+              <LogOut size={12} />
               <span>Switch</span>
             </button>
           </div>
@@ -407,9 +364,9 @@ function InviteContent() {
           {emailParam &&
             currentUser?.email &&
             emailParam.toLowerCase() !== currentUser.email.toLowerCase() && (
-              <div className='text-[11px] font-mono text-amber-400 bg-amber-500/10 border border-amber-500/20 p-2'>
-                Note: This invite was addressed to <span className='underline'>{emailParam}</span>.
-                You are signed in as <span className='underline'>{currentUser.email}</span>.
+              <div className='rounded-lg text-xs text-amber-300 bg-amber-500/10 border border-amber-500/25 p-3 leading-relaxed'>
+                This invite was sent to <span className='font-mono'>{emailParam}</span>. You are signed in as{' '}
+                <span className='font-mono'>{currentUser.email}</span>.
               </div>
             )}
 
@@ -418,17 +375,17 @@ function InviteContent() {
               type='button'
               onClick={handleAccept}
               disabled={isLoading || !activeToken}
-              className='clipped-btn w-full inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-200 text-black py-2.5 text-xs font-mono uppercase font-bold tracking-wider transition-colors disabled:opacity-50'
+              className='w-full h-10 rounded-lg inline-flex items-center justify-center gap-2 bg-kr0n-text hover:bg-white text-kr0n-black text-sm font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-colors duration-150 disabled:opacity-50 cursor-pointer'
             >
               {isLoading ? (
                 <>
-                  <Loader2 size={13} className='animate-spin' />
-                  <span>Accepting Invitation...</span>
+                  <Loader2 size={14} className='animate-spin' />
+                  <span>Joining...</span>
                 </>
               ) : (
                 <>
-                  <UserCheck size={13} />
-                  <span>Accept Invitation & Join</span>
+                  <UserCheck size={14} />
+                  <span>Accept invitation</span>
                 </>
               )}
             </button>
@@ -437,21 +394,21 @@ function InviteContent() {
               type='button'
               onClick={handleDecline}
               disabled={isLoading}
-              className='w-full inline-flex items-center justify-center gap-2 border border-[#242930] hover:border-[#363D47] bg-[#111419] text-[#858C95] hover:text-white py-2 text-xs font-mono uppercase tracking-wider transition-colors'
+              className='w-full h-10 rounded-lg border border-kr0n-line bg-kr0n-surface-2 hover:bg-kr0n-surface-3 hover:border-kr0n-line-strong text-sm font-medium text-kr0n-text-secondary hover:text-kr0n-text transition-colors duration-150 cursor-pointer'
             >
               Decline
             </button>
           </div>
         </div>
       ) : (
-        <div className='space-y-4 pt-1'>
-          <div className='bg-[#090B0E] border border-[#1F242C] p-3 text-center space-y-1'>
-            <p className='text-xs font-mono text-[#C4C8CE]'>
+        <div className='space-y-4'>
+          <div className='rounded-lg bg-kr0n-black border border-kr0n-line-soft p-3.5 text-center space-y-1'>
+            <p className='text-xs text-kr0n-text-secondary leading-relaxed'>
               Sign in or create an account with the invited email address to accept this invitation.
             </p>
             {emailParam && (
-              <p className='text-[11px] font-mono text-[#858C95]'>
-                Invite sent to <span className='text-white'>{emailParam}</span>
+              <p className='text-xs text-kr0n-muted'>
+                Invite sent to <span className='font-mono text-kr0n-text'>{emailParam}</span>
               </p>
             )}
           </div>
@@ -459,46 +416,38 @@ function InviteContent() {
           <div className='space-y-2'>
             <Link
               href={`/login?redirect=${encodeURIComponent(currentInvitePath)}`}
-              className='clipped-btn w-full inline-flex items-center justify-center gap-2 bg-white hover:bg-neutral-200 text-black py-2.5 text-xs font-mono uppercase font-bold tracking-wider transition-colors'
+              className='w-full h-10 rounded-lg inline-flex items-center justify-center gap-2 bg-kr0n-text hover:bg-white text-kr0n-black text-sm font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-colors duration-150'
             >
-              <span>Sign In to Accept</span>
-              <ArrowRight size={13} />
+              <span>Sign in to accept</span>
+              <ArrowRight size={14} />
             </Link>
 
             <Link
               href={`/signup?redirect=${encodeURIComponent(currentInvitePath)}`}
-              className='clipped-btn w-full inline-flex items-center justify-center gap-2 border border-[#242930] hover:border-[#363D47] bg-[#111419] text-[#C4C8CE] hover:text-white py-2 text-xs font-mono uppercase tracking-wider transition-colors'
+              className='w-full h-10 rounded-lg inline-flex items-center justify-center border border-kr0n-line bg-kr0n-surface-2 hover:bg-kr0n-surface-3 hover:border-kr0n-line-strong text-sm font-medium text-kr0n-text-secondary hover:text-kr0n-text transition-colors duration-150'
             >
-              <span>Create New Account</span>
+              Create account
             </Link>
           </div>
         </div>
       )}
-
-      <div className='pt-2 border-t border-[#1F242C] text-center'>
-        <p className='text-[10px] font-mono text-[#58606B] uppercase tracking-wider'>
-          KR0N Control Plane &bull; Organization Membership Handshake
-        </p>
-      </div>
-    </div>
+    </AuthCard>
   );
 }
 
 export default function InvitePage() {
   return (
-    <div className='min-h-screen bg-[#090B0E] text-[#F3F4F6] flex items-center justify-center p-4 selection:bg-white selection:text-black'>
-      <Suspense
-        fallback={
-          <div className='w-full max-w-md border border-[#242930] bg-[#0D1014] p-8 text-center space-y-3'>
-            <Loader2 size={24} className='animate-spin text-white mx-auto' />
-            <p className='text-xs font-mono text-[#858C95] uppercase tracking-wider'>
-              Loading invitation details...
-            </p>
+    <Suspense
+      fallback={
+        <AuthCard title='Organization invitation' maxWidth='max-w-md'>
+          <div className='py-6 text-center space-y-3'>
+            <Loader2 size={20} className='animate-spin text-kr0n-muted mx-auto' />
+            <p className='text-sm text-kr0n-muted'>Loading invitation...</p>
           </div>
-        }
-      >
-        <InviteContent />
-      </Suspense>
-    </div>
+        </AuthCard>
+      }
+    >
+      <InviteContent />
+    </Suspense>
   );
 }

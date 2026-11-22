@@ -3,64 +3,49 @@
 import Link from 'next/link';
 
 export default function SiteFooter({ onOpenCommand }) {
-	return (
-		<footer className='border-t border-[#242930] bg-[#0B0E12] py-14 text-white'>
-			<div className='max-w-7xl mx-auto px-6 sm:px-12 space-y-8'>
-				<div className='flex flex-col sm:flex-row sm:items-center justify-between gap-8'>
-					{/* Left: Brand Wordmark & Tagline */}
-					<div className='space-y-2'>
-						<div className='flex items-center gap-3 text-lg font-black tracking-widest text-white'>
-							<span>KR0N</span>
-							<span className='border border-[#363D47] bg-[#111419] px-2 py-0.5 text-[9px] font-mono font-normal uppercase tracking-widest text-[#858C95]'>
-								PLATFORM // v1.8.4
-							</span>
-						</div>
-						<p className='text-xs text-zinc-400 font-sans max-w-sm'>
-							Application-centric developer infrastructure. Build, release, and operate software without managing cloud complexity.
-						</p>
-					</div>
+  return (
+    <footer className='bg-[#F2F2F3] text-[#131217] overflow-hidden'>
+      <div className='max-w-[1320px] mx-auto px-6 sm:px-8 pt-12 pb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-6 text-sm'>
+        <div className='text-[#52525B]'>
+          Application platform for engineering teams.
+        </div>
 
-					{/* Right: Minimal Links */}
-					<nav
-						className='flex flex-wrap items-center gap-6 sm:gap-8 text-xs font-mono uppercase tracking-wider text-white/60'
-						aria-label='Footer Navigation'
-					>
-						<Link href='/docs' className='hover:text-white transition-colors'>
-							Docs
-						</Link>
-						<Link href='/docs/quick-start' className='hover:text-white transition-colors'>
-							Product
-						</Link>
-						<Link href='/billing' className='hover:text-white transition-colors'>
-							Pricing
-						</Link>
-						<a
-							href='https://github.com'
-							target='_blank'
-							rel='noreferrer'
-							className='hover:text-white transition-colors'
-						>
-							GitHub
-						</a>
-						<button
-							type='button'
-							onClick={onOpenCommand}
-							className='text-white/40 hover:text-white transition-colors'
-						>
-							⌘K
-						</button>
-					</nav>
-				</div>
+        <nav aria-label='Footer' className='flex flex-wrap items-center gap-7 text-[#131217] font-medium'>
+          <Link href='/docs' className='hover:text-[#4A8AD6] transition-colors duration-150'>
+            Docs
+          </Link>
+          <Link href='/docs/quick-start' className='hover:text-[#4A8AD6] transition-colors duration-150'>
+            Quick start
+          </Link>
+          <Link href='/login' className='hover:text-[#4A8AD6] transition-colors duration-150'>
+            Log in
+          </Link>
+          <Link href='/signup' className='hover:text-[#4A8AD6] transition-colors duration-150'>
+            Sign up
+          </Link>
+          {onOpenCommand && (
+            <button
+              type='button'
+              onClick={onOpenCommand}
+              className='text-[#52525B] hover:text-[#131217] transition-colors duration-150 cursor-pointer'
+            >
+              Search (⌘K)
+            </button>
+          )}
+        </nav>
+      </div>
 
-				{/* Bottom Technical Single Line */}
-				<div className='pt-8 border-t border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 text-xs font-mono text-white/30'>
-					<div>© 2026 KR0N Platform. Built for developers who ship.</div>
-					<div className='flex items-center gap-4'>
-						<span className='w-1.5 h-1.5 rounded-full bg-emerald-400' />
-						<span className='text-white/50'>SYSTEMS NOMINAL // US-EAST-1</span>
-					</div>
-				</div>
-			</div>
-		</footer>
-	);
+      {/* Oversized cropped wordmark */}
+      <div
+        aria-hidden='true'
+        className='select-none pointer-events-none leading-[0.78] font-bold tracking-[-0.06em] text-[#131217] whitespace-nowrap px-4 sm:px-6'
+        style={{
+          fontSize: 'clamp(6.5rem, 26vw, 24rem)',
+          transform: 'translateY(24%)',
+        }}
+      >
+        kr0n
+      </div>
+    </footer>
+  );
 }

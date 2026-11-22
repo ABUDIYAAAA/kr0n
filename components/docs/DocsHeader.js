@@ -1,10 +1,11 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import { usePathname } from "next/navigation";
-import { Search, Terminal, ArrowUpRight, Menu, X, BookOpen } from "lucide-react";
-import { useState, useEffect } from "react";
-import DocsSearchModal from "@/components/docs/DocsSearchModal";
+import Link from 'next/link';
+import { usePathname } from 'next/navigation';
+import { Search, ArrowUpRight, Menu, X } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import DocsSearchModal from '@/components/docs/DocsSearchModal';
+import Kr0nMark from '@/components/common/Kr0nMark';
 
 export default function DocsHeader() {
   const pathname = usePathname();
@@ -13,51 +14,51 @@ export default function DocsHeader() {
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === "k") {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setSearchOpen((prev) => !prev);
       }
     };
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, []);
 
   const links = [
-    { name: "Quick Start", href: "/docs/quick-start" },
-    { name: "AI", href: "/docs/ai" },
-    { name: "CLI", href: "/docs/cli" },
-    { name: "Templates", href: "/docs/templates" },
+    { name: 'Overview', href: '/docs' },
+    { name: 'Quick start', href: '/docs/quick-start' },
+    { name: 'AI', href: '/docs/ai' },
+    { name: 'CLI', href: '/docs/cli' },
+    { name: 'Templates', href: '/docs/templates' },
   ];
 
   return (
     <>
-      <header className="sticky top-0 z-40 w-full border-b border-white/10 bg-black/80 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-6 sm:px-8">
-          {/* LEFT: BRAND & BREADCRUMB */}
-          <div className="flex items-center gap-6">
+      <header className='sticky top-0 z-40 w-full border-b border-kr0n-line bg-kr0n-canvas'>
+        <div className='mx-auto flex h-13 max-w-[1240px] items-center justify-between px-6 sm:px-8'>
+          <div className='flex items-center gap-6'>
             <Link
-              href="/"
-              className="flex items-center gap-3 text-xl font-black tracking-widest text-white hover:text-neutral-300 transition-colors">
-              <span>kr0n</span>
-              <span className="hidden sm:inline-block border border-white/20 px-2 py-0.5 text-[9px] font-mono font-normal uppercase tracking-widest text-white/50">
-                DOCS // v1.0.4
-              </span>
+              href='/'
+              className='flex items-center gap-2 text-[15px] font-semibold tracking-tight text-white'
+            >
+              <Kr0nMark size={18} />
+              <span className='font-mono'>kr0n</span>
+              <span className='text-kr0n-faint font-normal'>/</span>
+              <span className='text-sm font-medium text-kr0n-text-secondary'>Docs</span>
             </Link>
 
-            <span className="hidden md:inline-block text-white/20">/</span>
-
-            <nav className="hidden md:flex items-center gap-5 text-xs font-mono uppercase tracking-wider">
+            <nav aria-label='Documentation' className='hidden md:flex items-center gap-5 text-[13px]'>
               {links.map((link) => {
                 const isActive = pathname === link.href;
                 return (
                   <Link
                     key={link.href}
                     href={link.href}
-                    className={`transition-colors py-1 ${
+                    className={`h-13 inline-flex items-center border-b transition-colors duration-150 ${
                       isActive
-                        ? "text-white font-bold border-b border-white"
-                        : "text-white/50 hover:text-white"
-                    }`}>
+                        ? 'border-kr0n-accent text-white font-medium'
+                        : 'border-transparent text-kr0n-muted hover:text-white'
+                    }`}
+                  >
                     {link.name}
                   </Link>
                 );
@@ -65,59 +66,48 @@ export default function DocsHeader() {
             </nav>
           </div>
 
-          {/* RIGHT: SEARCH TRIGGER & DASHBOARD */}
-          <div className="flex items-center gap-3 sm:gap-4">
-            {/* SEARCH BUTTON */}
+          <div className='flex items-center gap-2.5'>
             <button
-              type="button"
+              type='button'
               onClick={() => setSearchOpen(true)}
-              className="flex items-center gap-3 border border-white/15 bg-white/[0.03] px-3.5 py-1.5 text-xs text-white/50 hover:border-white/30 hover:bg-white/[0.06] hover:text-white transition-all">
-              <Search size={14} className="text-white/60" />
-              <span className="hidden sm:inline text-[11px] font-mono">
-                Search docs...
-              </span>
-              <kbd className="hidden sm:inline-block border border-white/20 px-1.5 py-0.5 text-[9px] font-mono text-white/40">
-                ⌘K
-              </kbd>
+              className='flex items-center gap-2.5 h-8 rounded-[6px] border border-kr0n-line bg-kr0n-black hover:border-kr0n-line-strong px-2.5 text-xs text-kr0n-muted hover:text-white transition-colors duration-150 cursor-pointer'
+              aria-label='Search documentation'
+            >
+              <Search size={13} />
+              <span className='hidden sm:inline'>Search docs</span>
+              <kbd className='hidden sm:inline font-mono text-[11px] text-kr0n-faint'>⌘K</kbd>
             </button>
 
-            {/* SYSTEM STATUS */}
-            <div className="hidden lg:flex items-center gap-2 border border-white/10 px-2.5 py-1 bg-black/40 text-[10px] font-mono text-white/60">
-              <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
-              <span>EDGE_NET: 100%</span>
-            </div>
-
-            {/* DASHBOARD LINK */}
             <Link
-              href="/projects"
-              className="bg-white text-black px-4 py-1.5 text-xs font-bold uppercase tracking-wider clipped-button hover:bg-zinc-200 transition-colors inline-flex items-center gap-1.5">
+              href='/projects'
+              className='h-8 px-3 rounded-[6px] bg-kr0n-text hover:bg-white text-kr0n-black text-xs font-medium transition-colors duration-150 inline-flex items-center gap-1'
+            >
               <span>Console</span>
               <ArrowUpRight size={13} />
             </Link>
 
-            {/* MOBILE MENU TOGGLE */}
             <button
-              type="button"
+              type='button'
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-1.5 text-white/60 hover:text-white border border-white/10">
+              className='md:hidden p-1.5 text-kr0n-muted hover:text-white transition-colors duration-150'
+              aria-label='Toggle docs navigation'
+            >
               {mobileMenuOpen ? <X size={18} /> : <Menu size={18} />}
             </button>
           </div>
         </div>
 
-        {/* MOBILE DROPDOWN */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-t border-white/10 bg-[#0b0c0d] p-4 space-y-2 font-mono text-xs uppercase">
+          <div className='md:hidden border-t border-kr0n-line bg-kr0n-black p-4 space-y-1 text-sm'>
             {links.map((link) => (
               <Link
                 key={link.href}
                 href={link.href}
                 onClick={() => setMobileMenuOpen(false)}
-                className={`block p-2.5 ${
-                  pathname === link.href
-                    ? "bg-white/10 text-white font-bold"
-                    : "text-white/60 hover:text-white"
-                }`}>
+                className={`block px-3 py-2 font-medium ${
+                  pathname === link.href ? 'text-white' : 'text-kr0n-muted hover:text-white'
+                }`}
+              >
                 {link.name}
               </Link>
             ))}

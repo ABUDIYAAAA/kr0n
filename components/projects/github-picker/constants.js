@@ -1,6 +1,6 @@
 'use client';
 
-import { GitBranch, Sparkles, Sliders, Globe, Box, Terminal, Coffee, Layers } from 'lucide-react';
+import { GitBranch, Sliders, Globe, Box, Terminal, Coffee, Layers, Cpu } from 'lucide-react';
 
 // Railpack-aligned application preset definitions matching backend catalog
 export const APPLICATION_PRESETS = [
@@ -183,7 +183,7 @@ export const APPLICATION_PRESETS = [
   {
     id: 'custom',
     name: 'Custom (Railpack)',
-    category: 'custom',
+    category: 'auto',
     buildCommand: '',
     outputDir: '',
     installCommand: '',
@@ -335,8 +335,8 @@ export function RepoIcon({ type, name = '' }) {
   // Auto detect
   if (lower === 'auto' || lower.includes('auto-detect')) {
     return (
-      <div className="w-5 h-5 rounded-full flex items-center justify-center bg-violet-500/20 border border-violet-500/40 text-violet-300 shrink-0">
-        <Sparkles size={11} />
+      <div className="w-5 h-5 rounded-full flex items-center justify-center bg-kr0n-surface-2 border border-kr0n-line text-kr0n-text-secondary shrink-0">
+        <Cpu size={11} />
       </div>
     );
   }

@@ -1,5 +1,6 @@
 'use client';
 
+import Link from 'next/link';
 import {
   Search,
   Lock,
@@ -11,6 +12,7 @@ import {
   Loader2,
   Check,
   Trash2,
+  ArrowLeft,
 } from 'lucide-react';
 import { RepoIcon } from './constants';
 
@@ -37,239 +39,212 @@ export default function RepoListScreen({
   disconnectGitHubInstallation,
 }) {
   return (
-    <div className="w-full max-w-3xl space-y-5">
-      {/* Header Title */}
-      <h1 className="text-2xl font-bold tracking-tight text-white">Import Git Repository</h1>
+    <div className='w-full max-w-5xl space-y-6'>
+      {/* Header */}
+      <div className='flex items-center justify-between gap-4'>
+        <div className='space-y-1'>
+          <h1 className='text-2xl font-semibold tracking-tight text-white'>
+            Choose a repository
+          </h1>
+          <p className='text-[13px] text-kr0n-muted'>
+            Select a repository authorized through your GitHub App installation.
+          </p>
+        </div>
+        <Link
+          href='/projects'
+          className='inline-flex items-center gap-1.5 text-xs text-kr0n-muted hover:text-white transition-colors duration-150 shrink-0'
+        >
+          <ArrowLeft size={14} />
+          <span>Projects</span>
+        </Link>
+      </div>
 
-      {/* Account Selector & Search Bar Row */}
-      <div className="flex items-center gap-3">
-        {/* Account Selector Pill */}
-        <div className="relative" ref={accountMenuRef}>
+      {/* Account selector & search bar */}
+      <div className='flex flex-col sm:flex-row items-stretch sm:items-center gap-3'>
+        <div className='relative' ref={accountMenuRef}>
           <button
-            type="button"
+            type='button'
             onClick={() => setShowAccountMenu(!showAccountMenu)}
-            className="flex items-center gap-2 bg-[#0c0c0c] border border-[#222222] hover:border-[#333333] rounded-md px-3 py-2 text-sm text-neutral-200 shrink-0 cursor-pointer transition-colors"
+            className='w-full sm:w-auto h-9 flex items-center justify-between gap-2.5 bg-kr0n-black border border-kr0n-line hover:border-kr0n-line-strong rounded-[6px] px-3 text-[13px] text-white shrink-0 cursor-pointer transition-colors duration-150'
           >
-            {activeInstallation?.avatar_url || currentUser?.avatarUrl || currentUser?.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
-                src={
-                  activeInstallation?.avatar_url ||
-                  currentUser?.avatarUrl ||
-                  currentUser?.avatar_url
-                }
-                alt={accountLogin}
-                referrerPolicy="no-referrer"
-                className="w-5 h-5 rounded-full object-cover"
-              />
-            ) : (
-              <div className="w-5 h-5 rounded-full bg-gradient-to-tr from-amber-600 to-indigo-600 flex items-center justify-center text-[10px] font-bold text-white">
-                {accountLogin[0]?.toUpperCase() || 'A'}
-              </div>
-            )}
-            <span className="font-medium text-sm text-white">{accountLogin}</span>
-            <ChevronDown size={14} className="text-neutral-400 ml-1" />
+            <div className='flex items-center gap-2 min-w-0'>
+              {activeInstallation?.avatar_url || currentUser?.avatarUrl || currentUser?.avatar_url ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={
+                    activeInstallation?.avatar_url ||
+                    currentUser?.avatarUrl ||
+                    currentUser?.avatar_url
+                  }
+                  alt={accountLogin}
+                  referrerPolicy='no-referrer'
+                  className='w-4 h-4 rounded-full object-cover'
+                />
+              ) : (
+                <div className='w-4 h-4 rounded-full bg-kr0n-surface-2 border border-kr0n-line flex items-center justify-center text-[10px] font-mono text-white'>
+                  {accountLogin[0]?.toUpperCase() || 'A'}
+                </div>
+              )}
+              <span className='font-medium truncate'>{accountLogin}</span>
+            </div>
+            <ChevronDown size={13} className='text-kr0n-muted shrink-0' />
           </button>
 
           {showAccountMenu && (
-            <div className="absolute left-0 mt-1.5 w-64 border border-[#222222] bg-[#0c0c0c] rounded-md shadow-2xl py-1 z-30 text-xs">
-              <div className="px-3 py-1.5 text-neutral-400 font-mono text-[10px] uppercase">
-                Connected Account
-              </div>
-              <div className="px-3 py-1.5 flex items-center justify-between text-white font-medium">
-                <span className="truncate">{accountLogin}</span>
-                <span className="text-[10px] text-emerald-400 font-mono flex items-center gap-1">
-                  <Check size={11} /> Connected
+            <div className='absolute left-0 mt-1 w-64 border border-kr0n-line bg-kr0n-black rounded-[6px] shadow-[0_12px_28px_rgba(0,0,0,0.45)] py-1 z-30 text-xs'>
+              <div className='px-3 py-1.5 text-kr0n-muted'>Connected account</div>
+              <div className='px-3 py-1.5 flex items-center justify-between text-white font-medium'>
+                <span className='truncate font-mono'>{accountLogin}</span>
+                <span className='text-kr0n-healthy flex items-center gap-1'>
+                  <Check size={12} /> Linked
                 </span>
               </div>
-              <div className="border-t border-[#1c1c1c] my-1" />
+              <div className='border-t border-kr0n-line-soft my-1' />
               <button
-                type="button"
+                type='button'
                 onClick={() => {
                   setShowAccountMenu(false);
                   connectGitHubApp();
                 }}
-                className="w-full text-left px-3 py-2 text-neutral-300 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2 cursor-pointer"
+                className='w-full text-left px-3 py-2 text-kr0n-text-secondary hover:text-white hover:bg-kr0n-surface-2 transition-colors duration-150 flex items-center gap-2 cursor-pointer'
               >
-                <GitBranch size={13} /> Manage Repository Permissions
+                <GitBranch size={13} /> Manage repository access
               </button>
               <button
-                type="button"
+                type='button'
                 onClick={() => {
                   setShowAccountMenu(false);
                   connectGitHubApp();
                 }}
-                className="w-full text-left px-3 py-2 text-neutral-300 hover:text-white hover:bg-white/5 transition-colors flex items-center gap-2 cursor-pointer"
+                className='w-full text-left px-3 py-2 text-kr0n-text-secondary hover:text-white hover:bg-kr0n-surface-2 transition-colors duration-150 flex items-center gap-2 cursor-pointer'
               >
-                <Plus size={13} /> Add Another GitHub Account
+                <Plus size={13} /> Add GitHub account
               </button>
               {disconnectGitHubInstallation && (
                 <button
-                  type="button"
+                  type='button'
                   onClick={() => {
                     setShowAccountMenu(false);
                     disconnectGitHubInstallation();
                   }}
-                  className="w-full text-left px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors flex items-center gap-2 cursor-pointer border-t border-[#1c1c1c] mt-1"
+                  className='w-full text-left px-3 py-2 text-kr0n-error hover:bg-red-500/10 transition-colors duration-150 flex items-center gap-2 cursor-pointer border-t border-kr0n-line-soft mt-1'
                 >
-                  <Trash2 size={13} /> Disconnect GitHub Account
+                  <Trash2 size={13} /> Disconnect GitHub account
                 </button>
               )}
             </div>
           )}
         </div>
 
-        {/* Search Input Box */}
-        <div className="flex-1 flex items-center gap-2.5 bg-[#0c0c0c] border border-[#222222] focus-within:border-[#444444] rounded-md px-3.5 py-2 text-sm text-white transition-colors">
+        <div className='flex-1 h-9 flex items-center gap-2.5 bg-kr0n-black border border-kr0n-line focus-within:border-kr0n-accent rounded-[6px] px-3 text-[13px] text-white transition-colors duration-150'>
           {fetchingRepos ? (
-            <Loader2 size={15} className="text-neutral-400 animate-spin shrink-0" />
+            <Loader2 size={14} className='text-kr0n-muted animate-spin shrink-0' />
           ) : (
-            <Search size={15} className="text-neutral-500 shrink-0" />
+            <Search size={14} className='text-kr0n-muted shrink-0' />
           )}
           <input
-            type="text"
-            placeholder="Search"
+            type='text'
+            placeholder='Search repositories...'
+            aria-label='Search repositories'
             value={search}
             onChange={(e) => {
               setSearch(e.target.value);
               setPage(1);
             }}
-            className="w-full bg-transparent text-sm outline-none text-white placeholder:text-neutral-500"
+            className='w-full bg-transparent text-[13px] outline-none text-white placeholder:text-kr0n-faint'
           />
         </div>
       </div>
 
-      {/* Repository List Box */}
-      <div className="border border-[#222222] bg-[#0c0c0c] rounded-lg divide-y divide-[#1c1c1c] overflow-hidden">
+      {/* Repository Table */}
+      <div className='border border-kr0n-line bg-kr0n-black rounded-[6px] overflow-hidden'>
         {fetchingRepos ? (
-          <div className="divide-y divide-[#181818]">
-            {[...Array(6)].map((_, i) => (
-              <div
-                key={i}
-                className="px-4 py-3.5 flex items-center justify-between animate-pulse"
-              >
-                <div className="flex items-center gap-2.5">
-                  <div className="w-5 h-5 rounded-full bg-neutral-800" />
-                  <div className="h-4 w-36 sm:w-48 bg-neutral-800 rounded" />
-                  <div className="h-3 w-16 bg-neutral-900 rounded hidden sm:block" />
-                </div>
-                <div className="h-7 w-16 bg-neutral-800/80 rounded-md" />
-              </div>
-            ))}
+          <div className='p-10 text-center text-[13px] text-kr0n-muted flex items-center justify-center gap-2.5'>
+            <Loader2 size={15} className='animate-spin' />
+            <span>Loading repositories...</span>
           </div>
         ) : repos.length === 0 ? (
-          <div className="p-8 text-center space-y-3">
-            <p className="text-sm text-neutral-400">
-              No repositories found for this account.
+          <div className='p-10 text-center space-y-3'>
+            <p className='text-sm font-medium text-white'>
+              No repositories found for this installation
             </p>
-            <p className="text-xs text-neutral-500 max-w-sm mx-auto">
-              Ensure you authorized KR0N to access your repositories on GitHub.
+            <p className='text-xs text-kr0n-muted max-w-sm mx-auto'>
+              Authorize one or more repositories in GitHub to import them here.
             </p>
-            <div className="pt-2">
+            <div className='pt-1'>
               <button
-                type="button"
+                type='button'
                 onClick={connectGitHubApp}
-                className="bg-white text-black font-semibold text-xs px-4 py-2 rounded-md hover:bg-neutral-200 transition-colors cursor-pointer"
+                className='h-9 px-4 rounded-[6px] bg-kr0n-text hover:bg-white text-kr0n-black text-xs font-medium transition-colors duration-150 cursor-pointer'
               >
-                Configure Repository Permissions
+                Configure repository permissions
               </button>
             </div>
           </div>
         ) : filteredRepos.length === 0 ? (
-          <div className="p-8 text-center text-sm text-neutral-500">
-            No repositories found matching &ldquo;{search}&rdquo;
+          <div className='p-10 text-center text-[13px] text-kr0n-muted'>
+            No repositories matching &ldquo;{search}&rdquo;
           </div>
         ) : (
           <>
-            {paginatedRepos.map((r) => (
-              <div
-                key={r.id || r.name}
-                className="px-4 py-3.5 flex items-center justify-between hover:bg-white/[0.02] transition-colors"
-              >
-                {/* Left: Icon + Name + Lock + Date */}
-                <div className="flex items-center gap-2.5 min-w-0">
-                  <RepoIcon type={r.type} name={r.name} />
-                  <span className="font-medium text-sm text-white truncate">{r.name}</span>
-                  {r.private && <Lock size={12} className="text-neutral-400 shrink-0 ml-0.5" />}
-                  <span className="text-neutral-400 text-sm shrink-0">
-                    · {r.updatedDate || 'Recently'}
-                  </span>
-                </div>
-
-                {/* Right: White Import Button */}
-                <button
-                  onClick={() => handleSelectRepo(r)}
-                  className="bg-white text-black font-semibold text-sm px-5 py-1.5 rounded-md hover:bg-neutral-200 active:scale-[0.98] transition-all shrink-0 cursor-pointer"
+            <div className='divide-y divide-kr0n-line-soft'>
+              {paginatedRepos.map((r) => (
+                <div
+                  key={r.id || r.name}
+                  className='px-5 h-13 flex items-center justify-between gap-4 hover:bg-kr0n-surface-2/50 transition-colors duration-150'
                 >
-                  Import
-                </button>
-              </div>
-            ))}
+                  <div className='flex items-center gap-3 min-w-0'>
+                    <RepoIcon type={r.type} name={r.name} />
+                    <div className='min-w-0 flex items-center gap-2.5'>
+                      <span className='font-medium text-[13px] text-white truncate'>
+                        {r.name}
+                      </span>
+                      {r.private && (
+                        <Lock size={12} className='text-kr0n-muted shrink-0' aria-label='Private repository' />
+                      )}
+                      {r.default_branch && (
+                        <span className='hidden sm:inline font-mono text-xs text-kr0n-muted'>
+                          {r.default_branch}
+                        </span>
+                      )}
+                      <span className='text-kr0n-faint text-xs shrink-0 hidden md:inline'>
+                        · {r.updatedDate || 'Recently'}
+                      </span>
+                    </div>
+                  </div>
 
-            {/* Pagination Footer */}
+                  <button
+                    type='button'
+                    onClick={() => handleSelectRepo(r)}
+                    className='h-8 px-4 rounded-[6px] bg-kr0n-text hover:bg-white text-kr0n-black font-medium text-xs transition-colors duration-150 shrink-0 cursor-pointer'
+                  >
+                    Import
+                  </button>
+                </div>
+              ))}
+            </div>
+
             {filteredRepos.length > PAGE_SIZE && (
-              <div className="px-4 py-3 bg-[#0c0c0c] flex items-center justify-between border-t border-[#1c1c1c] text-xs">
-                <span className="text-neutral-400 font-mono text-[11px]">
-                  Showing <span className="text-white font-medium">{startIndex + 1}</span>–
-                  <span className="text-white font-medium">
-                    {Math.min(startIndex + PAGE_SIZE, filteredRepos.length)}
-                  </span>{' '}
-                  of <span className="text-white font-medium">{filteredRepos.length}</span> repositories
+              <div className='px-5 py-3 bg-kr0n-canvas flex items-center justify-between border-t border-kr0n-line-soft text-xs'>
+                <span className='text-kr0n-muted font-mono tabular-nums'>
+                  {startIndex + 1}–{Math.min(startIndex + PAGE_SIZE, filteredRepos.length)} of {filteredRepos.length}
                 </span>
 
-                <div className="flex items-center gap-1.5">
+                <div className='flex items-center gap-2'>
                   <button
-                    type="button"
+                    type='button'
                     disabled={currentPage <= 1}
                     onClick={() => setPage((p) => Math.max(1, p - 1))}
-                    className="px-2.5 py-1 rounded border border-[#222222] bg-[#121212] text-neutral-300 hover:text-white hover:border-[#333333] disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer font-medium"
+                    className='h-7 px-2.5 rounded-[6px] border border-kr0n-line bg-kr0n-black text-kr0n-text-secondary hover:text-white hover:border-kr0n-line-strong disabled:opacity-30 disabled:pointer-events-none transition-colors duration-150 flex items-center gap-1 cursor-pointer'
                   >
                     <ChevronLeft size={13} />
                     <span>Prev</span>
                   </button>
-
-                  {/* Page number indicators */}
-                  <div className="flex items-center gap-1 px-1">
-                    {Array.from({ length: totalPages }, (_, i) => i + 1)
-                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
-                      .reduce((acc, p, idx, arr) => {
-                        if (idx > 0 && p - arr[idx - 1] > 1) {
-                          acc.push('ellipsis-' + p);
-                        }
-                        acc.push(p);
-                        return acc;
-                      }, [])
-                      .map((item) => {
-                        if (typeof item === 'string') {
-                          return (
-                            <span key={item} className="px-1 text-neutral-600 font-mono">
-                              …
-                            </span>
-                          );
-                        }
-                        const isCurrent = item === currentPage;
-                        return (
-                          <button
-                            key={item}
-                            type="button"
-                            onClick={() => setPage(item)}
-                            className={`w-7 h-7 rounded text-xs font-mono transition-colors cursor-pointer flex items-center justify-center ${
-                              isCurrent
-                                ? 'bg-white text-black font-semibold'
-                                : 'text-neutral-400 hover:text-white hover:bg-white/5 border border-transparent hover:border-[#222222]'
-                            }`}
-                          >
-                            {item}
-                          </button>
-                        );
-                      })}
-                  </div>
-
                   <button
-                    type="button"
+                    type='button'
                     disabled={currentPage >= totalPages}
                     onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                    className="px-2.5 py-1 rounded border border-[#222222] bg-[#121212] text-neutral-300 hover:text-white hover:border-[#333333] disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-1 cursor-pointer font-medium"
+                    className='h-7 px-2.5 rounded-[6px] border border-kr0n-line bg-kr0n-black text-kr0n-text-secondary hover:text-white hover:border-kr0n-line-strong disabled:opacity-30 disabled:pointer-events-none transition-colors duration-150 flex items-center gap-1 cursor-pointer'
                   >
                     <span>Next</span>
                     <ChevronRight size={13} />

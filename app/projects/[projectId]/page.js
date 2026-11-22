@@ -5,616 +5,437 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
-  Share2,
-  Terminal,
-  ChevronDown,
-  ChevronRight,
-  MoreHorizontal,
-  ExternalLink,
-  Globe,
   GitBranch,
-  GitCommit,
-  Clock,
-  ArrowUpCircle,
-  Check,
-  X,
-  Sliders,
-  RefreshCw,
+  Folder,
+  Settings,
   Trash2,
   AlertTriangle,
+  ExternalLink,
+  Terminal,
+  Loader2,
 } from 'lucide-react';
-import { useKr0nStore } from '@/lib/kr0n-state';
-import { getMe, useAuthUser } from '@/lib/auth';
+import { useWorkspace } from '@/lib/workspace-context';
+import { getProject } from '@/lib/projects-api';
+import { APPLICATION_PRESETS, RepoIcon } from '@/components/projects/github-picker/constants';
+import BrandedNotFound from '@/components/common/BrandedNotFound';
 
-export default function ProjectDeploymentDetailPage({ params }) {
-  const unwrappedParams = use(params);
-  const { projectId } = unwrappedParams;
+function formatDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return String(ts);
+  return d.toLocaleString();
+}
+
+export default function ProjectDetailPage({ params }) {
+  const { projectId } = use(params);
   const router = useRouter();
+  const {
+    activeOrgId,
+    activeOrg,
+    projects,
+    presets,
+    hasLoaded,
+    deleteProject,
+    refreshProjects,
+  } = useWorkspace();
 
-  const { projects, deleteProject } = useKr0nStore();
-  const authUser = useAuthUser();
-  const [liveUser, setLiveUser] = useState(null);
-  const currentUser = liveUser || authUser;
-
-  // UI state
-  const [showLogs, setShowLogs] = useState(false);
-  const [expandSettings, setExpandSettings] = useState(false);
-  const [showShareToast, setShowShareToast] = useState(false);
-  const [showMenu, setShowMenu] = useState(false);
-  const [showVisitDropdown, setShowVisitDropdown] = useState(false);
+  const cachedProject = projects.find((p) => p.id === projectId) || null;
+  const [liveProject, setLiveProject] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
+  const [deleteError, setDeleteError] = useState('');
+  const [deleting, setDeleting] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [confirmDeleteName, setConfirmDeleteName] = useState('');
 
-  // Sync current user profile
   useEffect(() => {
-    let active = true;
-    (async () => {
-      try {
-        const me = await getMe();
-        if (active && me) setLiveUser(me);
-      } catch {
-        // Safe ignore
+    if (!showDeleteModal) return;
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowDeleteModal(false);
+        setConfirmDeleteName('');
+        setDeleteError('');
       }
-    })();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showDeleteModal]);
+
+  useEffect(() => {
+    if (!activeOrgId) {
+      if (hasLoaded) {
+        Promise.resolve().then(() => {
+          setLoading(false);
+          setNotFound(true);
+        });
+      }
+      return;
+    }
+
+    let active = true;
+    Promise.resolve()
+      .then(() => {
+        if (!active) return null;
+        setLoading(true);
+        setNotFound(false);
+        return getProject(activeOrgId, projectId);
+      })
+      .then((proj) => {
+        if (!active) return;
+        if (proj?.id) {
+          setLiveProject(proj);
+          setNotFound(false);
+        } else {
+          setNotFound(true);
+        }
+      })
+      .catch(() => {
+        if (active) setNotFound(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
     return () => {
       active = false;
     };
-  }, []);
+  }, [activeOrgId, projectId, hasLoaded]);
 
-  // Find project in store or synthesize safe fallback
-  const foundProject = projects.find((p) => p.id === projectId);
-  const project = foundProject || {
-    id: projectId,
-    name: projectId.replace(/^proj_/, '').replace(/_[a-z0-9]+$/, '') || 'my-project',
-    url: `${projectId.replace(/^proj_/, '').replace(/_[a-z0-9]+$/, '') || 'my-project'}.vercel.app`,
-    repository: '',
-    environment: 'production',
-    currentDeployment: {
-      version: 'v1.0.0',
-      branch: 'main',
-      commit: 'initial',
-      commitMessage: 'initial setup',
-      duration: '6s',
-      timestamp: 'Just now',
-      status: 'ready',
-    },
-    services: [
-      {
-        id: 'svc_web',
-        name: 'web',
-        runtime: 'Node.js',
-        buildCommand: 'npm run build',
-        outputDir: 'dist',
-      },
-    ],
-  };
+  const project = liveProject || cachedProject;
 
-  const accountLogin =
-    currentUser?.displayName || currentUser?.display_name || currentUser?.name || 'kr0n-user';
-  const cleanName = project.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
-  const primaryDomain = project.url || `${cleanName}.vercel.app`;
-  const branchDomain = `${cleanName}-git-main-${accountLogin}-4325s-projects.vercel.app`;
-  const commitDomain = `${cleanName}-7t7jl8gy2-${accountLogin}-4325s-projects.vercel.app`;
-  const deployment = project.currentDeployment || {
-    branch: 'main',
-    commit: 'add0788',
-    commitMessage: 'made better',
-    duration: '6s',
-    timestamp: 'Oct 6',
-    status: 'ready',
-  };
+  if (loading && !project) {
+    return (
+      <div className='min-h-[60vh] flex flex-col items-center justify-center p-8 text-center space-y-3'>
+        <Loader2 size={20} className='animate-spin text-kr0n-muted' />
+        <p className='text-sm text-kr0n-muted'>Loading project...</p>
+      </div>
+    );
+  }
 
-  function handleCopyShare() {
-    if (typeof window !== 'undefined') {
-      navigator.clipboard.writeText(`https://${primaryDomain}`);
-      setShowShareToast(true);
-      setTimeout(() => setShowShareToast(false), 3000);
+  if (notFound || !project) {
+    return (
+      <BrandedNotFound
+        type='Project'
+        id={projectId}
+        backHref='/projects'
+        backLabel='Back to projects'
+      />
+    );
+  }
+
+  const availablePresets =
+    Array.isArray(presets) && presets.length > 0 ? presets : APPLICATION_PRESETS;
+  const presetMeta =
+    availablePresets.find((p) => p.id === project.application_preset) || {
+      id: project.application_preset || 'auto',
+      name: project.application_preset || 'Auto-detect',
+      category: 'auto',
+    };
+
+  const buildSettings = project.build_settings || {};
+  const effectiveBuild = project.effective_build_settings || {};
+  const repoUrl = project.repo_full_name
+    ? `https://github.com/${project.repo_full_name}`
+    : null;
+
+  async function handleDeleteProject() {
+    if (confirmDeleteName !== project.name) return;
+    setDeleting(true);
+    setDeleteError('');
+    try {
+      await deleteProject(project.id, activeOrgId);
+      await refreshProjects().catch(() => {});
+      setShowDeleteModal(false);
+      router.push('/projects');
+    } catch (err) {
+      setDeleteError(err.message || 'Failed to delete project.');
+      setDeleting(false);
     }
   }
 
-  function handleDeleteProject() {
-    deleteProject(project.id);
-    setShowDeleteModal(false);
-    router.push('/projects');
-  }
-
   return (
-    <main className="min-h-screen bg-[#000000] text-white flex flex-col font-sans selection:bg-white selection:text-black">
-      {/* ─── TOP HEADER BAR ─── */}
-      <header className="border-b border-[#1c1c1c] bg-[#000000] px-4 sm:px-8 py-3.5 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Link
-            href="/projects"
-            className="text-neutral-400 hover:text-white transition-colors p-1 -ml-1 rounded"
-            title="Back to Projects"
-          >
-            <ArrowLeft size={16} />
-          </Link>
-          <h1 className="text-base sm:text-lg font-semibold tracking-tight text-white">
-            Deployment Details
-          </h1>
-        </div>
-
-        {/* Action Controls */}
-        <div className="flex items-center gap-2">
-          {/* Share Button */}
-          <button
-            type="button"
-            onClick={handleCopyShare}
-            className="bg-[#0c0c0c] border border-[#222222] hover:border-[#333333] px-3 py-1.5 text-xs text-neutral-300 hover:text-white rounded-md flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <Share2 size={13} className="text-neutral-400" />
-            <span className="hidden sm:inline font-medium">Share</span>
-          </button>
-
-          {/* Logs Button */}
-          <button
-            type="button"
-            onClick={() => setShowLogs(true)}
-            className="bg-[#0c0c0c] border border-[#222222] hover:border-[#333333] px-3 py-1.5 text-xs text-neutral-300 hover:text-white rounded-md flex items-center gap-1.5 transition-colors cursor-pointer"
-          >
-            <Terminal size={13} className="text-neutral-400" />
-            <span className="font-medium">Logs</span>
-          </button>
-
-          {/* Visit Split Button */}
-          <div className="relative inline-flex items-center rounded-md">
-            <a
-              href={`https://${primaryDomain}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="bg-white text-black font-semibold px-3 py-1.5 text-xs rounded-l-md hover:bg-neutral-200 transition-colors flex items-center gap-1"
+    <div className='flex-1 flex flex-col min-h-full bg-kr0n-canvas text-kr0n-text'>
+      {/* Title Row */}
+      <header className='border-b border-kr0n-line bg-kr0n-canvas px-6 sm:px-8 py-6'>
+        <div className='max-w-[1240px] flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
+          <div className='flex items-start gap-3 min-w-0'>
+            <Link
+              href='/projects'
+              className='text-kr0n-muted hover:text-white transition-colors duration-150 p-1 -ml-1 mt-0.5'
+              aria-label='Back to projects'
             >
-              <span>Visit</span>
-            </a>
-            <button
-              type="button"
-              onClick={() => setShowVisitDropdown(!showVisitDropdown)}
-              className="bg-white text-black px-1.5 py-1.5 text-xs rounded-r-md border-l border-neutral-300 hover:bg-neutral-200 transition-colors cursor-pointer"
-            >
-              <ChevronDown size={13} />
-            </button>
-
-            {/* Visit Dropdown */}
-            {showVisitDropdown && (
-              <div className="absolute right-0 top-full mt-1.5 w-64 border border-[#222222] bg-[#0c0c0c] rounded-md shadow-2xl py-1 z-30 text-xs">
-                <a
-                  href={`https://${primaryDomain}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-2 flex items-center justify-between text-neutral-300 hover:text-white hover:bg-white/5 transition-colors"
-                >
-                  <span className="truncate">{primaryDomain}</span>
-                  <ExternalLink size={12} className="shrink-0 text-neutral-500" />
-                </a>
-                <a
-                  href={`https://${branchDomain}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="px-3 py-2 flex items-center justify-between text-neutral-300 hover:text-white hover:bg-white/5 transition-colors"
-                >
-                  <span className="truncate">{branchDomain}</span>
-                  <ExternalLink size={12} className="shrink-0 text-neutral-500" />
-                </a>
+              <ArrowLeft size={16} />
+            </Link>
+            <div className='min-w-0 space-y-1'>
+              <div className='flex items-center gap-3 flex-wrap'>
+                <h1 className='text-2xl font-semibold tracking-tight text-white truncate'>
+                  {project.name}
+                </h1>
+                <span className='text-xs font-mono tabular-nums text-kr0n-muted border-b border-kr0n-accent pb-0.5'>
+                  rev {project.revision || 1}
+                </span>
               </div>
-            )}
+              <p className='text-[13px] font-mono text-kr0n-muted truncate'>
+                {activeOrg?.name ? `${activeOrg.name} / ` : ''}
+                {project.slug}
+                {project.description ? ` — ${project.description}` : ''}
+              </p>
+            </div>
           </div>
 
-          {/* More Options Menu */}
-          <div className="relative">
-            <button
-              type="button"
-              onClick={() => setShowMenu(!showMenu)}
-              className="bg-[#0c0c0c] border border-[#222222] hover:border-[#333333] p-1.5 text-neutral-400 hover:text-white rounded-md transition-colors cursor-pointer"
-            >
-              <MoreHorizontal size={14} />
-            </button>
-
-            {showMenu && (
-              <div className="absolute right-0 mt-1.5 w-48 border border-[#222222] bg-[#0c0c0c] rounded-md shadow-2xl py-1 z-30 text-xs">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMenu(false);
-                    setShowLogs(true);
-                  }}
-                  className="w-full text-left px-3 py-2 text-neutral-300 hover:text-white hover:bg-white/5 transition-colors"
-                >
-                  View Build Output
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMenu(false);
-                    handleCopyShare();
-                  }}
-                  className="w-full text-left px-3 py-2 text-neutral-300 hover:text-white hover:bg-white/5 transition-colors"
-                >
-                  Copy Deployment URL
-                </button>
-                <div className="border-t border-[#1c1c1c] my-1" />
-                <Link
-                  href={`/projects/${project.id}/settings`}
-                  className="block px-3 py-2 text-neutral-300 hover:text-white hover:bg-white/5 transition-colors"
-                >
-                  Project Settings
-                </Link>
-                <div className="border-t border-[#1c1c1c] my-1" />
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowMenu(false);
-                    setShowDeleteModal(true);
-                  }}
-                  className="w-full text-left px-3 py-2 text-red-400 hover:text-red-300 hover:bg-red-500/10 transition-colors flex items-center gap-2 cursor-pointer"
-                >
-                  <Trash2 size={12} className="shrink-0" />
-                  <span>Delete Project</span>
-                </button>
-              </div>
+          <div className='flex items-center gap-2.5 shrink-0'>
+            {repoUrl && (
+              <a
+                href={repoUrl}
+                target='_blank'
+                rel='noopener noreferrer'
+                className='h-9 px-3.5 rounded-[6px] border border-kr0n-line hover:border-kr0n-line-strong bg-kr0n-black text-xs font-medium text-kr0n-text-secondary hover:text-white inline-flex items-center gap-1.5 transition-colors duration-150'
+              >
+                <span>GitHub</span>
+                <ExternalLink size={12} />
+              </a>
             )}
+
+            <Link
+              href={`/projects/${project.id}/settings`}
+              className='h-9 px-4 rounded-[6px] bg-kr0n-text hover:bg-white text-kr0n-black text-xs font-medium inline-flex items-center gap-1.5 transition-colors duration-150'
+            >
+              <Settings size={13} />
+              <span>Configure settings</span>
+            </Link>
+
+            <button
+              type='button'
+              onClick={() => setShowDeleteModal(true)}
+              className='h-9 px-3 rounded-[6px] border border-red-500/30 hover:border-red-400 text-kr0n-error text-xs font-medium inline-flex items-center gap-1.5 transition-colors duration-150 cursor-pointer'
+              aria-label='Delete project'
+            >
+              <Trash2 size={13} />
+              <span className='hidden sm:inline'>Delete</span>
+            </button>
           </div>
         </div>
       </header>
 
-      {/* Copy notification toast */}
-      {showShareToast && (
-        <div className="fixed top-16 right-6 z-50 bg-[#121212] border border-[#27272a] text-white px-3.5 py-2 rounded-md shadow-2xl text-xs flex items-center gap-2">
-          <Check size={14} className="text-emerald-400" />
-          <span>Deployment URL copied to clipboard</span>
+      <div className='flex-1 max-w-[1240px] w-full px-6 sm:px-8 py-6 space-y-6'>
+        {/* Full-width Repository & Source Binding Strip */}
+        <div className='grid grid-cols-2 lg:grid-cols-4 rounded-[6px] border border-kr0n-line bg-kr0n-black overflow-hidden divide-y lg:divide-y-0 lg:divide-x divide-kr0n-line'>
+          <div className='px-5 py-4 space-y-1 min-w-0'>
+            <div className='text-xs text-kr0n-muted'>Repository</div>
+            <div className='font-mono text-[13px] text-white truncate'>
+              {project.repo_full_name || '—'}
+            </div>
+          </div>
+          <div className='px-5 py-4 space-y-1'>
+            <div className='text-xs text-kr0n-muted'>Production branch</div>
+            <div className='font-mono text-[13px] text-white inline-flex items-center gap-1.5'>
+              <GitBranch size={13} className='text-kr0n-healthy shrink-0' />
+              <span>{project.production_branch || 'main'}</span>
+            </div>
+          </div>
+          <div className='px-5 py-4 space-y-1'>
+            <div className='text-xs text-kr0n-muted'>Root directory</div>
+            <div className='font-mono text-[13px] text-white inline-flex items-center gap-1.5'>
+              <Folder size={13} className='text-kr0n-muted shrink-0' />
+              <span>{project.root_directory || './'}</span>
+            </div>
+          </div>
+          <div className='px-5 py-4 space-y-1'>
+            <div className='text-xs text-kr0n-muted'>Stack preset</div>
+            <div className='text-[13px] text-white inline-flex items-center gap-2'>
+              <RepoIcon type={presetMeta.id} />
+              <span>{presetMeta.name}</span>
+            </div>
+          </div>
         </div>
-      )}
 
-      {/* ─── MAIN DEPLOYMENT DETAILS BODY (MATCHING USER SCREENSHOT) ─── */}
-      <div className="flex-1 max-w-7xl w-full mx-auto p-4 sm:p-8 space-y-6">
-        <div className="grid grid-cols-1 lg:grid-cols-[460px_1fr] gap-8 items-start">
-          {/* ── LEFT: APPLICATION PREVIEW FRAME ── */}
-          <div className="border border-[#222222] bg-[#0c0c0c] rounded-lg overflow-hidden group relative shadow-2xl">
-            <a
-              href={`https://${primaryDomain}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="block cursor-pointer"
-            >
-              {/* Paper Model / Application Preview Visual */}
-              <div className="bg-[#FAF7F2] text-[#1E1E1E] p-5 sm:p-6 aspect-[16/11] flex flex-col justify-between relative overflow-hidden select-none">
-                {/* Site Header Nav */}
-                <div className="flex items-center justify-between border-b border-black/5 pb-3">
-                  <div className="flex items-center gap-2">
-                    <span className="font-black text-xs tracking-wider uppercase font-mono">
-                      {project.name.toUpperCase()}
-                    </span>
-                  </div>
-                  <div className="hidden sm:flex items-center gap-3 text-[9px] font-medium text-neutral-600">
-                    <span>Models</span>
-                    <span>Print & Media</span>
-                    <span>Community</span>
-                    <span>About</span>
-                  </div>
-                  <span className="bg-[#EA580C] text-white text-[9px] font-bold px-2 py-0.5 rounded-full">
-                    Explore
-                  </span>
-                </div>
-
-                {/* Hero Body */}
-                <div className="grid grid-cols-2 gap-3 items-center my-auto py-2">
-                  <div className="space-y-2">
-                    <p className="text-[8px] font-mono uppercase tracking-widest text-[#EA580C] font-bold">
-                      Flat Sheet Precision
-                    </p>
-                    <h2 className="text-sm sm:text-base font-black leading-tight tracking-tight uppercase">
-                      From Flat Paper to <span className="text-[#EA580C]">Extraordinary.</span>
-                    </h2>
-                    <p className="text-[9px] text-neutral-600 leading-snug line-clamp-3">
-                      Detailed paper models designed to be folded, built, and proudly displayed.
-                    </p>
-                    <div className="pt-1">
-                      <span className="inline-block bg-[#EA580C] text-white text-[9px] font-bold px-3 py-1 rounded">
-                        Explore Collection
+        {/* Two height-balanced side-by-side panels */}
+        <div className='grid grid-cols-1 lg:grid-cols-12 gap-6'>
+          {/* Effective Build Plan */}
+          <div className='lg:col-span-7 rounded-[6px] border border-kr0n-line bg-kr0n-black overflow-hidden flex flex-col justify-between'>
+            <div>
+              <div className='px-5 h-11 border-b border-kr0n-line-soft flex items-center justify-between'>
+                <h2 className='text-[13px] font-semibold text-white'>
+                  Effective build plan
+                </h2>
+                <Link
+                  href={`/projects/${project.id}/settings`}
+                  className='text-xs text-kr0n-accent hover:underline'
+                >
+                  Edit overrides
+                </Link>
+              </div>
+              <dl className='divide-y divide-kr0n-line-soft text-[13px]'>
+                {[
+                  {
+                    label: 'Install command',
+                    value: effectiveBuild.install_command,
+                    overridden: buildSettings.install_command_override,
+                  },
+                  {
+                    label: 'Build command',
+                    value: effectiveBuild.build_command,
+                    overridden: buildSettings.build_command_override,
+                  },
+                  {
+                    label: 'Output directory',
+                    value: effectiveBuild.output_directory,
+                    overridden: buildSettings.output_directory_override,
+                  },
+                ].map((item) => (
+                  <div
+                    key={item.label}
+                    className='px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2'
+                  >
+                    <dt className='flex items-center gap-2.5 text-kr0n-muted shrink-0'>
+                      <span>{item.label}</span>
+                      <span
+                        className={`text-[11px] font-mono ${
+                          item.overridden ? 'text-kr0n-warning' : 'text-kr0n-faint'
+                        }`}
+                      >
+                        {item.overridden ? 'custom' : 'default'}
                       </span>
-                    </div>
+                    </dt>
+                    <dd className='font-mono text-xs text-white break-all sm:text-right'>
+                      {item.value || '(none)'}
+                    </dd>
                   </div>
-
-                  {/* Right Model Mockup Box */}
-                  <div className="bg-white/80 border border-black/10 rounded-lg p-3 shadow-sm flex flex-col items-center justify-center text-center">
-                    <div className="w-16 h-12 bg-gradient-to-tr from-[#EA580C] to-amber-400 rounded flex items-center justify-center text-white shadow-inner">
-                      <Sliders size={20} className="opacity-90" />
-                    </div>
-                    <span className="text-[9px] font-bold mt-2 uppercase">{project.name}</span>
-                    <span className="text-[8px] text-neutral-500 font-mono">Scale Edition</span>
-                  </div>
-                </div>
-
-                {/* Bottom Stats Footer */}
-                <div className="grid grid-cols-3 gap-2 border-t border-black/5 pt-2 text-[8px] font-mono text-neutral-600">
-                  <div>
-                    <span className="block font-bold text-black">100% Edge</span>
-                    <span>Distributed</span>
-                  </div>
-                  <div>
-                    <span className="block font-bold text-black">Global CDN</span>
-                    <span>Sub-20ms</span>
-                  </div>
-                  <div>
-                    <span className="block font-bold text-black">SSL Active</span>
-                    <span>Automated</span>
-                  </div>
-                </div>
-
-                {/* Hover Action Overlay */}
-                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-white font-medium text-xs gap-1.5 backdrop-blur-[1px]">
-                  <span>Visit Application</span>
-                  <ExternalLink size={13} />
-                </div>
-              </div>
-            </a>
+                ))}
+              </dl>
+            </div>
+            <div className='px-5 py-3 border-t border-kr0n-line-soft text-xs font-mono tabular-nums text-kr0n-muted'>
+              {buildSettings.updated_at
+                ? `Build settings updated ${formatDate(buildSettings.updated_at)}`
+                : 'Using preset defaults'}
+            </div>
           </div>
 
-          {/* ── RIGHT: METADATA & DOMAIN SPECIFICATIONS ── */}
-          <div className="space-y-6">
-            {/* Top 4 Columns (Created, Status, Duration, Environment) */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pb-6 border-b border-[#1c1c1c]">
-              {/* Created */}
-              <div className="space-y-1">
-                <span className="block text-xs text-neutral-400 font-medium">Created</span>
-                <div className="flex items-center gap-1.5 text-sm text-white">
-                  {currentUser?.avatarUrl || currentUser?.avatar_url ? (
-                    // eslint-disable-next-line @next/next/no-img-element
-                    <img
-                      src={currentUser.avatarUrl || currentUser.avatar_url}
-                      alt={accountLogin}
-                      referrerPolicy="no-referrer"
-                      className="w-4 h-4 rounded-full object-cover shrink-0"
-                    />
-                  ) : (
-                    <div className="w-4 h-4 rounded-full bg-indigo-600 flex items-center justify-center text-[9px] font-bold text-white shrink-0">
-                      {accountLogin[0]?.toUpperCase() || 'A'}
-                    </div>
-                  )}
-                  <span className="truncate">{accountLogin}</span>
-                  <span className="text-neutral-400 text-xs shrink-0">{deployment.timestamp || 'Oct 6'}</span>
-                </div>
+          {/* Project Metadata & History */}
+          <div className='lg:col-span-5 rounded-[6px] border border-kr0n-line bg-kr0n-black overflow-hidden flex flex-col justify-between'>
+            <div>
+              <div className='px-5 h-11 border-b border-kr0n-line-soft flex items-center justify-between'>
+                <h2 className='text-[13px] font-semibold text-white'>
+                  Project metadata
+                </h2>
+                <span className='font-mono text-xs tabular-nums text-kr0n-muted'>
+                  #{project.github_installation_id || '—'}
+                </span>
               </div>
-
-              {/* Status */}
-              <div className="space-y-1">
-                <span className="block text-xs text-neutral-400 font-medium">Status</span>
-                <div className="flex items-center gap-1.5 text-sm">
-                  <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                  <span className="font-semibold text-white">Ready</span>
-                  <span className="text-[10px] font-mono bg-[#1c1c1c] text-neutral-300 px-1.5 py-0.5 rounded">
-                    Latest
-                  </span>
+              <dl className='divide-y divide-kr0n-line-soft text-xs'>
+                <div className='px-5 py-3 flex items-center justify-between gap-4'>
+                  <dt className='text-kr0n-muted shrink-0'>Project ID</dt>
+                  <dd className='font-mono text-kr0n-text-secondary truncate select-all'>
+                    {project.id}
+                  </dd>
                 </div>
-              </div>
-
-              {/* Duration */}
-              <div className="space-y-1">
-                <span className="block text-xs text-neutral-400 font-medium">Duration</span>
-                <div className="flex items-center gap-1.5 text-sm text-white">
-                  <Clock size={13} className="text-neutral-400 shrink-0" />
-                  <span>{deployment.duration || '6s'}</span>
-                  <span className="text-neutral-500 text-xs">46d ago</span>
+                <div className='px-5 py-3 flex items-center justify-between gap-4'>
+                  <dt className='text-kr0n-muted shrink-0'>Created by</dt>
+                  <dd className='font-mono text-kr0n-text-secondary truncate'>
+                    {project.created_by_user_id || '—'}
+                  </dd>
                 </div>
-              </div>
-
-              {/* Environment */}
-              <div className="space-y-1">
-                <span className="block text-xs text-neutral-400 font-medium">Environment</span>
-                <div className="flex items-center gap-1.5 text-sm text-white">
-                  <ArrowUpCircle size={14} className="text-neutral-300 shrink-0" />
-                  <span>Production</span>
-                  <span className="text-[10px] font-semibold bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2 py-0.5 rounded-full">
-                    Current
-                  </span>
+                <div className='px-5 py-3 flex items-center justify-between gap-4'>
+                  <dt className='text-kr0n-muted shrink-0'>Created</dt>
+                  <dd className='font-mono tabular-nums text-kr0n-text-secondary'>
+                    {formatDate(project.created_at)}
+                  </dd>
                 </div>
-              </div>
+                <div className='px-5 py-3 flex items-center justify-between gap-4'>
+                  <dt className='text-kr0n-muted shrink-0'>Last updated</dt>
+                  <dd className='font-mono tabular-nums text-white'>
+                    {formatDate(project.updated_at)}
+                  </dd>
+                </div>
+              </dl>
             </div>
-
-            {/* Domains Section */}
-            <div className="space-y-2">
-              <span className="block text-xs text-neutral-400 font-medium">Domains</span>
-              <div className="space-y-1.5 text-sm">
-                <div className="flex items-center gap-2">
-                  <Globe size={14} className="text-neutral-400 shrink-0" />
-                  <a
-                    href={`https://${primaryDomain}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-white hover:underline truncate"
-                  >
-                    {primaryDomain}
-                  </a>
-                  <span className="text-[10px] font-mono bg-[#1c1c1c] text-neutral-400 px-1.5 py-0.5 rounded">
-                    +1
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 text-neutral-300">
-                  <GitBranch size={14} className="text-neutral-400 shrink-0" />
-                  <a
-                    href={`https://${branchDomain}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:underline truncate text-neutral-300 hover:text-white"
-                  >
-                    {branchDomain}
-                  </a>
-                </div>
-
-                <div className="flex items-center gap-2 text-neutral-300">
-                  <GitCommit size={14} className="text-neutral-400 shrink-0" />
-                  <a
-                    href={`https://${commitDomain}`}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:underline truncate text-neutral-300 hover:text-white"
-                  >
-                    {commitDomain}
-                  </a>
-                </div>
-              </div>
-            </div>
-
-            {/* Source Section */}
-            <div className="space-y-2 pt-2">
-              <span className="block text-xs text-neutral-400 font-medium">Source</span>
-              <div className="space-y-1.5 text-sm">
-                <div className="flex items-center gap-2 text-white font-mono">
-                  <GitBranch size={14} className="text-neutral-400 shrink-0" />
-                  <span>{deployment.branch || 'main'}</span>
-                </div>
-                <div className="flex items-center gap-2 text-neutral-300">
-                  <GitCommit size={14} className="text-neutral-400 shrink-0" />
-                  <span className="font-mono text-neutral-400">{deployment.commit || 'add0788'}</span>
-                  <span>{deployment.commitMessage || 'made better'}</span>
-                </div>
-              </div>
+            <div className='px-5 py-3 border-t border-kr0n-line-soft text-xs text-kr0n-muted'>
+              GitHub repository ID <span className='font-mono tabular-nums text-kr0n-text-secondary'>#{project.repo_id || '—'}</span>
             </div>
           </div>
         </div>
 
-        {/* ─── BOTTOM ACCORDION: DEPLOYMENT SETTINGS ─── */}
-        <div className="border border-[#1c1c1c] bg-[#0c0c0c] rounded-lg overflow-hidden mt-8">
-          <button
-            type="button"
-            onClick={() => setExpandSettings(!expandSettings)}
-            className="w-full px-5 py-3.5 flex items-center justify-between text-left hover:bg-white/[0.02] transition-colors cursor-pointer"
-          >
-            <div className="flex items-center gap-2.5">
-              <ChevronRight
-                size={15}
-                className={`text-neutral-400 transition-transform ${expandSettings ? 'rotate-90' : ''}`}
-              />
-              <span className="text-sm font-semibold text-white">Deployment Settings</span>
+        {/* Compact Runtime Deployments Roadmap Strip */}
+        <div className='rounded-[6px] border border-kr0n-line bg-kr0n-black px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
+          <div className='flex items-start sm:items-center gap-3'>
+            <Terminal size={15} className='text-kr0n-muted shrink-0 mt-0.5 sm:mt-0' />
+            <div className='text-[13px] text-kr0n-text-secondary'>
+              <span className='text-white font-medium'>Runtime deployments and build logs</span>
+              <span className='text-kr0n-muted'> — container build execution, live log streaming, and edge routing will appear here when the execution plane connects.</span>
             </div>
-            <span className="text-xs font-semibold bg-blue-600/20 text-blue-400 border border-blue-500/30 px-2.5 py-0.5 rounded-full">
-              2 Recommendations
-            </span>
-          </button>
-
-          {expandSettings && (
-            <div className="p-5 border-t border-[#1c1c1c] bg-black/40 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-xs">
-              <div className="space-y-1">
-                <span className="text-neutral-400 font-mono">Framework Preset</span>
-                <p className="text-white font-medium text-sm">Vite</p>
-              </div>
-              <div className="space-y-1">
-                <span className="text-neutral-400 font-mono">Build Command</span>
-                <p className="text-white font-mono text-xs">npm run build</p>
-              </div>
-              <div className="space-y-1">
-                <span className="text-neutral-400 font-mono">Output Directory</span>
-                <p className="text-white font-mono text-xs">dist</p>
-              </div>
-              <div className="space-y-1">
-                <span className="text-neutral-400 font-mono">Node.js Version</span>
-                <p className="text-white font-mono text-xs">20.x</p>
-              </div>
-            </div>
-          )}
+          </div>
+          <span className='font-mono text-xs text-kr0n-warning shrink-0'>
+            Coming soon
+          </span>
         </div>
       </div>
 
-      {/* ─── SLIDE-OVER LOGS DRAWER ─── */}
-      {showLogs && (
-        <div className="fixed inset-0 z-50 flex justify-end bg-black/70 backdrop-blur-sm">
-          <div className="w-full max-w-2xl bg-[#0c0c0c] border-l border-[#222222] h-full flex flex-col shadow-2xl">
-            {/* Drawer Header */}
-            <div className="px-5 py-4 border-b border-[#1c1c1c] flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <Terminal size={15} className="text-emerald-400" />
-                <span className="font-semibold text-sm text-white">Deployment Logs</span>
-                <span className="text-[10px] font-mono bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 px-1.5 py-0.5 rounded">
-                  Ready
-                </span>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowLogs(false)}
-                className="text-neutral-400 hover:text-white p-1 rounded"
-              >
-                <X size={16} />
-              </button>
-            </div>
-
-            {/* Terminal Body */}
-            <div className="flex-1 p-5 overflow-auto font-mono text-xs space-y-1.5 text-neutral-300 bg-black selection:bg-white selection:text-black">
-              <p className="text-neutral-500">[14:22:01.102] Initializing deployment build runner...</p>
-              <p className="text-neutral-500">[14:22:01.340] Cloning repository {project.repository} ({deployment.branch})...</p>
-              <p className="text-neutral-500">[14:22:02.012] Installing dependencies with &quot;npm install&quot;...</p>
-              <p className="text-neutral-400">[14:22:03.450] Running &quot;npm run build&quot;...</p>
-              <p className="text-emerald-400 font-semibold">[14:22:04.110] &gt; vite v5.4.2 building for production...</p>
-              <p className="text-neutral-400">[14:22:05.200] ✓ 42 modules transformed.</p>
-              <p className="text-neutral-400">[14:22:06.120] dist/index.html                     0.45 kB │ gzip: 0.30 kB</p>
-              <p className="text-neutral-400">[14:22:06.880] dist/assets/index-38c29b12.js       142.12 kB │ gzip: 46.80 kB</p>
-              <p className="text-emerald-400 font-semibold">[14:22:07.010] ✓ Built in 2.89s</p>
-              <p className="text-neutral-400">[14:22:07.240] Uploading build output to global edge mesh...</p>
-              <p className="text-neutral-300">[14:22:07.890] Assigning primary domain: {primaryDomain}</p>
-              <p className="text-neutral-300">[14:22:08.012] Assigning branch domain: {branchDomain}</p>
-              <p className="text-emerald-400 font-bold">[14:22:08.200] ✓ Deployment ready in {deployment.duration || '6s'}.</p>
-            </div>
-
-            {/* Drawer Footer */}
-            <div className="p-3 border-t border-[#1c1c1c] flex items-center justify-between text-xs text-neutral-500 font-mono">
-              <span>Cluster: us-east (Edge CDN)</span>
-              <button
-                type="button"
-                onClick={() => setShowLogs(false)}
-                className="bg-white text-black font-semibold px-4 py-1.5 rounded text-xs hover:bg-neutral-200"
-              >
-                Close
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-      {/* ─── Delete Project Confirmation Modal ─── */}
+      {/* Delete Project Confirmation Modal */}
       {showDeleteModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm font-mono text-xs">
-          <div className="max-w-md w-full border border-red-500/40 bg-[#0c0c0c] p-6 space-y-4 shadow-2xl rounded-lg">
-            <div className="flex items-center gap-2 text-red-400 font-bold uppercase">
+        <div
+          role='dialog'
+          aria-modal='true'
+          aria-label='Confirm project deletion'
+          onClick={() => {
+            setShowDeleteModal(false);
+            setConfirmDeleteName('');
+            setDeleteError('');
+          }}
+          className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75'
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className='max-w-md w-full rounded-[6px] border border-red-500/35 bg-kr0n-black p-6 space-y-4 shadow-[0_12px_28px_rgba(0,0,0,0.5)]'
+          >
+            <div className='flex items-center gap-2 text-kr0n-error font-semibold text-sm'>
               <AlertTriangle size={16} />
-              <span>Confirm Project Deletion</span>
+              <span>Delete project</span>
             </div>
-            <p className="text-neutral-400 font-sans leading-relaxed">
-              This will permanently delete project <strong className="text-white">{project.name}</strong> ({project.id}) and all of its associated deployments and settings. This action cannot be undone.
+            <p className='text-[13px] text-kr0n-text-secondary leading-relaxed'>
+              This permanently removes <strong className='text-white'>{project.name}</strong> (<span className='font-mono text-xs'>{project.id}</span>) from the control plane. This action cannot be undone.
             </p>
-            <div className="space-y-1.5">
-              <label className="block text-neutral-400">
-                Type <strong className="text-white">{project.name}</strong> to confirm:
+            {deleteError && (
+              <div className='rounded-[6px] border border-red-500/30 bg-red-500/10 p-3 text-xs text-red-300'>
+                {deleteError}
+              </div>
+            )}
+            <div className='space-y-1.5'>
+              <label htmlFor='delete-project-confirm' className='block text-xs text-kr0n-muted'>
+                Type <strong className='font-mono text-white'>{project.name}</strong> to confirm
               </label>
               <input
-                type="text"
+                id='delete-project-confirm'
+                type='text'
                 value={confirmDeleteName}
                 onChange={(e) => setConfirmDeleteName(e.target.value)}
                 placeholder={project.name}
-                className="w-full bg-black border border-[#222222] px-3 py-2 text-white outline-none focus:border-red-500/60 rounded"
+                className='w-full h-9 rounded-[6px] bg-kr0n-canvas border border-kr0n-line focus:border-kr0n-error px-3 text-sm font-mono text-white outline-none'
               />
             </div>
-            <div className="flex items-center justify-end gap-3 pt-2">
+            <div className='flex items-center justify-end gap-2.5 pt-2'>
               <button
-                type="button"
+                type='button'
                 onClick={() => {
                   setShowDeleteModal(false);
                   setConfirmDeleteName('');
+                  setDeleteError('');
                 }}
-                className="px-3 py-1.5 border border-[#222222] text-neutral-400 hover:text-white rounded hover:bg-white/5 transition-colors cursor-pointer"
+                className='h-9 px-3.5 rounded-[6px] border border-kr0n-line text-xs font-medium text-kr0n-text-secondary hover:text-white transition-colors duration-150 cursor-pointer'
               >
                 Cancel
               </button>
               <button
-                type="button"
-                disabled={confirmDeleteName !== project.name}
+                type='button'
+                disabled={confirmDeleteName !== project.name || deleting}
                 onClick={handleDeleteProject}
-                className="bg-red-500 hover:bg-red-600 disabled:opacity-40 disabled:cursor-not-allowed text-white px-4 py-1.5 font-bold uppercase rounded transition-colors cursor-pointer"
+                className='h-9 px-4 rounded-[6px] bg-kr0n-error hover:opacity-90 disabled:opacity-40 text-white text-xs font-medium transition-opacity duration-150 cursor-pointer'
               >
-                Permanently Delete Project
+                {deleting ? 'Deleting...' : 'Delete project'}
               </button>
             </div>
           </div>
         </div>
       )}
-    </main>
+    </div>
   );
 }

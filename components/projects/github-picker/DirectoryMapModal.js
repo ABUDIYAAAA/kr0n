@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import {
   Search,
   Folder,
@@ -11,7 +11,6 @@ import {
   GitBranch,
   Check,
   X,
-  Loader2,
 } from 'lucide-react';
 import { APPLICATION_PRESETS, RepoIcon } from './constants';
 
@@ -40,7 +39,6 @@ export function buildDirectoryTree(directories = [], dirEntries = []) {
   nodeMap.set('./', root);
   nodeMap.set('/', root);
 
-  // Index entries by normalized path
   const entryPresetMap = new Map();
   if (Array.isArray(dirEntries)) {
     dirEntries.forEach((e) => {
@@ -61,7 +59,6 @@ export function buildDirectoryTree(directories = [], dirEntries = []) {
     .map((d) => (typeof d === 'string' ? d.trim() : ''))
     .filter((d) => d && d !== '.' && d !== './' && d !== '/');
 
-  // Sort by segment depth so parents are created before children
   cleanPaths.sort((a, b) => {
     const aCount = a.replace(/^\.?\//, '').split('/').length;
     const bCount = b.replace(/^\.?\//, '').split('/').length;
@@ -83,7 +80,7 @@ export function buildDirectoryTree(directories = [], dirEntries = []) {
 
       if (!node) {
         const isLeaf = index === segments.length - 1;
-        const nodePath = isLeaf ? rawPath : (rawPath.startsWith('./') ? `./${currentKey}` : `/${currentKey}`);
+        const nodePath = isLeaf ? rawPath : rawPath.startsWith('./') ? `./${currentKey}` : `/${currentKey}`;
         const norm = normalizePath(nodePath);
 
         node = {
@@ -140,11 +137,19 @@ export default function DirectoryMapModal({
   onSelectDir,
   defaultPresetId = 'auto',
   repoLanguage = '',
+  availablePresets = APPLICATION_PRESETS,
 }) {
   const [tempSelected, setTempSelected] = useState(selectedDir || './');
   const [searchQuery, setSearchQuery] = useState('');
 
-  // Build hierarchical directory tree from directories list and entries
+  useEffect(() => {
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [onClose]);
+
   const treeRoot = useMemo(() => {
     if (rootNode && rootNode.children && rootNode.children.length > 0) {
       return rootNode;
@@ -152,16 +157,10 @@ export default function DirectoryMapModal({
     return buildDirectoryTree(directories, dirEntries);
   }, [rootNode, directories, dirEntries]);
 
-  // Initial expanded state: unfold root and ancestor path of selected directory
   const [expandedPaths, setExpandedPaths] = useState(() =>
     getInitialExpandedPaths(selectedDir)
   );
 
-  // Progressive loading simulation: simulate streaming directory scanning with real loaders
-  const [loadedDirs, setLoadedDirs] = useState(() => new Set());
-  const timerRef = useRef(null);
-
-  // Quick heuristic fallback if backend did not include detectedPreset
   function inferPresetFallback(path) {
     const norm = normalizePath(path);
     if (norm === './') {
@@ -170,7 +169,6 @@ export default function DirectoryMapModal({
 
     const lower = norm.toLowerCase();
 
-    // Check specific framework folder clues
     if (lower.includes('next')) return 'nextjs';
     if (lower.includes('nuxt')) return 'nuxt';
     if (lower.includes('svelte')) return 'sveltekit';
@@ -187,12 +185,10 @@ export default function DirectoryMapModal({
     if (lower.includes('dotnet') || lower.includes('csharp')) return 'dotnet';
     if (lower.includes('docker')) return 'dockerfile';
 
-    // Frontends
     if (lower.endsWith('/web') || lower.endsWith('/frontend') || lower.endsWith('/client') || lower.endsWith('/ui')) {
       return 'nextjs';
     }
 
-    // Backends
     if (lower.endsWith('/api') || lower.endsWith('/backend') || lower.endsWith('/server') || lower.endsWith('/service')) {
       const l = (repoLanguage || '').toLowerCase();
       if (l === 'go') return 'go';
@@ -205,7 +201,6 @@ export default function DirectoryMapModal({
       return 'nodejs';
     }
 
-    // Explicit non-build directories
     if (
       lower.includes('/docs') ||
       lower.includes('/assets') ||
@@ -223,7 +218,6 @@ export default function DirectoryMapModal({
     return '';
   }
 
-  // Pre-indexed preset map
   const presetByPath = useMemo(() => {
     const map = new Map();
 
@@ -255,49 +249,12 @@ export default function DirectoryMapModal({
     return map;
   }, [dirEntries, treeRoot]);
 
-  // Lookup helper for preset for a given path
   function getDetectedPreset(path) {
     const norm = normalizePath(path);
-    if (presetByPath.has(norm)) {
-      return presetByPath.get(norm);
-    }
-    if (presetByPath.has(path)) {
-      return presetByPath.get(path);
-    }
+    if (presetByPath.has(norm)) return presetByPath.get(norm);
+    if (presetByPath.has(path)) return presetByPath.get(path);
     return inferPresetFallback(path);
   }
-
-  // Staggered loading effect on mount: progressively resolve directory build strategies
-  useEffect(() => {
-    const allPaths = ['./'];
-    if (Array.isArray(directories)) {
-      directories.forEach((d) => allPaths.push(d));
-    }
-
-    let currentIndex = 0;
-    const batchSize = 3;
-    const interval = 60; // 60ms stagger per batch for dynamic feel
-
-    timerRef.current = setInterval(() => {
-      setLoadedDirs((prev) => {
-        const next = new Set(prev);
-        for (let i = 0; i < batchSize && currentIndex < allPaths.length; i++) {
-          next.add(allPaths[currentIndex]);
-          next.add(normalizePath(allPaths[currentIndex]));
-          currentIndex++;
-        }
-        return next;
-      });
-
-      if (currentIndex >= allPaths.length) {
-        clearInterval(timerRef.current);
-      }
-    }, interval);
-
-    return () => {
-      if (timerRef.current) clearInterval(timerRef.current);
-    };
-  }, [directories]);
 
   function toggleExpand(node, e) {
     if (e) e.stopPropagation();
@@ -346,39 +303,20 @@ export default function DirectoryMapModal({
 
   const tempNorm = normalizePath(tempSelected);
   const selectedPresetId = getDetectedPreset(tempNorm);
-  const selectedPresetSpec = APPLICATION_PRESETS.find((p) => p.id === selectedPresetId);
+  const selectedPresetSpec = availablePresets.find((p) => p.id === selectedPresetId);
 
   function renderPresetBadge(path) {
-    const norm = normalizePath(path);
-    const isLoaded = loadedDirs.has(norm) || loadedDirs.has(path);
-
-    // Loader state while scanning directory for build strategy
-    if (!isLoaded) {
-      return (
-        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-neutral-900/90 border border-neutral-800 text-[10px] text-neutral-400 font-mono animate-pulse shrink-0">
-          <Loader2 size={10} className="animate-spin text-neutral-400 shrink-0" />
-          <span>Detecting...</span>
-        </div>
-      );
-    }
-
     const presetId = getDetectedPreset(path);
     if (presetId) {
-      const spec = APPLICATION_PRESETS.find((p) => p.id === presetId);
+      const spec = availablePresets.find((p) => p.id === presetId);
       return (
-        <div className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/[0.06] border border-white/10 text-[10px] text-white shrink-0 shadow-sm animate-in fade-in duration-200">
+        <div className='flex items-center gap-1.5 px-2 py-0.5 rounded-md bg-kr0n-surface-2 border border-kr0n-line text-[11px] text-kr0n-text shrink-0'>
           <RepoIcon type={presetId} />
-          <span className="font-medium font-sans">{spec?.name || presetId}</span>
+          <span className='font-sans font-medium'>{spec?.name || presetId}</span>
         </div>
       );
     }
-
-    // No build strategy in this folder
-    return (
-      <span className="text-[10px] text-neutral-500 font-sans italic shrink-0">
-        No build strategy
-      </span>
-    );
+    return null;
   }
 
   function renderTreeNode(node, depth = 0) {
@@ -392,7 +330,7 @@ export default function DirectoryMapModal({
     const isRoot = node.id === 'root' || node.path === './' || node.path === '/';
 
     return (
-      <div key={node.path || node.id} className="select-none">
+      <div key={node.path || node.id} className='select-none'>
         <div
           onClick={() => {
             setTempSelected(node.path);
@@ -401,63 +339,53 @@ export default function DirectoryMapModal({
             }
           }}
           style={{ paddingLeft: `${depth * 16 + 8}px` }}
-          className={`flex items-center justify-between py-1.5 pr-2.5 rounded-md cursor-pointer text-xs font-mono transition-colors group ${
+          className={`flex items-center justify-between py-1.5 pr-2.5 rounded-lg cursor-pointer text-xs font-mono transition-colors duration-150 ${
             isSelected
-              ? 'bg-white/10 text-white font-medium border border-white/20'
-              : 'text-neutral-300 hover:bg-white/[0.04] hover:text-white'
+              ? 'bg-kr0n-surface-2 text-kr0n-text border border-kr0n-line-strong'
+              : 'text-kr0n-text-secondary hover:bg-kr0n-surface-2/60 hover:text-kr0n-text border border-transparent'
           }`}
         >
-          <div className="flex items-center gap-2 truncate min-w-0 mr-2">
-            {/* Expand / Collapse Chevron */}
+          <div className='flex items-center gap-2 truncate min-w-0 mr-2'>
             {hasChildren ? (
               <button
-                type="button"
+                type='button'
                 onClick={(e) => toggleExpand(node, e)}
-                className="w-5 h-5 flex items-center justify-center rounded hover:bg-white/10 text-neutral-400 hover:text-white shrink-0 transition-colors cursor-pointer"
-                title={isExpanded ? 'Collapse' : 'Expand'}
+                className='w-5 h-5 flex items-center justify-center rounded hover:bg-kr0n-surface-3 text-kr0n-muted hover:text-kr0n-text shrink-0 transition-colors duration-150 cursor-pointer'
+                aria-label={isExpanded ? 'Collapse folder' : 'Expand folder'}
               >
-                {isExpanded ? (
-                  <ChevronDown size={13} className="text-neutral-300" />
-                ) : (
-                  <ChevronRight size={13} className="text-neutral-400" />
-                )}
+                {isExpanded ? <ChevronDown size={13} /> : <ChevronRight size={13} />}
               </button>
             ) : (
-              <span className="w-5 shrink-0" />
+              <span className='w-5 shrink-0' />
             )}
 
-            {/* Folder Icon */}
             {isRoot ? (
-              <FolderTree size={14} className="text-neutral-300 shrink-0" />
+              <FolderTree size={14} className='text-kr0n-text-secondary shrink-0' />
             ) : isExpanded ? (
-              <FolderOpen size={14} className="text-amber-400 shrink-0" />
+              <FolderOpen size={14} className='text-amber-400 shrink-0' />
             ) : (
-              <Folder size={14} className="text-neutral-400 shrink-0" />
+              <Folder size={14} className='text-kr0n-muted shrink-0' />
             )}
 
-            {/* Folder Name */}
-            <span className={`truncate ${isSelected ? 'text-white font-bold' : ''}`}>
+            <span className={`truncate ${isSelected ? 'text-kr0n-text font-medium' : ''}`}>
               {isRoot ? './ (repository root)' : node.name}
             </span>
 
-            {/* Subfolders counter when folded */}
             {hasChildren && !isExpanded && (
-              <span className="text-[10px] text-neutral-500 font-sans px-1.5 py-0.2 rounded bg-neutral-900 border border-neutral-800 shrink-0">
-                {node.children.length} {node.children.length === 1 ? 'dir' : 'dirs'}
+              <span className='text-[11px] text-kr0n-muted font-sans px-1.5 py-0.5 rounded bg-kr0n-black border border-kr0n-line-soft shrink-0'>
+                {node.children.length}
               </span>
             )}
           </div>
 
-          {/* Right side: Loader / Detected Preset Badge & Selected Checkmark */}
-          <div className="flex items-center gap-2.5 shrink-0 ml-2">
+          <div className='flex items-center gap-2 shrink-0 ml-2'>
             {renderPresetBadge(node.path)}
-            {isSelected && <Check size={13} className="text-white shrink-0" />}
+            {isSelected && <Check size={13} className='text-kr0n-text shrink-0' />}
           </div>
         </div>
 
-        {/* Unfolded Subdirectories */}
         {hasChildren && isExpanded && (
-          <div className="border-l border-neutral-800/80 ml-3.5 space-y-0.5 mt-0.5">
+          <div className='border-l border-kr0n-line-soft ml-3.5 space-y-0.5 mt-0.5'>
             {node.children.map((child) => renderTreeNode(child, depth + 1))}
           </div>
         )}
@@ -467,75 +395,76 @@ export default function DirectoryMapModal({
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm animate-in fade-in duration-150"
+      role='dialog'
+      aria-modal='true'
+      aria-label='Select root directory'
+      className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm'
       onClick={onClose}
     >
       <div
-        className="bg-[#0c0c0c] border border-[#222222] rounded-xl max-w-lg w-full shadow-2xl flex flex-col max-h-[85vh] overflow-hidden"
+        className='bg-kr0n-surface border border-kr0n-line rounded-xl max-w-lg w-full shadow-2xl flex flex-col max-h-[85vh] overflow-hidden'
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className="p-4 border-b border-[#1c1c1c] flex items-center justify-between">
-          <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-neutral-900 border border-neutral-800 flex items-center justify-center text-white">
-              <FolderTree size={16} />
+        <div className='p-4 border-b border-kr0n-line flex items-center justify-between gap-3'>
+          <div className='flex items-center gap-3 min-w-0'>
+            <div className='w-8 h-8 rounded-lg bg-kr0n-black border border-kr0n-line flex items-center justify-center text-kr0n-text shrink-0'>
+              <FolderTree size={15} />
             </div>
-            <div>
-              <h2 className="text-sm font-semibold text-white">Select Root Directory</h2>
-              <p className="text-[11px] text-neutral-400 flex items-center gap-1.5 font-mono">
-                <span>{repoName}</span>
-                <span>•</span>
-                <GitBranch size={10} className="inline text-neutral-500" />
+            <div className='min-w-0'>
+              <h2 className='text-sm font-semibold text-kr0n-text'>Select root directory</h2>
+              <p className='text-xs text-kr0n-muted flex items-center gap-1.5 font-mono truncate'>
+                <span className='truncate'>{repoName}</span>
+                <span>·</span>
+                <GitBranch size={11} className='shrink-0' />
                 <span>{branch}</span>
               </p>
             </div>
           </div>
           <button
-            type="button"
+            type='button'
             onClick={onClose}
-            className="text-neutral-400 hover:text-white p-1 rounded-md hover:bg-neutral-900 transition-colors cursor-pointer"
+            aria-label='Close dialog'
+            className='text-kr0n-muted hover:text-kr0n-text p-1.5 rounded-md hover:bg-kr0n-surface-2 transition-colors duration-150 cursor-pointer'
           >
             <X size={16} />
           </button>
         </div>
 
         {/* Search */}
-        <div className="p-3 border-b border-[#1c1c1c] bg-[#0f0f0f]">
-          <div className="relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-neutral-500" />
+        <div className='p-3 border-b border-kr0n-line-soft bg-kr0n-canvas-raised'>
+          <div className='relative'>
+            <Search size={14} className='absolute left-3 top-1/2 -translate-y-1/2 text-kr0n-muted' />
             <input
-              type="text"
-              placeholder="Search directories in repository..."
+              type='text'
+              placeholder='Search directories...'
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              className="w-full bg-[#141414] border border-[#222222] focus:border-[#444444] rounded-md pl-8 pr-3 py-1.5 text-xs text-white placeholder-neutral-500 outline-none font-mono"
+              className='w-full h-9 bg-kr0n-black border border-kr0n-line focus:border-kr0n-accent rounded-lg pl-8.5 pr-3 text-xs text-kr0n-text placeholder:text-kr0n-faint outline-none font-mono'
             />
           </div>
         </div>
 
-        {/* Explorer Controls Bar */}
+        {/* Explorer bar */}
         {!searchQuery.trim() && (
-          <div className="px-3.5 py-1.5 border-b border-[#1c1c1c] bg-[#0a0a0a] flex items-center justify-between text-[11px] font-mono text-neutral-400">
-            <div className="flex items-center gap-1.5 truncate">
-              <span className="text-neutral-500">Explorer:</span>
-              <span className="text-neutral-300 truncate max-w-[220px]">
-                {tempSelected}
-              </span>
-            </div>
+          <div className='px-4 py-2 border-b border-kr0n-line-soft bg-kr0n-black flex items-center justify-between text-xs text-kr0n-muted'>
+            <span className='font-mono text-kr0n-text-secondary truncate max-w-[240px]'>
+              {tempSelected}
+            </span>
 
-            <div className="flex items-center gap-2 shrink-0">
+            <div className='flex items-center gap-2 shrink-0'>
               <button
-                type="button"
+                type='button'
                 onClick={handleCollapseAll}
-                className="text-[10px] uppercase tracking-wider text-neutral-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-neutral-800 transition-colors cursor-pointer"
+                className='text-kr0n-muted hover:text-kr0n-text px-1.5 py-0.5 rounded hover:bg-kr0n-surface transition-colors duration-150 cursor-pointer'
               >
                 Collapse all
               </button>
-              <span className="text-neutral-700">|</span>
+              <span className='text-kr0n-line'>·</span>
               <button
-                type="button"
+                type='button'
                 onClick={handleExpandAll}
-                className="text-[10px] uppercase tracking-wider text-neutral-400 hover:text-white px-1.5 py-0.5 rounded hover:bg-neutral-800 transition-colors cursor-pointer"
+                className='text-kr0n-muted hover:text-kr0n-text px-1.5 py-0.5 rounded hover:bg-kr0n-surface transition-colors duration-150 cursor-pointer'
               >
                 Expand all
               </button>
@@ -543,11 +472,11 @@ export default function DirectoryMapModal({
           </div>
         )}
 
-        {/* Tree Content */}
-        <div className="p-3 overflow-y-auto max-h-[380px] space-y-1">
+        {/* Tree */}
+        <div className='p-3 overflow-y-auto max-h-[380px] space-y-0.5'>
           {searchQuery.trim() ? (
             filteredDirs.length === 0 ? (
-              <div className="py-8 text-center text-xs text-neutral-500 font-sans">
+              <div className='py-8 text-center text-xs text-kr0n-muted'>
                 No directories matching &ldquo;{searchQuery}&rdquo;
               </div>
             ) : (
@@ -565,28 +494,28 @@ export default function DirectoryMapModal({
                       const ancestors = getInitialExpandedPaths(dir);
                       setExpandedPaths((prev) => new Set([...prev, ...ancestors]));
                     }}
-                    className={`flex items-center justify-between px-3 py-2 rounded-md cursor-pointer text-xs font-mono transition-colors ${
+                    className={`flex items-center justify-between px-3 py-2 rounded-lg cursor-pointer text-xs font-mono transition-colors duration-150 ${
                       isSelected
-                        ? 'bg-white/10 text-white font-medium border border-white/20'
-                        : 'text-neutral-300 hover:bg-white/[0.04] hover:text-white'
+                        ? 'bg-kr0n-surface-2 text-kr0n-text border border-kr0n-line-strong'
+                        : 'text-kr0n-text-secondary hover:bg-kr0n-surface-2/60 hover:text-kr0n-text border border-transparent'
                     }`}
                   >
-                    <div className="flex items-center gap-2 truncate min-w-0 mr-2">
-                      <Folder size={14} className="text-amber-400 shrink-0" />
-                      <div className="truncate">
+                    <div className='flex items-center gap-2 truncate min-w-0 mr-2'>
+                      <Folder size={14} className='text-amber-400 shrink-0' />
+                      <div className='truncate'>
                         {parts.length > 1 && (
-                          <span className="text-neutral-500">
+                          <span className='text-kr0n-muted'>
                             {parts.slice(0, -1).join('/')}/
                           </span>
                         )}
-                        <span className="text-white font-medium">
+                        <span className='text-kr0n-text font-medium'>
                           {parts[parts.length - 1] || dir}
                         </span>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2.5 shrink-0 ml-2">
+                    <div className='flex items-center gap-2 shrink-0 ml-2'>
                       {renderPresetBadge(dir)}
-                      {isSelected && <Check size={13} className="text-white shrink-0" />}
+                      {isSelected && <Check size={13} className='text-kr0n-text shrink-0' />}
                     </div>
                   </div>
                 );
@@ -597,43 +526,33 @@ export default function DirectoryMapModal({
           )}
         </div>
 
-        {/* Footer with Selected Directory and Detected Build Strategy */}
-        <div className="p-3.5 border-t border-[#1c1c1c] bg-[#0f0f0f] flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-          <div className="text-xs truncate flex items-center gap-2 min-w-0">
-            <span className="text-neutral-500 font-sans shrink-0">Selected:</span>
-            <code className="text-white font-mono bg-neutral-900 px-1.5 py-0.5 rounded border border-neutral-800 truncate">
+        {/* Footer */}
+        <div className='p-4 border-t border-kr0n-line bg-kr0n-canvas-raised flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
+          <div className='text-xs truncate flex items-center gap-2 min-w-0'>
+            <code className='text-kr0n-text font-mono bg-kr0n-black px-2 py-0.5 rounded-md border border-kr0n-line truncate'>
               {tempSelected}
             </code>
-            {selectedPresetSpec ? (
-              <span className="inline-flex items-center gap-1.5 text-[11px] font-sans text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded shrink-0">
+            {selectedPresetSpec && (
+              <span className='inline-flex items-center gap-1.5 text-xs text-kr0n-healthy bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md shrink-0'>
                 <RepoIcon type={selectedPresetSpec.id} />
                 <span>{selectedPresetSpec.name}</span>
               </span>
-            ) : (
-              <span className="text-[11px] text-neutral-500 italic shrink-0">
-                No build strategy
-              </span>
             )}
           </div>
-          <div className="flex items-center gap-2 shrink-0 justify-end">
+          <div className='flex items-center gap-2 shrink-0 justify-end'>
             <button
-              type="button"
+              type='button'
               onClick={onClose}
-              className="px-3 py-1.5 rounded-md text-xs font-medium text-neutral-400 hover:text-white hover:bg-neutral-800 transition-colors cursor-pointer"
+              className='h-8 px-3 rounded-lg text-xs font-medium text-kr0n-muted hover:text-kr0n-text hover:bg-kr0n-surface-2 transition-colors duration-150 cursor-pointer'
             >
               Cancel
             </button>
             <button
-              type="button"
+              type='button'
               onClick={handleConfirm}
-              className="bg-white text-black font-semibold text-xs px-4 py-1.5 rounded-md hover:bg-neutral-200 transition-colors cursor-pointer flex items-center gap-1.5"
+              className='h-8 px-4 rounded-lg bg-kr0n-text hover:bg-white text-kr0n-black font-medium text-xs shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-colors duration-150 cursor-pointer'
             >
-              <span>Select Directory</span>
-              {selectedPresetSpec && (
-                <span className="text-[10px] font-mono text-neutral-600 bg-neutral-200 px-1 rounded">
-                  +{selectedPresetSpec.name}
-                </span>
-              )}
+              Select directory
             </button>
           </div>
         </div>

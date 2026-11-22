@@ -4,13 +4,9 @@ import { useEffect, useState, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { githubApi } from '@/lib/github-api';
-import {
-  getOrganizations,
-  createOrganization,
-  getMe,
-  useAuthUser,
-} from '@/lib/auth';
-import { useKr0nStore } from '@/lib/kr0n-state';
+import { getMe, useAuthUser } from '@/lib/auth';
+import { useWorkspace } from '@/lib/workspace-context';
+import { buildBuildSettingsPayload } from '@/lib/projects-api';
 
 import {
   APPLICATION_PRESETS,
@@ -23,29 +19,35 @@ import GitHubNotConnected from './github-picker/GitHubNotConnected';
 import RepoListScreen from './github-picker/RepoListScreen';
 import ConfigureProjectScreen from './github-picker/ConfigureProjectScreen';
 
+function getRepoOwner(repo, fallbackLogin) {
+  if (!repo) return fallbackLogin;
+  return repo.owner || (repo.full_name ? repo.full_name.split('/')[0] : fallbackLogin);
+}
+
 export default function GitHubProjectPicker() {
   const router = useRouter();
-  const { addProject } = useKr0nStore();
+  const {
+    organizations,
+    activeOrgId,
+    setActiveOrgId,
+    presets,
+    hasLoaded,
+    createOrganization,
+    createProject,
+  } = useWorkspace();
 
-  // Navigation steps: 'select' (Screen 1) | 'configure' (Screen 2)
   const [step, setStep] = useState('select');
 
-  // User & Organization State
   const authUser = useAuthUser();
   const [liveUser, setLiveUser] = useState(null);
   const currentUser = liveUser || authUser;
-  const [organizations, setOrganizations] = useState([]);
-  const [selectedOrgId, setSelectedOrgId] = useState('');
 
-  // GitHub Connection & Installation State
   const [loading, setLoading] = useState(true);
   const [isGitHubConnected, setIsGitHubConnected] = useState(false);
-  const [installations, setInstallations] = useState([]);
   const [activeInstallation, setActiveInstallation] = useState(null);
   const [connecting, setConnecting] = useState(false);
   const [connectError, setConnectError] = useState(null);
 
-  // Repositories State (ONLY REAL REPOSITORIES FROM GITHUB)
   const [repos, setRepos] = useState([]);
   const [fetchingRepos, setFetchingRepos] = useState(false);
   const [selectedRepo, setSelectedRepo] = useState(null);
@@ -57,18 +59,14 @@ export default function GitHubProjectPicker() {
   const [selectedDir, setSelectedDir] = useState('./');
   const [isDirModalOpen, setIsDirModalOpen] = useState(false);
 
-  // Manual installation ID input fallback (e.g. if GitHub Setup URL did not auto-redirect)
-  const [manualInstallId, setManualInstallId] = useState('');
-
-  // Search Filter & Account Dropdown
   const [search, setSearch] = useState('');
   const [page, setPage] = useState(1);
   const PAGE_SIZE = 8;
   const [showAccountMenu, setShowAccountMenu] = useState(false);
   const accountMenuRef = useRef(null);
 
-  // Configuration Form State (Screen 2)
   const [projectName, setProjectName] = useState('');
+  const [projectDescription, setProjectDescription] = useState('');
   const [presetId, setPresetId] = useState('vite');
   const [showPresetMenu, setShowPresetMenu] = useState(false);
   const presetMenuRef = useRef(null);
@@ -82,16 +80,12 @@ export default function GitHubProjectPicker() {
   const [installOverride, setInstallOverride] = useState(false);
   const [customInstallCommand, setCustomInstallCommand] = useState('');
 
-  // Environment Variables
-  const [expandEnvVars, setExpandEnvVars] = useState(false);
-  const [envVars, setEnvVars] = useState([]);
-  const [envKey, setEnvKey] = useState('');
-  const [envVal, setEnvVal] = useState('');
-
-  // Deployment action status
   const [busy, setBusy] = useState(false);
+  const [deployError, setDeployError] = useState('');
 
-  // Derived Account details
+  const availablePresets =
+    Array.isArray(presets) && presets.length > 0 ? presets : APPLICATION_PRESETS;
+
   const accountLogin =
     activeInstallation?.account_login ||
     currentUser?.displayName ||
@@ -101,7 +95,6 @@ export default function GitHubProjectPicker() {
 
   const accountEmail = currentUser?.email || '';
 
-  // ─── 1. INITIALIZE WORKSPACE & CHECK GITHUB STATUS ──────────────────
   const refreshGitHubState = useCallback(async (orgId) => {
     if (!orgId) {
       setIsGitHubConnected(false);
@@ -113,7 +106,6 @@ export default function GitHubProjectPicker() {
     try {
       const instData = await githubApi(`orgs/${orgId}/github/installations`).catch(() => ({}));
       const instList = instData?.installations || [];
-      setInstallations(instList);
 
       if (instList.length > 0) {
         setIsGitHubConnected(true);
@@ -122,7 +114,6 @@ export default function GitHubProjectPicker() {
         setFetchingRepos(true);
 
         try {
-          // Fetch real repositories from GitHub
           const repoData = await githubApi(
             `orgs/${orgId}/github/repositories?installation_id=${inst.installation_id}`
           );
@@ -140,23 +131,21 @@ export default function GitHubProjectPicker() {
               updatedDate: formatLastModified(r),
             }))
           );
-        } catch (err) {
-          console.warn('[kr0n] Failed to fetch repositories (app uninstalled or invalid token):', err?.message);
-          // Auto-recover: if the app was uninstalled on GitHub, reset connection to prompt reconnect
+        } catch {
           setIsGitHubConnected(false);
           setActiveInstallation(null);
-          setInstallations([]);
           setRepos([]);
         } finally {
           setFetchingRepos(false);
         }
       } else {
         setIsGitHubConnected(false);
+        setActiveInstallation(null);
         setRepos([]);
       }
-    } catch (err) {
-      console.warn('[kr0n] GitHub status check error:', err?.message);
+    } catch {
       setIsGitHubConnected(false);
+      setActiveInstallation(null);
       setRepos([]);
     } finally {
       setLoading(false);
@@ -165,75 +154,60 @@ export default function GitHubProjectPicker() {
 
   useEffect(() => {
     let active = true;
-
-    (async () => {
-      try {
-        const me = await getMe().catch(() => null);
+    getMe()
+      .then((me) => {
         if (active && me) setLiveUser(me);
-
-        // Fetch organizations
-        let orgList = await getOrganizations().catch(() => []);
-
-        // If no organization exists for user, auto-create a default workspace
-        if (active && (!orgList || orgList.length === 0)) {
-          const defaultName = (me?.displayName || me?.display_name || 'My Workspace').trim();
-          const created = await createOrganization(defaultName).catch(() => null);
-          if (created) {
-            orgList = [created.organization || created];
-          }
-        }
-
-        if (active && orgList && orgList.length > 0) {
-          setOrganizations(orgList);
-          const firstOrgId = orgList[0].id;
-          setSelectedOrgId(firstOrgId);
-          await refreshGitHubState(firstOrgId);
-        } else {
-          setLoading(false);
-        }
-      } catch (err) {
-        console.warn('[kr0n] Workspace init error:', err?.message);
-        if (active) setLoading(false);
-      }
-    })();
-
+      })
+      .catch(() => {});
     return () => {
       active = false;
     };
-  }, [refreshGitHubState]);
+  }, []);
 
-  // ─── 2. CONNECT / INSTALL GITHUB APP ────────────────────────────────
+  useEffect(() => {
+    if (!activeOrgId) {
+      if (hasLoaded) {
+        Promise.resolve().then(() => setLoading(false));
+      }
+      return;
+    }
+    let active = true;
+    Promise.resolve().then(() => {
+      if (active) {
+        refreshGitHubState(activeOrgId);
+      }
+    });
+    return () => {
+      active = false;
+    };
+  }, [activeOrgId, hasLoaded, refreshGitHubState]);
+
   async function connectGitHubApp() {
     setConnecting(true);
     setConnectError(null);
 
     try {
-      let orgId = selectedOrgId;
-
-      // Ensure organization is ready
+      let orgId = activeOrgId;
       if (!orgId) {
-        let orgList = await getOrganizations().catch(() => []);
-        if (!orgList || orgList.length === 0) {
-          const defaultName = (currentUser?.displayName || currentUser?.display_name || 'My Workspace').trim();
-          const created = await createOrganization(defaultName).catch(() => null);
-          if (created) {
-            orgList = [created.organization || created];
-          }
-        }
-        if (orgList && orgList.length > 0) {
-          orgId = orgList[0].id;
-          setSelectedOrgId(orgId);
-          setOrganizations(orgList);
+        const defaultName = (
+          currentUser?.displayName ||
+          currentUser?.display_name ||
+          'My Workspace'
+        ).trim();
+        const created = await createOrganization(defaultName).catch(() => null);
+        if (created?.id) {
+          orgId = created.id;
         }
       }
 
       if (!orgId) {
-        throw new Error('Workspace initialization is taking longer than expected. Please try again.');
+        throw new Error(
+          'Workspace initialization is taking longer than expected. Please try again.'
+        );
       }
 
-      // Initiate installation via backend
       const data = await githubApi(`orgs/${orgId}/github/installations/start`);
-      if (data?.install_url) {
+      if (data?.install_url && data?.state) {
         const installMeta = JSON.stringify({ org: orgId, state: data.state });
         sessionStorage.setItem('kr0n_github_install', installMeta);
         localStorage.setItem('kr0n_github_install', installMeta);
@@ -243,118 +217,29 @@ export default function GitHubProjectPicker() {
 
       throw new Error(data?.error || 'No installation URL returned by GitHub gateway.');
     } catch (err) {
-      console.error('[kr0n] Failed to connect GitHub:', err);
       setConnectError(err.message || 'Unable to start GitHub connection.');
       setConnecting(false);
     }
   }
 
-  // ─── 2B. LINK EXISTING INSTALLATION (MANUAL / FALLBACK) ─────────────
-  const linkExistingInstallation = useCallback(async (rawInput) => {
-    if (!rawInput) return;
-    const match = String(rawInput).match(/\d+/);
-    if (!match) {
-      setConnectError('Please enter a valid numeric GitHub installation ID or URL.');
-      return;
-    }
-    const installId = match[0];
-    setConnecting(true);
-    setConnectError(null);
-
-    try {
-      let orgId = selectedOrgId;
-      if (!orgId) {
-        let orgList = await getOrganizations().catch(() => []);
-        if (!orgList || orgList.length === 0) {
-          const defaultName = (currentUser?.displayName || currentUser?.display_name || 'My Workspace').trim();
-          const created = await createOrganization(defaultName).catch(() => null);
-          if (created) orgList = [created.organization || created];
-        }
-        if (orgList && orgList.length > 0) {
-          orgId = orgList[0].id;
-          setSelectedOrgId(orgId);
-          setOrganizations(orgList);
-        }
-      }
-      if (!orgId) throw new Error('Workspace initialization in progress. Please try again.');
-
-      // Check stored state token first, or get a fresh signed state token from backend
-      let stateToken = '';
-      try {
-        const stored = JSON.parse(
-          localStorage.getItem('kr0n_github_install') ||
-          sessionStorage.getItem('kr0n_github_install') ||
-          '{}'
-        );
-        if (stored?.state) stateToken = stored.state;
-      } catch {
-        // ignore JSON parse error
-      }
-
-      if (!stateToken) {
-        const startData = await githubApi(`orgs/${orgId}/github/installations/start`);
-        stateToken = startData?.state;
-      }
-
-      if (!stateToken) {
-        throw new Error('Unable to generate verification handshake. Please retry.');
-      }
-
-      await githubApi(`orgs/${orgId}/github/installations`, {
-        method: 'POST',
-        body: JSON.stringify({
-          installation_id: installId,
-          state: stateToken,
-        }),
-      });
-
-      sessionStorage.removeItem('kr0n_github_install');
-      localStorage.removeItem('kr0n_github_install');
-
-      await refreshGitHubState(orgId);
-    } catch (err) {
-      console.error('[kr0n] Failed to link installation:', err);
-      setConnectError(err.message || 'Failed to link GitHub installation.');
-    } finally {
-      setConnecting(false);
-    }
-  }, [selectedOrgId, currentUser, refreshGitHubState]);
-
-  // Disconnect GitHub installation from organization workspace
   const disconnectGitHubInstallation = useCallback(async () => {
-    if (!selectedOrgId || !activeInstallation?.installation_id) return;
+    if (!activeOrgId || !activeInstallation?.installation_id) return;
     try {
       setLoading(true);
       await githubApi(
-        `orgs/${selectedOrgId}/github/installations/${activeInstallation.installation_id}`,
+        `orgs/${activeOrgId}/github/installations/${activeInstallation.installation_id}`,
         { method: 'DELETE' }
       );
-      await refreshGitHubState(selectedOrgId);
-    } catch (err) {
-      console.error('[kr0n] Failed to disconnect GitHub:', err);
-      // Auto-recover local state
+      await refreshGitHubState(activeOrgId);
+    } catch {
       setIsGitHubConnected(false);
       setActiveInstallation(null);
-      setInstallations([]);
       setRepos([]);
     } finally {
       setLoading(false);
     }
-  }, [selectedOrgId, activeInstallation, refreshGitHubState]);
+  }, [activeOrgId, activeInstallation, refreshGitHubState]);
 
-  // Auto-link if installation_id is passed in query params
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const query = new URLSearchParams(window.location.search);
-    const installParam = query.get('installation_id');
-    if (installParam && selectedOrgId) {
-      Promise.resolve().then(() => {
-        linkExistingInstallation(installParam);
-      });
-    }
-  }, [selectedOrgId, linkExistingInstallation]);
-
-  // Close custom dropdown menus when clicking outside
   useEffect(() => {
     function handleClickOutside(event) {
       if (presetMenuRef.current && !presetMenuRef.current.contains(event.target)) {
@@ -371,16 +256,18 @@ export default function GitHubProjectPicker() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  // ─── 3. FETCH BRANCHES & DIRS ON REPO SELECTION ─────────────────────
+  // Fetch branches when a repository is selected
   useEffect(() => {
-    if (!selectedRepo || !selectedOrgId) return;
+    if (!selectedRepo || !activeOrgId) return;
     let active = true;
 
-    const instIdParam = activeInstallation?.installation_id ? `&installation_id=${activeInstallation.installation_id}` : '';
-    const instIdQuery = activeInstallation?.installation_id ? `?installation_id=${activeInstallation.installation_id}` : '';
+    const repoOwner = getRepoOwner(selectedRepo, accountLogin);
+    const instIdQuery = activeInstallation?.installation_id
+      ? `?installation_id=${activeInstallation.installation_id}`
+      : '';
 
     githubApi(
-      `orgs/${selectedOrgId}/github/repositories/${encodeURIComponent(selectedRepo.owner)}/${encodeURIComponent(selectedRepo.name)}/branches${instIdQuery}`
+      `orgs/${activeOrgId}/github/repositories/${encodeURIComponent(repoOwner)}/${encodeURIComponent(selectedRepo.name)}/branches${instIdQuery}`
     )
       .then((data) => {
         if (!active) return;
@@ -398,8 +285,23 @@ export default function GitHubProjectPicker() {
         }
       });
 
+    return () => {
+      active = false;
+    };
+  }, [selectedRepo, activeOrgId, activeInstallation?.installation_id, accountLogin]);
+
+  // Fetch directories when repository or branch changes
+  useEffect(() => {
+    if (!selectedRepo || !activeOrgId || !selectedBranch) return;
+    let active = true;
+
+    const repoOwner = getRepoOwner(selectedRepo, accountLogin);
+    const instIdParam = activeInstallation?.installation_id
+      ? `&installation_id=${activeInstallation.installation_id}`
+      : '';
+
     githubApi(
-      `orgs/${selectedOrgId}/github/repositories/${encodeURIComponent(selectedRepo.owner)}/${encodeURIComponent(selectedRepo.name)}/directories?ref=${selectedBranch}${instIdParam}`
+      `orgs/${activeOrgId}/github/repositories/${encodeURIComponent(repoOwner)}/${encodeURIComponent(selectedRepo.name)}/directories?ref=${encodeURIComponent(selectedBranch)}${instIdParam}`
     )
       .then((data) => {
         if (!active) return;
@@ -408,7 +310,9 @@ export default function GitHubProjectPicker() {
           setDirectories(dirs.map((d) => (d === '/' ? './' : d)));
           setDirEntries(data?.entries || []);
           setDirTreeRoot(data?.root || null);
-          setSelectedDir('./');
+          if (data?.root?.detected_preset) {
+            setPresetId(data.root.detected_preset);
+          }
         }
       })
       .catch(() => {
@@ -416,28 +320,26 @@ export default function GitHubProjectPicker() {
           setDirectories(['./']);
           setDirEntries([]);
           setDirTreeRoot(null);
-          setSelectedDir('./');
         }
       });
 
     return () => {
       active = false;
     };
-  }, [selectedRepo, selectedOrgId, selectedBranch, activeInstallation?.installation_id]);
+  }, [selectedRepo, activeOrgId, selectedBranch, activeInstallation?.installation_id, accountLogin]);
 
-  // Handle clicking "Import" on a repository (Screen 1 -> Screen 2)
   function handleSelectRepo(r) {
     setSelectedRepo(r);
-    const cleanName = r.name.toLowerCase().replace(/[^a-z0-9]/g, '-');
-    setProjectName(cleanName);
+    const cleanName = r.name.toLowerCase().replace(/[^a-z0-9-]/g, '-').replace(/^-+|-+$/g, '');
+    setProjectName(cleanName || r.name);
+    setProjectDescription(r.description || '');
     setSelectedBranch(r.default_branch || 'main');
     setSelectedDir('./');
+    setDeployError('');
 
-    // Synchronously auto-select matching Railpack preset from repository metadata
     const detected = detectPresetSynchronously(r);
     setPresetId(detected);
 
-    // Reset override toggles so pristine defaults of detected preset display cleanly
     setBuildOverride(false);
     setCustomBuildCommand('');
     setOutputOverride(false);
@@ -449,67 +351,49 @@ export default function GitHubProjectPicker() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
-  // Handle adding an environment variable
-  function handleAddEnvVar() {
-    if (!envKey.trim()) return;
-    setEnvVars((prev) => [
-      ...prev.filter((v) => v.key !== envKey.trim()),
-      { key: envKey.trim(), value: envVal },
-    ]);
-    setEnvKey('');
-    setEnvVal('');
-  }
-
-  // Handle deploying the project (navigates to Deployment Details view)
   async function handleDeploy() {
-    if (!projectName.trim()) return;
+    if (!projectName.trim() || !activeOrgId || !selectedRepo) return;
     setBusy(true);
+    setDeployError('');
 
     const activePreset =
-      APPLICATION_PRESETS.find((p) => p.id === presetId) || APPLICATION_PRESETS[0];
-    const buildCmd =
-      buildOverride && customBuildCommand.trim()
-        ? customBuildCommand.trim()
-        : activePreset.buildCommand;
-    const outDir =
-      outputOverride && customOutputDir.trim()
-        ? customOutputDir.trim()
-        : activePreset.outputDir;
-    const instCmd =
-      installOverride && customInstallCommand.trim()
-        ? customInstallCommand.trim()
-        : activePreset.installCommand;
+      availablePresets.find((p) => p.id === presetId) || availablePresets[0];
+
+    const repoOwner = getRepoOwner(selectedRepo, accountLogin);
+
+    const buildSettings = buildBuildSettingsPayload({
+      installOverride,
+      customInstallCommand,
+      buildOverride,
+      customBuildCommand,
+      outputOverride,
+      customOutputDir,
+    });
 
     try {
-      const newProj = addProject({
+      const created = await createProject({
+        orgId: activeOrgId,
         name: projectName.trim(),
-        repository:
-          selectedRepo?.full_name || `${accountLogin}/${selectedRepo?.name || projectName.trim()}`,
-        branch: selectedBranch || 'main',
-        rootDir: selectedDir || './',
-        preset: activePreset.id,
-        category: activePreset.category,
-        runtime: activePreset.name,
-        runtimeLabel: `${activePreset.name} Application`,
-        buildCommand: buildCmd,
-        outputDir: outDir,
-        installCommand: instCmd,
-        buildOverride,
-        outputOverride,
-        installOverride,
-        envVars,
-        environment: 'production',
+        description: projectDescription.trim(),
+        github_installation_id: Number(activeInstallation?.installation_id || 0),
+        repo_id: Number(selectedRepo.id || 0),
+        repo_owner: repoOwner,
+        repo_name: selectedRepo.name,
+        production_branch: selectedBranch || 'main',
+        root_directory: selectedDir || './',
+        application_preset: activePreset.id,
+        build_settings: buildSettings,
       });
 
-      router.push(`/projects/${newProj.id}`);
+      router.push(`/projects/${created.id}`);
     } catch (err) {
-      console.error('[kr0n] Deploy failed:', err);
+      setDeployError(err.message || 'Failed to create project in control plane.');
       setBusy(false);
     }
   }
 
   const teamDisplayName =
-    organizations.find((o) => o.id === selectedOrgId)?.name || `${accountLogin}'s Team`;
+    organizations.find((o) => o.id === activeOrgId)?.name || `${accountLogin}'s Workspace`;
 
   const filteredRepos = repos
     .filter((r) => r.name.toLowerCase().includes(search.trim().toLowerCase()))
@@ -526,38 +410,60 @@ export default function GitHubProjectPicker() {
   const paginatedRepos = filteredRepos.slice(startIndex, startIndex + PAGE_SIZE);
 
   const currentPreset =
-    APPLICATION_PRESETS.find((p) => p.id === presetId) || APPLICATION_PRESETS[0];
+    availablePresets.find((p) => p.id === presetId) || availablePresets[0];
+
+  const activeStepIndex = !isGitHubConnected ? 0 : step === 'configure' ? 2 : 1;
+  const importerSteps = ['Connect GitHub', 'Choose repository', 'Configure project'];
 
   return (
-    <main className="min-h-screen bg-[#000000] text-white flex flex-col justify-start items-center p-6 sm:p-12 font-sans selection:bg-white selection:text-black">
-      {/* STATE 0: INITIAL LOADING SKELETON */}
+    <main className='min-h-screen bg-kr0n-canvas text-kr0n-text flex flex-col justify-start items-center px-6 py-8 sm:p-10 font-sans'>
+      {/* 3-step horizontal progress rail */}
+      <div className='w-full max-w-5xl mb-8 border-b border-kr0n-line pb-0'>
+        <div className='flex items-center gap-6 overflow-x-auto no-scrollbar text-[13px]'>
+          {importerSteps.map((label, idx) => {
+            const isCurrent = idx === activeStepIndex;
+            const isDone = idx < activeStepIndex;
+            return (
+              <div
+                key={label}
+                className={`pb-3 border-b shrink-0 transition-colors duration-150 ${
+                  isCurrent
+                    ? 'border-kr0n-accent text-white font-medium'
+                    : isDone
+                    ? 'border-transparent text-kr0n-text-secondary'
+                    : 'border-transparent text-kr0n-faint'
+                }`}
+              >
+                <span className='font-mono text-xs mr-2 text-kr0n-muted'>{idx + 1}.</span>
+                <span>{label}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
       {loading && (
-        <div className="w-full max-w-3xl space-y-5 animate-pulse">
-          <div className="h-8 w-64 bg-neutral-900 rounded" />
-          <div className="flex gap-3">
-            <div className="h-10 w-48 bg-neutral-900 rounded" />
-            <div className="h-10 flex-1 bg-neutral-900 rounded" />
+        <div className='w-full max-w-3xl space-y-5'>
+          <div className='h-7 w-56 bg-kr0n-black rounded-[6px]' />
+          <div className='flex gap-3'>
+            <div className='h-10 w-44 bg-kr0n-black rounded-[6px]' />
+            <div className='h-10 flex-1 bg-kr0n-black rounded-[6px]' />
           </div>
-          <div className="h-48 border border-[#222222] bg-[#0c0c0c] rounded-lg flex items-center justify-center">
-            <Loader2 size={24} className="animate-spin text-neutral-500" />
+          <div className='h-48 border border-kr0n-line bg-kr0n-black rounded-[6px] flex items-center justify-center'>
+            <Loader2 size={20} className='animate-spin text-kr0n-muted' />
           </div>
         </div>
       )}
 
-      {/* STATE 1: GITHUB NOT CONNECTED */}
       {!loading && !isGitHubConnected && step === 'select' && (
         <GitHubNotConnected
           accountEmail={accountEmail}
           connectError={connectError}
           connecting={connecting}
           connectGitHubApp={connectGitHubApp}
-          manualInstallId={manualInstallId}
-          setManualInstallId={setManualInstallId}
-          linkExistingInstallation={linkExistingInstallation}
         />
       )}
 
-      {/* STATE 2: GITHUB CONNECTED - IMPORT GIT REPOSITORY (SCREEN 1) */}
       {!loading && isGitHubConnected && step === 'select' && (
         <RepoListScreen
           activeInstallation={activeInstallation}
@@ -583,25 +489,29 @@ export default function GitHubProjectPicker() {
         />
       )}
 
-      {/* SCREEN 2: CONFIGURE & DEPLOY NEW PROJECT */}
       {step === 'configure' && selectedRepo && (
         <ConfigureProjectScreen
           selectedRepo={selectedRepo}
           accountLogin={accountLogin}
+          branches={branches}
           selectedBranch={selectedBranch}
+          setSelectedBranch={setSelectedBranch}
           onBack={() => setStep('select')}
           teamDisplayName={teamDisplayName}
           showTeamMenu={showTeamMenu}
           setShowTeamMenu={setShowTeamMenu}
           teamMenuRef={teamMenuRef}
           organizations={organizations}
-          selectedOrgId={selectedOrgId}
-          setSelectedOrgId={setSelectedOrgId}
+          selectedOrgId={activeOrgId}
+          setSelectedOrgId={setActiveOrgId}
           refreshGitHubState={refreshGitHubState}
           projectName={projectName}
           setProjectName={setProjectName}
+          projectDescription={projectDescription}
+          setProjectDescription={setProjectDescription}
           selectedDir={selectedDir}
           onOpenDirModal={() => setIsDirModalOpen(true)}
+          availablePresets={availablePresets}
           presetId={presetId}
           setPresetId={setPresetId}
           currentPreset={currentPreset}
@@ -622,21 +532,12 @@ export default function GitHubProjectPicker() {
           setInstallOverride={setInstallOverride}
           customInstallCommand={customInstallCommand}
           setCustomInstallCommand={setCustomInstallCommand}
-          expandEnvVars={expandEnvVars}
-          setExpandEnvVars={setExpandEnvVars}
-          envVars={envVars}
-          setEnvVars={setEnvVars}
-          envKey={envKey}
-          setEnvKey={setEnvKey}
-          envVal={envVal}
-          setEnvVal={setEnvVal}
-          handleAddEnvVar={handleAddEnvVar}
+          deployError={deployError}
           busy={busy}
           handleDeploy={handleDeploy}
         />
       )}
 
-      {/* Interactive Directory Map Modal */}
       {isDirModalOpen && (
         <DirectoryMapModal
           onClose={() => setIsDirModalOpen(false)}
@@ -648,6 +549,7 @@ export default function GitHubProjectPicker() {
           selectedDir={selectedDir}
           defaultPresetId={presetId}
           repoLanguage={selectedRepo?.language}
+          availablePresets={availablePresets}
           onSelectDir={(dir, detectedPreset) => {
             setSelectedDir(dir);
             if (detectedPreset) {

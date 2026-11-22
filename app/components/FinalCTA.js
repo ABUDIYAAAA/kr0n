@@ -2,93 +2,50 @@
 
 import Link from 'next/link';
 import { motion } from 'motion/react';
+import { ArrowRight } from 'lucide-react';
 
-export default function FinalCTA({ onOpenCommand }) {
-	return (
-		<section
-			id='cta'
-			className='relative py-20 sm:py-28 px-6 sm:px-12 bg-[#090B0E] border-b border-[#242930] overflow-hidden text-center'
-			data-kr0n-motion='FinalCTAScene'
-		>
-			<div className='max-w-4xl mx-auto space-y-10'>
-				{/* Eyebrow */}
-				<div className='inline-flex items-center gap-2 border border-[#363D47] bg-[#111419] px-3.5 py-1 text-[11px] font-mono tracking-widest uppercase text-[#858C95]'>
-					<span className='w-1.5 h-1.5 bg-emerald-400 rounded-full animate-pulse' />
-					<span>NARRATIVE RESOLUTION // 08</span>
-				</div>
+export default function FinalCTA() {
+  return (
+    <section className='bg-[#F2F2F3] text-[#131217] pt-24 sm:pt-32 pb-20 sm:pb-28 px-6 sm:px-8'>
+      <div className='max-w-[1320px] mx-auto flex flex-col justify-between gap-20 sm:gap-28'>
+        <motion.h2
+          initial={{ opacity: 0, y: 18 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true, amount: 0.3 }}
+          transition={{ duration: 0.55, ease: [0.22, 1, 0.36, 1] }}
+          className='font-semibold tracking-[-0.04em] leading-[0.94] max-w-5xl'
+          style={{
+            fontSize: 'clamp(2.65rem, 7.2vw, 6.25rem)',
+            textWrap: 'balance',
+          }}
+        >
+          Start with one
+          <br />
+          repository.
+        </motion.h2>
 
-				{/* Cinematic Final Sentence (stable for user future animation) */}
-				<h2
-					data-kr0n-reveal='cta-headline'
-					className='text-4xl sm:text-6xl md:text-7xl font-black uppercase tracking-tight text-[#F3F4F6] leading-[1.02]'
-				>
-					Ship what you came <br />
-					<span className='text-[#6C7480] font-extrabold'>here to build.</span>
-				</h2>
+        <div className='grid grid-cols-1 lg:grid-cols-12 gap-8 items-end'>
+          <p className='lg:col-span-5 text-base sm:text-lg text-[#3A3A40] leading-relaxed max-w-[42ch]'>
+            Create an organization, connect your GitHub App, and configure your first project in under two minutes.
+          </p>
 
-				{/* Supporting Sentence */}
-				<p
-					data-kr0n-reveal='cta-support'
-					className='text-sm sm:text-base text-[#C4C8CE] max-w-xl mx-auto font-sans leading-relaxed'
-				>
-					KR0N keeps the infrastructure layer out of the way. Connect your repository and launch your first service in seconds.
-				</p>
-
-				{/* Actions */}
-				<div
-					data-kr0n-reveal='cta-actions'
-					className='pt-2 flex flex-wrap items-center justify-center gap-4'
-				>
-					<Link
-						href='/docs/quick-start'
-						className='clipped-btn bg-white hover:bg-neutral-200 text-black px-8 py-3 text-xs font-mono uppercase tracking-wider font-bold transition-all shadow-xl hover:shadow-white/10'
-					>
-						Get started
-					</Link>
-					<Link
-						href='/docs'
-						className='border border-[#363D47] bg-[#111419] hover:border-white/40 hover:bg-[#15191E] text-white px-7 py-3 text-xs font-mono uppercase tracking-wider transition-all'
-					>
-						Read the docs
-					</Link>
-					<button
-						type='button'
-						onClick={onOpenCommand}
-						className='hidden sm:inline-flex items-center gap-2 border border-[#242930] hover:border-[#363D47] bg-[#0D1014] text-[#858C95] hover:text-white px-5 py-3 text-xs font-mono uppercase tracking-wider transition-all'
-					>
-						<span>⌘K Search</span>
-					</button>
-				</div>
-
-				{/* Animated Narrative Closure: Final Release Line Traveling from SOURCE to LIVE */}
-				<div
-					data-kr0n-release='SettledLive'
-					className='pt-12 sm:pt-16 border-t border-[#242930] space-y-4 max-w-2xl mx-auto'
-				>
-					<div className='flex items-center justify-between text-[10px] font-mono uppercase tracking-widest text-[#858C95]'>
-						<span>SOURCE</span>
-						<span className='hidden sm:inline'>BUILD</span>
-						<span className='hidden sm:inline'>VERIFY</span>
-						<span className='hidden sm:inline'>RELEASE</span>
-						<span className='text-emerald-400 font-bold'>● LIVE</span>
-					</div>
-
-					<div className='relative w-full h-px bg-[#242930] overflow-hidden'>
-						{/* Active Traveling Pulse settling into LIVE */}
-						<motion.div
-							className='absolute top-0 bottom-0 w-24 bg-gradient-to-r from-transparent via-emerald-400 to-transparent'
-							animate={{ left: ['-20%', '100%'] }}
-							transition={{ duration: 2.8, repeat: Infinity, ease: 'easeInOut' }}
-						/>
-						<div className='absolute right-0 top-1/2 -translate-y-1/2 w-2.5 h-2.5 rounded-full bg-emerald-400 shadow-[0_0_10px_rgba(16,185,129,0.9)]' />
-					</div>
-
-					<div className='flex items-center justify-between text-[10px] font-mono text-[#858C95] pt-1'>
-						<span>REPOSITORIES SYNCHRONIZED</span>
-						<span className='text-emerald-400 font-medium'>RELEASE RESOLVED // ACTIVE RUNTIME</span>
-					</div>
-				</div>
-			</div>
-		</section>
-	);
+          <div className='lg:col-span-7 flex flex-wrap lg:justify-end items-center gap-6'>
+            <Link
+              href='/docs/quick-start'
+              className='text-sm font-medium text-[#3A3A40] hover:text-[#131217] underline underline-offset-4 transition-colors duration-150'
+            >
+              Read quick start
+            </Link>
+            <Link
+              href='/signup'
+              className='inline-flex items-center justify-center gap-2 h-14 px-8 bg-[#131217] hover:bg-[#23222A] text-[#F2F2F3] text-sm font-medium transition-colors duration-150 w-full sm:w-auto'
+            >
+              <span>Create an account</span>
+              <ArrowRight size={15} />
+            </Link>
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }

@@ -7,10 +7,6 @@ const nextConfig = {
       { source: '/app', destination: '/dashboard' },
       { source: '/invites/accept', destination: '/invite' },
       { source: '/dashboard/projects', destination: '/projects' },
-      { source: '/dashboard/deployments', destination: '/projects/proj_orvea_prod/services/svc_api/deployments' },
-      { source: '/dashboard/logs', destination: '/projects/proj_orvea_prod/services/svc_api/logs' },
-      { source: '/dashboard/evariables', destination: '/projects/proj_orvea_prod/services/svc_api/settings' },
-      { source: '/dashboard/support', destination: '/status' },
       { source: '/api/v1/:path*', destination: `${backendUrl.replace(/\/+$/, '')}/api/v1/:path*` },
       { source: '/app/:path*', destination: '/:path*' },
     ];

@@ -1,42 +1,48 @@
-"use client";
+'use client';
 
-import { useState, useEffect, useCallback, Suspense } from "react";
-import Link from "next/link";
-import { useSearchParams, useRouter } from "next/navigation";
-import { AlertCircle, CheckCircle, Loader2 } from "lucide-react";
-import { verifyEmail, resendVerification } from "@/lib/auth";
+import { useState, useEffect, useCallback, Suspense } from 'react';
+import Link from 'next/link';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Loader2 } from 'lucide-react';
+import { verifyEmail, resendVerification } from '@/lib/auth';
+import AuthCard, { AuthBanner } from '@/components/auth/AuthCard';
 
 function VerifyEmailContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const tokenParam = searchParams.get("token") || "";
+  const tokenParam = searchParams.get('token') || '';
 
   const [token, setToken] = useState(tokenParam);
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState("");
-  const [success, setSuccess] = useState("");
+  const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [resendOpen, setResendOpen] = useState(false);
 
-  const handleVerify = useCallback(async (tokenToUse) => {
-    const t = tokenToUse || token;
-    if (!t) return;
+  const handleVerify = useCallback(
+    async (tokenToUse) => {
+      const t = tokenToUse || token;
+      if (!t) return;
 
-    setError("");
-    setSuccess("");
-    setIsLoading(true);
+      setError('');
+      setSuccess('');
+      setIsLoading(true);
 
-    try {
-      await verifyEmail(t);
-      setSuccess("Your email address has been verified successfully! You can now sign in.");
-      setTimeout(() => router.push("/login"), 2500);
-    } catch (err) {
-      console.error("[kr0n-verify] Error:", err);
-      setError(err.message || "Failed to verify email. Token may be invalid or expired.");
-    } finally {
-      setIsLoading(false);
-    }
-  }, [token, router]);
+      try {
+        await verifyEmail(t);
+        setSuccess('Your email address has been verified. Redirecting to sign in...');
+        setTimeout(() => router.push('/login'), 2500);
+      } catch (err) {
+        console.error('[kr0n-verify] Error:', err);
+        setError(
+          err.message || 'Failed to verify email. The token may be invalid or expired.'
+        );
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [token, router]
+  );
 
   useEffect(() => {
     if (tokenParam) {
@@ -51,49 +57,33 @@ function VerifyEmailContent() {
     e.preventDefault();
     if (!email) return;
 
-    setError("");
-    setSuccess("");
+    setError('');
+    setSuccess('');
     setIsLoading(true);
 
     try {
       await resendVerification(email);
-      setSuccess("A fresh verification email has been dispatched. Please check your inbox.");
+      setSuccess('A new verification email has been sent. Check your inbox.');
       setResendOpen(false);
     } catch (err) {
-      console.error("[kr0n-verify] Resend error:", err);
-      setError(err.message || "Failed to resend verification email.");
+      console.error('[kr0n-verify] Resend error:', err);
+      setError(err.message || 'Failed to resend verification email.');
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="w-full max-w-sm border border-[#242930] bg-[#0D1014] p-6 sm:p-8">
-      {/* Header */}
-      <div className="mb-6 text-center">
-        <Link
-          href="/"
-          className="text-xl font-bold tracking-wider text-white inline-block">
-          KR0N
-        </Link>
-        <h1 className="text-xs font-mono text-[#858C95] mt-1">
-          Verify Email Address
-        </h1>
-      </div>
-
-      {error && (
-        <div className="border border-red-500/40 bg-red-500/10 p-2.5 text-xs font-mono text-red-400 mb-4 flex items-start gap-2">
-          <AlertCircle size={15} className="shrink-0 mt-0.5 text-red-400" />
-          <span className="leading-tight">{error}</span>
-        </div>
-      )}
-
-      {success && (
-        <div className="border border-emerald-500/40 bg-emerald-500/10 p-2.5 text-xs font-mono text-emerald-400 mb-4 flex items-start gap-2">
-          <CheckCircle size={15} className="shrink-0 mt-0.5 text-emerald-400" />
-          <span className="leading-tight">{success}</span>
-        </div>
-      )}
+    <AuthCard
+      title='Verify email address'
+      subtitle={
+        resendOpen
+          ? 'Request a fresh verification token for your account.'
+          : 'Enter the verification token sent to your inbox.'
+      }
+    >
+      <AuthBanner type='error' message={error} />
+      <AuthBanner type='success' message={success} />
 
       {!resendOpen ? (
         <form
@@ -101,97 +91,111 @@ function VerifyEmailContent() {
             e.preventDefault();
             handleVerify();
           }}
-          className="space-y-4">
-          <div>
-            <label className="block text-xs font-mono text-[#C4C8CE] mb-1">
-              Verification Token
+          className='space-y-4'
+        >
+          <div className='space-y-1.5'>
+            <label
+              htmlFor='verify-token'
+              className='block text-xs font-medium text-kr0n-text-secondary'
+            >
+              Verification token
             </label>
             <input
-              type="text"
+              id='verify-token'
+              type='text'
               required
               value={token}
               onChange={(e) => setToken(e.target.value)}
-              placeholder="Paste token from verification email"
+              placeholder='Paste token from verification email'
               disabled={isLoading}
-              className="w-full bg-[#090B0E] border border-[#242930] hover:border-[#363D47] focus:border-white text-sm font-mono text-white px-3 py-2 outline-none transition-colors placeholder:text-[#4E5560]"
+              className='w-full h-10 rounded-lg bg-kr0n-black border border-kr0n-line hover:border-kr0n-line-strong focus:border-kr0n-accent text-sm font-mono text-kr0n-text px-3 outline-none transition-colors duration-150'
             />
           </div>
 
           <button
-            type="submit"
+            type='submit'
             disabled={isLoading || !token}
-            className="clipped-btn w-full bg-white hover:bg-neutral-200 text-black py-2.5 text-xs font-mono uppercase font-bold tracking-wider transition-colors disabled:opacity-50">
-            {isLoading ? "Verifying..." : "Verify Email"}
+            className='w-full h-10 rounded-lg bg-kr0n-text hover:bg-white text-kr0n-black text-sm font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-colors duration-150 disabled:opacity-50 cursor-pointer'
+          >
+            {isLoading ? 'Verifying...' : 'Verify email'}
           </button>
 
-          <div className="pt-2 flex items-center justify-between text-xs font-mono text-[#858C95]">
+          <div className='pt-1 flex items-center justify-between text-xs text-kr0n-muted'>
             <button
-              type="button"
+              type='button'
               onClick={() => {
                 setResendOpen(true);
-                setError("");
-                setSuccess("");
+                setError('');
+                setSuccess('');
               }}
-              className="hover:text-white transition-colors">
+              className='hover:text-kr0n-text transition-colors duration-150 cursor-pointer'
+            >
               Resend verification
             </button>
-            <Link href="/login" className="text-white hover:underline">
-              Sign In
+            <Link href='/login' className='text-kr0n-text font-medium hover:underline'>
+              Sign in
             </Link>
           </div>
         </form>
       ) : (
-        <form onSubmit={handleResend} className="space-y-4">
-          <div>
-            <label className="block text-xs font-mono text-[#C4C8CE] mb-1">
-              Account Email
+        <form onSubmit={handleResend} className='space-y-4'>
+          <div className='space-y-1.5'>
+            <label
+              htmlFor='resend-email'
+              className='block text-xs font-medium text-kr0n-text-secondary'
+            >
+              Account email
             </label>
             <input
-              type="email"
+              id='resend-email'
+              type='email'
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@example.com"
+              placeholder='name@company.com'
               disabled={isLoading}
-              className="w-full bg-[#090B0E] border border-[#242930] hover:border-[#363D47] focus:border-white text-sm text-white px-3 py-2 outline-none transition-colors placeholder:text-[#4E5560]"
+              className='w-full h-10 rounded-lg bg-kr0n-black border border-kr0n-line hover:border-kr0n-line-strong focus:border-kr0n-accent text-sm text-kr0n-text px-3 outline-none transition-colors duration-150'
             />
           </div>
 
           <button
-            type="submit"
+            type='submit'
             disabled={isLoading || !email}
-            className="clipped-btn w-full bg-white hover:bg-neutral-200 text-black py-2.5 text-xs font-mono uppercase font-bold tracking-wider transition-colors disabled:opacity-50">
-            {isLoading ? "Sending..." : "Send Verification Token"}
+            className='w-full h-10 rounded-lg bg-kr0n-text hover:bg-white text-kr0n-black text-sm font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-colors duration-150 disabled:opacity-50 cursor-pointer'
+          >
+            {isLoading ? 'Sending...' : 'Send verification email'}
           </button>
 
           <button
-            type="button"
+            type='button'
             onClick={() => {
               setResendOpen(false);
-              setError("");
-              setSuccess("");
+              setError('');
+              setSuccess('');
             }}
-            className="clipped-btn w-full border border-[#242930] hover:border-[#363D47] bg-[#111419] text-[#C4C8CE] hover:text-white py-2 text-xs font-mono uppercase tracking-wider transition-colors">
-            Back to Token Verification
+            className='w-full h-10 rounded-lg border border-kr0n-line bg-kr0n-surface-2 hover:bg-kr0n-surface-3 hover:border-kr0n-line-strong text-sm font-medium text-kr0n-text-secondary hover:text-kr0n-text transition-colors duration-150 cursor-pointer'
+          >
+            Back to verification
           </button>
         </form>
       )}
-    </div>
+    </AuthCard>
   );
 }
 
 export default function VerifyEmailPage() {
   return (
-    <div className="min-h-screen bg-[#090B0E] text-[#F3F4F6] flex items-center justify-center p-4">
-      <Suspense
-        fallback={
-          <div className="w-full max-w-sm border border-[#242930] bg-[#0D1014] p-8 text-center">
-            <Loader2 size={24} className="animate-spin text-white mx-auto mb-3" />
-            <p className="text-xs font-mono text-[#858C95]">Loading verification...</p>
+    <Suspense
+      fallback={
+        <AuthCard title='Verify email address'>
+          <div className='py-6 text-center space-y-3'>
+            <Loader2 size={20} className='animate-spin text-kr0n-muted mx-auto' />
+            <p className='text-sm text-kr0n-muted'>Loading verification...</p>
           </div>
-        }>
-        <VerifyEmailContent />
-      </Suspense>
-    </div>
+        </AuthCard>
+      }
+    >
+      <VerifyEmailContent />
+    </Suspense>
   );
 }

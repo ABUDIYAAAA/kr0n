@@ -1,26 +1,29 @@
 'use client';
 
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import ProjectCard from './ProjectCard';
-import ProjectConnector from './ProjectConnector';
-import ProjectsToolbar from './ProjectsToolbar';
-import NewProjectModal from './NewProjectModal';
-import { useKr0nStore } from '@/lib/kr0n-state';
-import { Plus, Compass, CheckCircle2, AlertCircle, GitBranch } from 'lucide-react';
+import { useState, useRef, useCallback, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { Plus, GitBranch, Folder, Settings, ArrowUpRight } from 'lucide-react';
+import ProjectCard from './ProjectCard';
+import ProjectsToolbar from './ProjectsToolbar';
+import { useWorkspace } from '@/lib/workspace-context';
+
+function formatShortDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
+}
 
 export default function ProjectsWorkspace() {
   const router = useRouter();
-  const { projects: storeProjects } = useKr0nStore();
+  const { projects: storeProjects, isLoadingProjects } = useWorkspace();
 
   const [projects, setProjects] = useState(() =>
     (storeProjects || []).map((p, idx) => ({
       ...p,
-      _x: p._x || p.position?.x || 80 + (idx % 3) * 340,
-      _y: p._y || p.position?.y || 80 + Math.floor(idx / 3) * 220,
-      position: p.position || { x: 80 + (idx % 3) * 340, y: 80 + Math.floor(idx / 3) * 220 },
+      _x: p._x || p.position?.x || 48 + (idx % 3) * 320,
+      _y: p._y || p.position?.y || 48 + Math.floor(idx / 3) * 200,
     }))
   );
 
@@ -30,315 +33,272 @@ export default function ProjectsWorkspace() {
     setProjects(
       (storeProjects || []).map((p, idx) => ({
         ...p,
-        _x: p._x || p.position?.x || 80 + (idx % 3) * 340,
-        _y: p._y || p.position?.y || 80 + Math.floor(idx / 3) * 220,
-        position: p.position || { x: 80 + (idx % 3) * 340, y: 80 + Math.floor(idx / 3) * 220 },
+        _x: p._x || p.position?.x || 48 + (idx % 3) * 320,
+        _y: p._y || p.position?.y || 48 + Math.floor(idx / 3) * 200,
       }))
     );
   }
-  const [filter, setFilter] = useState('all');
+
+  const [presetFilter, setPresetFilter] = useState('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [draggingId, setDraggingId] = useState(null);
-  const [viewMode, setViewMode] = useState('canvas');
-  const [isNewModalOpen, setIsNewModalOpen] = useState(false);
-  const [toastMessage, setToastMessage] = useState(null);
-  const [cardHeights, setCardHeights] = useState({});
+  const [viewMode, setViewMode] = useState('table');
   const canvasRef = useRef(null);
 
-  const handleHeightChange = useCallback((id, h) => {
-    setCardHeights((prev) => (prev[id] === h ? prev : { ...prev, [id]: h }));
-  }, []);
+  const availablePresets = useMemo(() => {
+    const set = new Set();
+    projects.forEach((p) => {
+      const preset = p.application_preset || p.preset;
+      if (preset) set.add(preset);
+    });
+    return Array.from(set).sort();
+  }, [projects]);
 
-  // Filtered projects
   const filteredProjects = projects.filter((p) => {
-    // Environment / Attention filter
-    if (filter === 'production' && p.environment !== 'production') return false;
-    if (filter === 'staging' && p.environment !== 'staging') return false;
-    if (filter === 'attention' && p.status !== 'warning' && p.status !== 'failed') return false;
+    const preset = p.application_preset || p.preset || 'auto';
+    if (presetFilter !== 'all' && preset !== presetFilter) return false;
 
-    // Search filter
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       return (
-        p.name.toLowerCase().includes(q) ||
-        p.description.toLowerCase().includes(q) ||
-        p.environment.toLowerCase().includes(q) ||
-        p.services.some((s) => s.name.toLowerCase().includes(q)) ||
-        (p.url && p.url.toLowerCase().includes(q))
+        (p.name || '').toLowerCase().includes(q) ||
+        (p.description || '').toLowerCase().includes(q) ||
+        (p.repo_full_name || '').toLowerCase().includes(q) ||
+        preset.toLowerCase().includes(q) ||
+        (p.production_branch || '').toLowerCase().includes(q)
       );
     }
     return true;
   });
 
-  // Update project position on drag
   const handleDrag = useCallback((id, x, y) => {
     setProjects((prev) =>
       prev.map((p) => (p.id === id ? { ...p, _x: x, _y: y } : p))
     );
   }, []);
 
-  const handleDragStart = useCallback((id) => {
-    setDraggingId(id);
-  }, []);
-
-  const handleDragEnd = useCallback(() => {
-    setDraggingId(null);
-  }, []);
-
-  // Deploy simulation trigger
-  const handleDeploy = useCallback((id) => {
-    const target = projects.find((p) => p.id === id);
-    if (!target) return;
-
-    setToastMessage({
-      type: 'info',
-      title: 'Deployment Triggered',
-      desc: `Building commit for ${target.name} (${target.environment})...`,
-    });
-
-    // Mark as deploying
-    setProjects((prev) =>
-      prev.map((p) =>
-        p.id === id
-          ? {
-              ...p,
-              currentDeployment: {
-                ...p.currentDeployment,
-                status: 'deploying',
-                commit: Math.random().toString(16).substring(2, 9),
-              },
-            }
-          : p
-      )
-    );
-
-    // Simulate completion after 3 seconds
-    setTimeout(() => {
-      setProjects((prev) =>
-        prev.map((p) =>
-          p.id === id
-            ? {
-                ...p,
-                status: 'healthy',
-                deploymentCount: p.deploymentCount + 1,
-                currentDeployment: {
-                  ...p.currentDeployment,
-                  status: 'live',
-                  timestamp: 'Just now',
-                },
-              }
-            : p
-        )
-      );
-
-      setToastMessage({
-        type: 'success',
-        title: 'Release Published',
-        desc: `${target.name} (${target.environment}) is live on edge nodes.`,
-      });
-
-      setTimeout(() => setToastMessage(null), 4000);
-    }, 3200);
-  }, [projects]);
-
-  // Create new project
-  const handleCreateProject = useCallback((newProj) => {
-    setProjects((prev) => [newProj, ...prev]);
-    setToastMessage({
-      type: 'success',
-      title: 'Project Spawned',
-      desc: `${newProj.name} created and deployed to ${newProj.environment}.`,
-    });
-    setTimeout(() => setToastMessage(null), 4000);
-  }, []);
-
-  // Collect connector pairs
-  const connectors = [];
-  const seen = new Set();
-  filteredProjects.forEach((p) => {
-    if (p.linkedTo && !seen.has(`${p.id}-${p.linkedTo}`) && !seen.has(`${p.linkedTo}-${p.id}`)) {
-      const target = filteredProjects.find((t) => t.id === p.linkedTo);
-      if (target) {
-        connectors.push({ from: p, to: target });
-        seen.add(`${p.id}-${p.linkedTo}`);
-      }
-    }
-  });
+  const handleDragStart = useCallback((id) => setDraggingId(id), []);
+  const handleDragEnd = useCallback(() => setDraggingId(null), []);
 
   return (
-    <div className='flex flex-col h-full bg-kr0n-canvas relative select-none'>
-      {/* Workspace Toolbar */}
+    <div className='flex flex-col h-full bg-kr0n-canvas relative'>
       <ProjectsToolbar
-        filter={filter}
-        onFilterChange={setFilter}
+        presetFilter={presetFilter}
+        onPresetFilterChange={setPresetFilter}
+        availablePresets={availablePresets}
         searchQuery={searchQuery}
         onSearchChange={setSearchQuery}
         projectCount={filteredProjects.length}
         viewMode={viewMode}
         onViewModeChange={setViewMode}
-        onOpenNewProject={() => router.push("/projects/new")}
+        onOpenNewProject={() => router.push('/projects/new')}
       />
 
-      {/* Main Content Area: Canvas or Grid */}
-      {viewMode === 'canvas' ? (
-        <div
-          ref={canvasRef}
-          className='flex-1 relative overflow-auto focus:outline-none'
-          style={{
-            background: `radial-gradient(circle at 50% 0%, rgba(255,255,255,0.02) 0%, transparent 70%)`,
-          }}
-        >
-          {/* Faint technical dot matrix */}
-          <div
-            className='absolute inset-0 pointer-events-none'
-            style={{
-              backgroundImage: `radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px)`,
-              backgroundSize: '28px 28px',
-              minWidth: 1600,
-              minHeight: 1100,
-            }}
-          />
-
-          {/* Canvas status coordinate bar */}
-          <div className='absolute bottom-3 left-4 z-20 pointer-events-none hidden sm:flex items-center gap-4 text-[10px] font-mono text-kr0n-faint uppercase'>
-            <span className='flex items-center gap-1.5'>
-              <span className='w-1.5 h-1.5 rounded-full bg-emerald-400' />
-              WORKSPACE RUNTIME ACTIVE
-            </span>
-            <span>|</span>
-            <span>DRAG CARDS TO REORGANIZE</span>
-            <span>|</span>
-            <span>ARROW KEYS WHEN FOCUSED</span>
-          </div>
-
-          {/* SVG Connector Layer */}
-          <svg
-            className='absolute inset-0 pointer-events-none'
-            style={{ minWidth: 1600, minHeight: 1100, zIndex: 1 }}
-          >
-            {connectors.map(({ from, to }) => (
-              <ProjectConnector
-                key={`${from.id}-${to.id}`}
-                fromCard={from}
-                toCard={to}
-                fromHeight={cardHeights[from.id] || 120}
-                toHeight={cardHeights[to.id] || 120}
-                isActive={draggingId === from.id || draggingId === to.id}
-                label={`${from.name.toUpperCase()} REPLICATION`}
-              />
-            ))}
-          </svg>
-
-          {/* Draggable Card Objects */}
-          <div
-            className='relative'
-            style={{ minWidth: 1600, minHeight: 1100, zIndex: 2 }}
-          >
-            <AnimatePresence mode='popLayout'>
-              {filteredProjects.length === 0 ? (
-                <motion.div
-                  key='empty'
-                  initial={{ opacity: 0, y: 12 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -12 }}
-                  className='absolute inset-0 flex items-center justify-center'
-                  style={{ minHeight: 600 }}
+      {isLoadingProjects ? (
+        <div className='flex-1 flex items-center justify-center p-12 text-sm text-kr0n-muted'>
+          Loading projects...
+        </div>
+      ) : filteredProjects.length === 0 ? (
+        <div className='flex-1 flex items-center justify-center p-10'>
+          <div className='rounded-[6px] border border-kr0n-line bg-kr0n-black p-10 text-center space-y-4 max-w-md w-full'>
+            <div className='space-y-1.5'>
+              <h2 className='text-sm font-semibold text-white'>
+                {searchQuery || presetFilter !== 'all'
+                  ? 'No matching projects'
+                  : 'No projects yet'}
+              </h2>
+              <p className='text-[13px] text-kr0n-muted leading-relaxed'>
+                {searchQuery || presetFilter !== 'all'
+                  ? 'Clear your search query or preset tab to view all repositories.'
+                  : 'Import a GitHub repository to configure your first project in this organization.'}
+              </p>
+            </div>
+            <div className='flex items-center justify-center gap-2.5'>
+              {(searchQuery || presetFilter !== 'all') && (
+                <button
+                  type='button'
+                  onClick={() => {
+                    setSearchQuery('');
+                    setPresetFilter('all');
+                  }}
+                  className='h-9 px-3.5 rounded-[6px] border border-kr0n-line text-xs font-medium text-kr0n-text hover:border-kr0n-line-strong transition-colors duration-150 cursor-pointer'
                 >
-                  <div className='text-center space-y-4 max-w-sm px-6'>
-                    <div className='w-12 h-12 mx-auto border border-kr0n-line bg-kr0n-surface flex items-center justify-center'>
-                      <Plus size={20} className='text-kr0n-faint' />
-                    </div>
-                    <div className='space-y-1.5'>
-                      <p className='text-sm text-white font-mono uppercase tracking-wider font-bold'>
-                        {searchQuery ? 'No matching projects found' : 'No projects in this view'}
-                      </p>
-                      <p className='text-xs text-kr0n-muted leading-relaxed'>
-                        {searchQuery
-                          ? 'Adjust your query or clear filters to view application objects.'
-                          : 'Create your first application workspace or switch filters.'}
-                      </p>
-                    </div>
-                    <button
-                      type='button'
-                      onClick={() => router.push("/projects/new")}
-                      className='clipped-btn inline-flex items-center gap-2 bg-white hover:bg-neutral-200 text-black px-4 py-2 text-xs font-mono uppercase tracking-wider font-bold transition-colors'
-                    >
-                      <Plus size={13} />
-                      Create project
-                    </button>
-                  </div>
-                </motion.div>
-              ) : (
-                filteredProjects.map((project, index) => (
-                  <ProjectCard
-                    key={project.id}
-                    project={project}
-                    index={index}
-                    onDrag={handleDrag}
-                    onDragStart={handleDragStart}
-                    onDragEnd={handleDragEnd}
-                    isDragging={draggingId === project.id}
-                    onDeploy={handleDeploy}
-                    onHeightChange={handleHeightChange}
-                  />
-                ))
+                  Clear filters
+                </button>
               )}
-            </AnimatePresence>
+              <button
+                type='button'
+                onClick={() => router.push('/projects/new')}
+                className='inline-flex items-center gap-1.5 h-9 px-4 rounded-[6px] bg-kr0n-text hover:bg-white text-kr0n-black text-xs font-medium transition-colors duration-150 cursor-pointer'
+              >
+                <Plus size={14} />
+                <span>Import repository</span>
+              </button>
+            </div>
           </div>
         </div>
-      ) : (
-        /* Structured List / Grid View */
-        <div className='flex-1 overflow-auto p-6 sm:p-8 max-w-7xl mx-auto w-full'>
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4'>
-            {filteredProjects.map((project, index) => (
+      ) : viewMode === 'table' ? (
+        <div className='flex-1 overflow-auto px-6 sm:px-8 py-6'>
+          <div className='max-w-[1240px] rounded-[6px] border border-kr0n-line bg-kr0n-black overflow-x-auto'>
+            <table className='w-full text-left text-[13px]'>
+              <thead>
+                <tr className='border-b border-kr0n-line text-xs text-kr0n-muted'>
+                  <th className='px-5 py-3 font-normal'>Project</th>
+                  <th className='px-4 py-3 font-normal'>Branch</th>
+                  <th className='px-4 py-3 font-normal'>Root directory</th>
+                  <th className='px-4 py-3 font-normal'>Preset</th>
+                  <th className='px-4 py-3 font-normal text-right'>Revision</th>
+                  <th className='px-4 py-3 font-normal text-right'>Updated</th>
+                  <th className='px-5 py-3 font-normal text-right'>Actions</th>
+                </tr>
+              </thead>
+              <tbody className='divide-y divide-kr0n-line-soft'>
+                {filteredProjects.map((project) => (
+                  <tr
+                    key={project.id}
+                    className='hover:bg-kr0n-surface-2/50 transition-colors duration-150'
+                  >
+                    <td className='px-5 py-3.5'>
+                      <Link
+                        href={`/projects/${project.id}`}
+                        className='font-medium text-white hover:text-kr0n-accent transition-colors duration-150 block truncate max-w-[260px]'
+                      >
+                        {project.name}
+                      </Link>
+                      <div className='font-mono text-xs text-kr0n-muted truncate max-w-[260px]'>
+                        {project.repo_full_name || project.slug}
+                      </div>
+                    </td>
+                    <td className='px-4 py-3.5 font-mono text-xs text-kr0n-text-secondary'>
+                      <span className='inline-flex items-center gap-1.5'>
+                        <GitBranch size={12} className='text-kr0n-muted' />
+                        {project.production_branch || 'main'}
+                      </span>
+                    </td>
+                    <td className='px-4 py-3.5 font-mono text-xs text-kr0n-muted'>
+                      <span className='inline-flex items-center gap-1.5'>
+                        <Folder size={12} />
+                        {project.root_directory || './'}
+                      </span>
+                    </td>
+                    <td className='px-4 py-3.5 font-mono text-xs text-kr0n-text-secondary'>
+                      {project.application_preset || 'auto'}
+                    </td>
+                    <td className='px-4 py-3.5 text-right font-mono text-xs tabular-nums text-white'>
+                      v{project.revision || 1}
+                    </td>
+                    <td className='px-4 py-3.5 text-right font-mono text-xs tabular-nums text-kr0n-muted'>
+                      {formatShortDate(project.updated_at || project.created_at)}
+                    </td>
+                    <td className='px-5 py-3.5 text-right'>
+                      <div className='inline-flex items-center justify-end gap-3 text-xs'>
+                        <Link
+                          href={`/projects/${project.id}`}
+                          className='text-kr0n-text-secondary hover:text-white transition-colors duration-150'
+                        >
+                          Open
+                        </Link>
+                        <Link
+                          href={`/projects/${project.id}/settings`}
+                          className='text-kr0n-muted hover:text-white transition-colors duration-150'
+                        >
+                          Settings
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      ) : viewMode === 'grid' ? (
+        <div className='flex-1 overflow-auto px-6 sm:px-8 py-6'>
+          <div className='max-w-[1240px] grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
+            {filteredProjects.map((project) => (
               <div
                 key={project.id}
-                className='relative'
-                style={{ width: 268 }}
+                className='rounded-[6px] border border-kr0n-line bg-kr0n-black hover:border-kr0n-line-strong transition-colors duration-150 flex flex-col justify-between overflow-hidden'
               >
-                <ProjectCard
-                  project={{ ...project, _x: 0, _y: 0 }}
-                  index={index}
-                  onDrag={() => {}}
-                  onDragStart={() => {}}
-                  onDragEnd={() => {}}
-                  isDragging={false}
-                  onDeploy={handleDeploy}
-                />
+                <Link href={`/projects/${project.id}`} className='p-5 space-y-3 flex-1 block'>
+                  <div className='flex items-start justify-between gap-2'>
+                    <div className='min-w-0'>
+                      <h2 className='text-[15px] font-medium text-white truncate'>
+                        {project.name}
+                      </h2>
+                      <p className='text-xs font-mono text-kr0n-muted truncate mt-0.5'>
+                        {project.repo_full_name || project.slug}
+                      </p>
+                    </div>
+                    <span className='font-mono text-xs tabular-nums text-kr0n-muted shrink-0'>
+                      v{project.revision || 1}
+                    </span>
+                  </div>
+
+                  {project.description && (
+                    <p className='text-xs text-kr0n-text-secondary line-clamp-2 leading-relaxed'>
+                      {project.description}
+                    </p>
+                  )}
+
+                  <div className='flex flex-wrap items-center gap-3 pt-1 text-xs font-mono text-kr0n-muted'>
+                    <span className='text-kr0n-text-secondary'>
+                      {project.application_preset || 'auto'}
+                    </span>
+                    <span className='inline-flex items-center gap-1'>
+                      <GitBranch size={12} />
+                      {project.production_branch || 'main'}
+                    </span>
+                    <span className='inline-flex items-center gap-1'>
+                      <Folder size={12} />
+                      {project.root_directory || './'}
+                    </span>
+                  </div>
+                </Link>
+
+                <div className='px-5 py-2.5 border-t border-kr0n-line-soft flex items-center justify-between text-xs'>
+                  <Link
+                    href={`/projects/${project.id}`}
+                    className='text-kr0n-text-secondary hover:text-white inline-flex items-center gap-1 transition-colors duration-150'
+                  >
+                    <span>Overview</span>
+                    <ArrowUpRight size={12} />
+                  </Link>
+                  <Link
+                    href={`/projects/${project.id}/settings`}
+                    className='text-kr0n-muted hover:text-white inline-flex items-center gap-1 transition-colors duration-150'
+                  >
+                    <Settings size={12} />
+                    <span>Settings</span>
+                  </Link>
+                </div>
               </div>
             ))}
           </div>
         </div>
+      ) : (
+        <div ref={canvasRef} className='flex-1 relative overflow-auto kr0n-grid-bg select-none'>
+          <div className='absolute bottom-4 left-6 z-20 pointer-events-none hidden sm:flex items-center gap-3 text-xs text-kr0n-muted bg-kr0n-black border border-kr0n-line rounded-[6px] px-3 py-1.5'>
+            <span>Drag cards to arrange</span>
+            <span>·</span>
+            <span>Arrow keys when focused</span>
+          </div>
+
+          <div className='relative' style={{ minWidth: 1400, minHeight: 900, zIndex: 2 }}>
+            {filteredProjects.map((project, index) => (
+              <ProjectCard
+                key={project.id}
+                project={project}
+                index={index}
+                onDrag={handleDrag}
+                onDragStart={handleDragStart}
+                onDragEnd={handleDragEnd}
+                isDragging={draggingId === project.id}
+              />
+            ))}
+          </div>
+        </div>
       )}
-
-      {/* Floating Status Notification Toast */}
-      <AnimatePresence>
-        {toastMessage && (
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: 20 }}
-            className='fixed bottom-6 right-6 z-50 bg-kr0n-surface-2 border border-kr0n-line shadow-2xl p-4 flex items-start gap-3 max-w-sm'
-          >
-            {toastMessage.type === 'success' ? (
-              <CheckCircle2 size={16} className='text-emerald-400 shrink-0 mt-0.5' />
-            ) : (
-              <div className='w-4 h-4 border-2 border-blue-400 border-t-transparent rounded-full animate-spin shrink-0 mt-0.5' />
-            )}
-            <div className='space-y-0.5 text-xs font-mono'>
-              <div className='text-white font-bold'>{toastMessage.title}</div>
-              <div className='text-kr0n-muted leading-relaxed'>{toastMessage.desc}</div>
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* New Project Creation Modal */}
-      <NewProjectModal
-        isOpen={isNewModalOpen}
-        onClose={() => setIsNewModalOpen(false)}
-        onCreateProject={handleCreateProject}
-      />
     </div>
   );
 }

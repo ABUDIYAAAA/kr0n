@@ -2,27 +2,20 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import {
-  User,
-  Building2,
-  Shield,
-  Key,
-  ScrollText,
   Plus,
   Trash2,
   Copy,
   Check,
   AlertTriangle,
-  Monitor,
   Clock,
-  Lock,
   LogOut,
-  Puzzle,
   ExternalLink,
   RefreshCw,
   Mail,
   ChevronLeft,
   ChevronRight,
   Link2,
+  Key,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import {
@@ -53,12 +46,12 @@ import {
 import { githubApi } from '@/lib/github-api';
 
 const TABS = [
-  { id: 'profile', label: 'Profile', icon: User },
-  { id: 'organization', label: 'Organization', icon: Building2 },
-  { id: 'integrations', label: 'Integrations', icon: Puzzle },
-  { id: 'security', label: 'Security', icon: Shield },
-  { id: 'tokens', label: 'API Tokens', icon: Key },
-  { id: 'audit', label: 'Audit Log', icon: ScrollText },
+  { id: 'profile', label: 'Profile' },
+  { id: 'organization', label: 'Organization' },
+  { id: 'integrations', label: 'Integrations' },
+  { id: 'security', label: 'Security' },
+  { id: 'tokens', label: 'API tokens' },
+  { id: 'audit', label: 'Audit log' },
 ];
 
 const DEFAULT_PERMISSIONS = [
@@ -86,7 +79,7 @@ const DEFAULT_PERMISSIONS = [
 ];
 
 const AUDIT_ACTIONS = [
-  { value: '', label: 'All Actions' },
+  { value: '', label: 'All actions' },
   { value: 'org.created', label: 'org.created' },
   { value: 'org.updated', label: 'org.updated' },
   { value: 'member.added', label: 'member.added' },
@@ -102,10 +95,10 @@ const AUDIT_ACTIONS = [
 ];
 
 const TOKEN_EXPIRY_OPTIONS = [
-  { label: '7 Days', seconds: 7 * 86400 },
-  { label: '30 Days', seconds: 30 * 86400 },
-  { label: '90 Days', seconds: 90 * 86400 },
-  { label: '1 Year', seconds: 365 * 86400 },
+  { label: '7 days', seconds: 7 * 86400 },
+  { label: '30 days', seconds: 30 * 86400 },
+  { label: '90 days', seconds: 90 * 86400 },
+  { label: '1 year', seconds: 365 * 86400 },
 ];
 
 const AUDIT_PAGE_SIZE = 20;
@@ -125,7 +118,6 @@ export default function GlobalSettingsPage() {
     activeOrgId,
     roles,
     setActiveOrgId,
-    refreshOrganizations,
     createOrganization,
     updateOrganization,
     deleteOrganization,
@@ -154,7 +146,7 @@ export default function GlobalSettingsPage() {
   const [members, setMembers] = useState([]);
   const [membersLoading, setMembersLoading] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
-  const [inviteMode, setInviteMode] = useState('invite'); // 'invite' | 'direct'
+  const [inviteMode, setInviteMode] = useState('invite');
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState('member');
   const [inviteLoading, setInviteLoading] = useState(false);
@@ -192,6 +184,19 @@ export default function GlobalSettingsPage() {
   const [auditActionFilter, setAuditActionFilter] = useState('');
   const [auditOffset, setAuditOffset] = useState(0);
   const [auditSearch, setAuditSearch] = useState('');
+
+  useEffect(() => {
+    if (!inviteOpen && !newTokenOpen && !newOrgOpen) return;
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setInviteOpen(false);
+        setNewTokenOpen(false);
+        setNewOrgOpen(false);
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [inviteOpen, newTokenOpen, newOrgOpen]);
 
   const availableRoleOptions =
     Array.isArray(roles) && roles.length > 0
@@ -231,52 +236,46 @@ export default function GlobalSettingsPage() {
     (inv) => (inv.org_id || activeOrg?.id) === activeOrg?.id
   );
 
-  const fetchAuditForOrg = useCallback(
-    async (orgId, offsetVal, actionVal) => {
-      if (!orgId) return;
-      await Promise.resolve();
-      setAuditLoading(true);
-      try {
-        const events = await getAuditLogs(orgId, {
-          limit: AUDIT_PAGE_SIZE,
-          offset: offsetVal,
-          action: actionVal,
-        });
-        setAuditEvents(Array.isArray(events) ? events : []);
-      } catch {
-        setAuditEvents([]);
-      } finally {
-        setAuditLoading(false);
-      }
-    },
-    []
-  );
+  const fetchAuditForOrg = useCallback(async (orgId, offsetVal, actionVal) => {
+    if (!orgId) return;
+    await Promise.resolve();
+    setAuditLoading(true);
+    try {
+      const events = await getAuditLogs(orgId, {
+        limit: AUDIT_PAGE_SIZE,
+        offset: offsetVal,
+        action: actionVal,
+      });
+      setAuditEvents(Array.isArray(events) ? events : []);
+    } catch {
+      setAuditEvents([]);
+    } finally {
+      setAuditLoading(false);
+    }
+  }, []);
 
-  const fetchOrgSubResources = useCallback(
-    async (orgId) => {
-      if (!orgId) return;
-      await Promise.resolve();
-      setMembersLoading(true);
-      setTokensLoading(true);
-      setGhLoading(true);
+  const fetchOrgSubResources = useCallback(async (orgId) => {
+    if (!orgId) return;
+    await Promise.resolve();
+    setMembersLoading(true);
+    setTokensLoading(true);
+    setGhLoading(true);
 
-      try {
-        const [membersData, tokensData, ghData] = await Promise.all([
-          getMembers(orgId).catch(() => []),
-          getApiTokens(orgId).catch(() => []),
-          githubApi(`orgs/${orgId}/github/installations`).catch(() => ({ installations: [] })),
-        ]);
-        setMembers(Array.isArray(membersData) ? membersData : []);
-        setApiTokens(Array.isArray(tokensData) ? tokensData : []);
-        setGhInstallations(Array.isArray(ghData?.installations) ? ghData.installations : []);
-      } finally {
-        setMembersLoading(false);
-        setTokensLoading(false);
-        setGhLoading(false);
-      }
-    },
-    []
-  );
+    try {
+      const [membersData, tokensData, ghData] = await Promise.all([
+        getMembers(orgId).catch(() => []),
+        getApiTokens(orgId).catch(() => []),
+        githubApi(`orgs/${orgId}/github/installations`).catch(() => ({ installations: [] })),
+      ]);
+      setMembers(Array.isArray(membersData) ? membersData : []);
+      setApiTokens(Array.isArray(tokensData) ? tokensData : []);
+      setGhInstallations(Array.isArray(ghData?.installations) ? ghData.installations : []);
+    } finally {
+      setMembersLoading(false);
+      setTokensLoading(false);
+      setGhLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     let active = true;
@@ -288,13 +287,9 @@ export default function GlobalSettingsPage() {
       try {
         const me = await getMe();
         if (!active) return;
-        if (me) {
-          setUserProfile(me);
-        }
+        if (me) setUserProfile(me);
         const sess = await getSessions().catch(() => []);
-        if (active) {
-          setSessions(Array.isArray(sess) ? sess : []);
-        }
+        if (active) setSessions(Array.isArray(sess) ? sess : []);
       } finally {
         if (active) setSessionsLoading(false);
       }
@@ -310,9 +305,7 @@ export default function GlobalSettingsPage() {
     if (!activeOrgId) return;
     let active = true;
     Promise.resolve().then(() => {
-      if (active) {
-        fetchOrgSubResources(activeOrgId);
-      }
+      if (active) fetchOrgSubResources(activeOrgId);
     });
     return () => {
       active = false;
@@ -323,9 +316,7 @@ export default function GlobalSettingsPage() {
     if (!activeOrgId) return;
     let active = true;
     Promise.resolve().then(() => {
-      if (active) {
-        fetchAuditForOrg(activeOrgId, auditOffset, auditActionFilter);
-      }
+      if (active) fetchAuditForOrg(activeOrgId, auditOffset, auditActionFilter);
     });
     return () => {
       active = false;
@@ -337,7 +328,7 @@ export default function GlobalSettingsPage() {
     setActionSuccess('');
   };
 
-  // ─── Profile Actions ───
+  // Profile actions
   const handleResendVerification = async () => {
     if (!userProfile?.email) return;
     clearFeedback();
@@ -352,7 +343,7 @@ export default function GlobalSettingsPage() {
     }
   };
 
-  // ─── Organization Actions ───
+  // Organization actions
   const handleCreateOrg = async (e) => {
     e.preventDefault();
     if (!newOrgName.trim()) return;
@@ -412,7 +403,7 @@ export default function GlobalSettingsPage() {
     }
   };
 
-  // ─── Members & Invites Actions ───
+  // Members & invites actions
   const handleAddOrInviteMember = async (e) => {
     e.preventDefault();
     if (!activeOrg?.id || !inviteEmail.trim()) return;
@@ -492,7 +483,7 @@ export default function GlobalSettingsPage() {
     }
   };
 
-  // ─── GitHub Integrations Actions ───
+  // GitHub integrations actions
   const handleConnectGitHub = async () => {
     if (!activeOrg?.id) return;
     clearFeedback();
@@ -501,6 +492,11 @@ export default function GlobalSettingsPage() {
       const data = await githubApi(`orgs/${activeOrg.id}/github/installations/start`);
       const targetUrl = data?.install_url || data?.installUrl;
       if (targetUrl) {
+        if (data?.state) {
+          const installMeta = JSON.stringify({ org: activeOrg.id, state: data.state });
+          sessionStorage.setItem('kr0n_github_install', installMeta);
+          localStorage.setItem('kr0n_github_install', installMeta);
+        }
         window.location.href = targetUrl;
       } else {
         setActionError('GitHub App installation URL was not returned by the server.');
@@ -531,7 +527,7 @@ export default function GlobalSettingsPage() {
     }
   };
 
-  // ─── Security & Sessions Actions ───
+  // Security & sessions actions
   const handleRevokeSession = async (sessionId) => {
     clearFeedback();
     try {
@@ -579,7 +575,7 @@ export default function GlobalSettingsPage() {
     router.push('/login');
   };
 
-  // ─── API Tokens Actions ───
+  // API tokens actions
   const toggleTokenPermission = (perm) => {
     setTokenPermissions((prev) =>
       prev.includes(perm) ? prev.filter((p) => p !== perm) : [...prev, perm]
@@ -603,9 +599,7 @@ export default function GlobalSettingsPage() {
         tokenPermissions,
         Number(tokenExpirySeconds)
       );
-      if (resp?.secret) {
-        setCreatedTokenSecret(resp.secret);
-      }
+      if (resp?.secret) setCreatedTokenSecret(resp.secret);
       const refreshed = await getApiTokens(activeOrg.id);
       setApiTokens(Array.isArray(refreshed) ? refreshed : []);
       setTokenName('');
@@ -658,282 +652,244 @@ export default function GlobalSettingsPage() {
   const emailVerified = Boolean(userProfile?.email_verified);
 
   return (
-    <div className='max-w-[1400px] mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6'>
-      {/* ─── HEADER ─── */}
-      <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-kr0n-line pb-5'>
-        <div>
-          <div className='flex items-center gap-2 text-xs font-mono text-kr0n-muted uppercase tracking-wider mb-1'>
-            <span>Workspace</span>
-            <span>/</span>
-            <span className='text-white'>Account &amp; Organization Settings</span>
+    <div className='flex-1 flex flex-col bg-kr0n-canvas text-kr0n-text'>
+      {/* Header + Top Underline Tab Bar (eliminates nested double sidebar) */}
+      <div className='border-b border-kr0n-line bg-kr0n-canvas'>
+        <div className='max-w-[1152px] px-6 sm:px-8 pt-7 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
+          <div className='space-y-1'>
+            <h1 className='text-2xl font-semibold tracking-tight text-white'>
+              Settings
+            </h1>
+            <p className='text-[13px] text-kr0n-muted'>
+              Account profile, organizations, GitHub integrations, API tokens, and audit history.
+            </p>
           </div>
-          <h1 className='text-2xl font-bold tracking-tight text-white'>
-            Global Settings
-          </h1>
-        </div>
 
-        <div className='flex items-center gap-3'>
-          {organizations.length > 0 && (
-            <select
-              value={activeOrg?.id || ''}
-              onChange={(e) => setActiveOrgId(e.target.value)}
-              aria-label='Active Organization'
-              className='bg-kr0n-surface border border-kr0n-line hover:border-kr0n-line-strong text-xs font-mono text-white px-3 py-1.5 outline-none uppercase tracking-wider'
+          <div className='flex items-center gap-2.5'>
+            {organizations.length > 0 && (
+              <select
+                value={activeOrg?.id || ''}
+                onChange={(e) => setActiveOrgId(e.target.value)}
+                aria-label='Active organization'
+                className='h-9 rounded-[6px] bg-kr0n-black border border-kr0n-line hover:border-kr0n-line-strong text-xs font-medium text-white px-3 outline-none transition-colors duration-150'
+              >
+                {organizations.map((org) => (
+                  <option key={org.id} value={org.id} className='bg-kr0n-black text-white'>
+                    {org.name} ({org.role_id || 'member'})
+                  </option>
+                ))}
+              </select>
+            )}
+            <button
+              type='button'
+              onClick={handleSignOut}
+              className='h-9 px-3 rounded-[6px] inline-flex items-center gap-1.5 border border-kr0n-line hover:border-red-500/40 bg-kr0n-black text-kr0n-muted hover:text-kr0n-error text-xs font-medium transition-colors duration-150 cursor-pointer'
             >
-              {organizations.map((org) => (
-                <option key={org.id} value={org.id} className='bg-kr0n-black text-white'>
-                  {org.name} ({org.role_id || 'member'})
-                </option>
-              ))}
-            </select>
-          )}
-          <button
-            type='button'
-            onClick={handleSignOut}
-            className='flex items-center gap-2 border border-kr0n-line hover:border-red-500/40 bg-kr0n-surface hover:bg-red-950/20 text-kr0n-muted hover:text-red-300 px-3 py-1.5 text-xs font-mono uppercase tracking-wider transition-colors'
-          >
-            <LogOut size={13} />
-            <span>Sign Out</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ─── FEEDBACK BANNERS ─── */}
-      {actionError && (
-        <div className='border border-red-500/40 bg-red-950/20 p-3 flex items-center justify-between text-xs font-mono text-red-300'>
-          <div className='flex items-center gap-2'>
-            <AlertTriangle size={14} className='text-red-400 shrink-0' />
-            <span>{actionError}</span>
+              <LogOut size={13} />
+              <span>Sign out</span>
+            </button>
           </div>
-          <button
-            type='button'
-            onClick={() => setActionError('')}
-            className='text-[10px] underline uppercase ml-4'
-          >
-            Dismiss
-          </button>
         </div>
-      )}
 
-      {actionSuccess && (
-        <div className='border border-emerald-500/40 bg-emerald-950/20 p-3 flex items-center justify-between text-xs font-mono text-emerald-300'>
-          <div className='flex items-center gap-2'>
-            <Check size={14} className='text-emerald-400 shrink-0' />
-            <span>{actionSuccess}</span>
-          </div>
-          <button
-            type='button'
-            onClick={() => setActionSuccess('')}
-            className='text-[10px] underline uppercase ml-4'
-          >
-            Dismiss
-          </button>
-        </div>
-      )}
-
-      {/* ─── SETTINGS LAYOUT ─── */}
-      <div className='grid grid-cols-1 lg:grid-cols-12 gap-6'>
-        {/* Left Navigation */}
-        <div className='lg:col-span-3 space-y-1'>
+        {/* Underline Tabs */}
+        <div className='max-w-[1152px] px-6 sm:px-8 flex items-center gap-6 overflow-x-auto no-scrollbar' role='tablist' aria-label='Settings sections'>
           {TABS.map((tab) => {
-            const Icon = tab.icon;
             const active = activeTab === tab.id;
             return (
               <button
                 key={tab.id}
                 type='button'
+                role='tab'
+                aria-selected={active}
                 onClick={() => {
                   clearFeedback();
                   setActiveTab(tab.id);
                 }}
-                className={`w-full flex items-center gap-3 px-4 py-3 text-xs font-mono uppercase tracking-wider transition-all border-l-2 ${
+                className={`h-11 text-[13px] border-b transition-colors duration-150 shrink-0 cursor-pointer ${
                   active
-                    ? 'bg-kr0n-surface text-white border-white font-bold'
-                    : 'text-kr0n-muted hover:text-white hover:bg-white/[0.02] border-transparent'
+                    ? 'border-kr0n-accent text-white font-medium'
+                    : 'border-transparent text-kr0n-muted hover:text-white'
                 }`}
               >
-                <Icon size={14} />
-                <span>{tab.label}</span>
+                {tab.label}
               </button>
             );
           })}
         </div>
+      </div>
 
-        {/* Right Content Area */}
-        <div className='lg:col-span-9'>
-          {/* ─── TAB 1: PROFILE (Read-Only from GET /api/v1/me) ─── */}
-          {activeTab === 'profile' && (
-            <div className='border border-kr0n-line bg-kr0n-surface p-6 space-y-6'>
-              <div className='flex items-center justify-between border-b border-kr0n-line pb-4'>
-                <div>
-                  <h2 className='text-sm font-mono uppercase tracking-wider text-white font-bold'>
-                    Personal Profile
-                  </h2>
-                  <p className='text-xs text-kr0n-muted mt-1'>
-                    Account identity from the KR0N authentication control plane.
+      {/* Content Area */}
+      <div className='max-w-[1152px] w-full px-6 sm:px-8 py-8 space-y-6'>
+        {actionError && (
+          <div
+            role='alert'
+            className='rounded-[6px] border border-red-500/35 bg-red-500/10 px-4 py-3 flex items-center justify-between gap-3 text-xs text-red-300'
+          >
+            <div className='flex items-center gap-2'>
+              <AlertTriangle size={14} className='text-kr0n-error shrink-0' />
+              <span>{actionError}</span>
+            </div>
+            <button type='button' onClick={() => setActionError('')} className='underline shrink-0 cursor-pointer'>
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {actionSuccess && (
+          <div
+            role='status'
+            className='rounded-[6px] border border-kr0n-healthy/40 bg-kr0n-healthy/10 px-4 py-3 flex items-center justify-between gap-3 text-xs text-kr0n-healthy'
+          >
+            <div className='flex items-center gap-2'>
+              <Check size={14} className='shrink-0' />
+              <span>{actionSuccess}</span>
+            </div>
+            <button type='button' onClick={() => setActionSuccess('')} className='underline shrink-0 cursor-pointer'>
+              Dismiss
+            </button>
+          </div>
+        )}
+
+        {/* TAB 1: PROFILE (Two-column settings layout) */}
+        {activeTab === 'profile' && (
+          <div className='divide-y divide-kr0n-line'>
+            <section className='pb-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start'>
+              <div className='lg:col-span-4 space-y-1.5 pt-1'>
+                <h2 className='text-base font-medium text-white'>Personal profile</h2>
+                <p className='text-[13px] text-kr0n-muted leading-relaxed'>
+                  Account identity synced from authentication. Profile editing is coming soon.
+                </p>
+              </div>
+
+              <div className='lg:col-span-8 rounded-[6px] border border-kr0n-line bg-kr0n-black p-6 space-y-6'>
+                <div className='flex items-center gap-4'>
+                  <div className='w-11 h-11 rounded-full bg-kr0n-surface-2 border border-kr0n-line text-white flex items-center justify-center font-mono text-sm font-medium uppercase shrink-0'>
+                    {displayName.slice(0, 2)}
+                  </div>
+                  <div className='min-w-0'>
+                    <div className='text-sm font-semibold text-white flex items-center gap-2.5 flex-wrap'>
+                      <span>{displayName}</span>
+                      <span
+                        className={`text-xs font-mono ${
+                          emailVerified ? 'text-kr0n-healthy' : 'text-kr0n-warning'
+                        }`}
+                      >
+                        {emailVerified ? 'Verified' : 'Unverified'}
+                      </span>
+                    </div>
+                    <div className='text-xs font-mono text-kr0n-muted mt-0.5 truncate'>
+                      {userProfile?.email || '—'}
+                    </div>
+                  </div>
+                </div>
+
+                {!emailVerified && userProfile?.email && (
+                  <div className='rounded-[6px] border border-amber-500/30 bg-amber-500/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
+                    <div className='space-y-0.5'>
+                      <div className='text-xs font-medium text-kr0n-warning flex items-center gap-1.5'>
+                        <Mail size={13} />
+                        <span>Email verification pending</span>
+                      </div>
+                      <p className='text-xs text-kr0n-text-secondary'>
+                        Verify your email address for account recovery and notifications.
+                      </p>
+                    </div>
+                    <button
+                      type='button'
+                      onClick={handleResendVerification}
+                      disabled={resendLoading}
+                      className='shrink-0 h-8 px-3.5 rounded-[6px] bg-kr0n-warning text-kr0n-black text-xs font-medium disabled:opacity-50 cursor-pointer'
+                    >
+                      {resendLoading ? 'Sending...' : 'Resend email'}
+                    </button>
+                  </div>
+                )}
+
+                <dl className='divide-y divide-kr0n-line-soft border-t border-kr0n-line-soft text-xs'>
+                  <div className='py-3 flex items-center justify-between gap-4'>
+                    <dt className='text-kr0n-muted'>Display name</dt>
+                    <dd className='text-white'>{userProfile?.display_name || userProfile?.displayName || '—'}</dd>
+                  </div>
+                  <div className='py-3 flex items-center justify-between gap-4'>
+                    <dt className='text-kr0n-muted'>Email</dt>
+                    <dd className='font-mono text-white truncate'>{userProfile?.email || '—'}</dd>
+                  </div>
+                  <div className='py-3 flex items-center justify-between gap-4'>
+                    <dt className='text-kr0n-muted'>User ID</dt>
+                    <dd className='font-mono text-kr0n-text-secondary select-all truncate'>
+                      {userProfile?.id || userProfile?.user_id || '—'}
+                    </dd>
+                  </div>
+                  <div className='py-3 flex items-center justify-between gap-4'>
+                    <dt className='text-kr0n-muted'>Status &amp; created</dt>
+                    <dd className='font-mono tabular-nums text-kr0n-text-secondary'>
+                      <span className='text-kr0n-healthy'>{userProfile?.status || 'active'}</span>
+                      {' · '}
+                      {formatTimestamp(userProfile?.created_at)}
+                    </dd>
+                  </div>
+                </dl>
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* TAB 2: ORGANIZATION & MEMBERS */}
+        {activeTab === 'organization' && (
+          <div className='divide-y divide-kr0n-line'>
+            {/* Row 1: Org Workspace */}
+            <section className='pb-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start'>
+              <div className='lg:col-span-4 space-y-3 pt-1'>
+                <div className='space-y-1.5'>
+                  <h2 className='text-base font-medium text-white'>Organization</h2>
+                  <p className='text-[13px] text-kr0n-muted leading-relaxed'>
+                    Rename the active workspace or create a separate organization for another team.
                   </p>
                 </div>
-                <span className='border border-kr0n-line bg-kr0n-black px-2.5 py-1 text-[10px] font-mono uppercase tracking-wider text-kr0n-muted'>
-                  Profile Editing &mdash; Coming Soon
-                </span>
+                <button
+                  type='button'
+                  onClick={() => setNewOrgOpen(true)}
+                  className='inline-flex items-center gap-1.5 h-8 px-3.5 rounded-[6px] border border-kr0n-line hover:border-kr0n-line-strong bg-kr0n-black text-xs font-medium text-white transition-colors duration-150 cursor-pointer'
+                >
+                  <Plus size={13} />
+                  <span>New organization</span>
+                </button>
               </div>
 
-              <div className='flex items-center gap-4 pb-2'>
-                <div className='w-14 h-14 rounded-full bg-white text-black flex items-center justify-center font-mono text-lg font-black uppercase'>
-                  {displayName.slice(0, 2)}
-                </div>
-                <div>
-                  <div className='text-sm font-bold text-white flex items-center gap-2'>
-                    <span>{displayName}</span>
-                    <span
-                      className={`text-[10px] font-mono px-2 py-0.5 border uppercase ${
-                        emailVerified
-                          ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400'
-                          : 'border-amber-500/30 bg-amber-500/10 text-amber-300'
-                      }`}
-                    >
-                      {emailVerified ? 'Verified' : 'Unverified Email'}
-                    </span>
-                  </div>
-                  <div className='text-xs font-mono text-kr0n-muted mt-0.5'>
-                    {userProfile?.email || '—'}
-                  </div>
-                </div>
-              </div>
-
-              {!emailVerified && userProfile?.email && (
-                <div className='border border-amber-500/30 bg-amber-950/20 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
-                  <div className='space-y-1'>
-                    <div className='text-xs font-mono font-bold text-amber-300 uppercase flex items-center gap-1.5'>
-                      <Mail size={13} />
-                      <span>Email Verification Pending</span>
-                    </div>
-                    <p className='text-xs text-kr0n-muted'>
-                      Verify your email address to ensure uninterrupted account recovery and notifications.
-                    </p>
-                  </div>
-                  <button
-                    type='button'
-                    onClick={handleResendVerification}
-                    disabled={resendLoading}
-                    className='clipped-btn shrink-0 bg-amber-400 hover:bg-amber-300 text-black px-3.5 py-2 text-xs font-mono uppercase font-bold tracking-wider transition-colors disabled:opacity-50'
-                  >
-                    {resendLoading ? 'Sending...' : 'Resend Verification Email'}
-                  </button>
-                </div>
-              )}
-
-              <div className='grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl'>
-                <div className='p-3.5 bg-kr0n-black border border-kr0n-line'>
-                  <div className='text-[10px] font-mono uppercase text-kr0n-muted'>
-                    Display Name
-                  </div>
-                  <div className='text-sm font-mono text-white mt-1'>
-                    {userProfile?.display_name || userProfile?.displayName || '—'}
-                  </div>
-                </div>
-
-                <div className='p-3.5 bg-kr0n-black border border-kr0n-line'>
-                  <div className='text-[10px] font-mono uppercase text-kr0n-muted'>
-                    Email Address
-                  </div>
-                  <div className='text-sm font-mono text-white mt-1'>
-                    {userProfile?.email || '—'}
-                  </div>
-                </div>
-
-                <div className='p-3.5 bg-kr0n-black border border-kr0n-line'>
-                  <div className='text-[10px] font-mono uppercase text-kr0n-muted'>
-                    User ID
-                  </div>
-                  <div className='text-xs font-mono text-kr0n-text-secondary mt-1 break-all'>
-                    {userProfile?.id || userProfile?.user_id || '—'}
-                  </div>
-                </div>
-
-                <div className='p-3.5 bg-kr0n-black border border-kr0n-line'>
-                  <div className='text-[10px] font-mono uppercase text-kr0n-muted'>
-                    Account Status &amp; Created At
-                  </div>
-                  <div className='text-xs font-mono text-white mt-1'>
-                    <span className='uppercase text-emerald-400 font-bold'>
-                      {userProfile?.status || 'active'}
-                    </span>{' '}
-                    &bull; {formatTimestamp(userProfile?.created_at)}
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* ─── TAB 2: ORGANIZATION & MEMBERS ─── */}
-          {activeTab === 'organization' && (
-            <div className='space-y-6'>
-              {/* Org Details, Rename & Create */}
-              <div className='border border-kr0n-line bg-kr0n-surface p-6 space-y-5'>
-                <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-kr0n-line pb-4'>
-                  <div>
-                    <h2 className='text-sm font-mono uppercase tracking-wider text-white font-bold'>
-                      Organization Workspace
-                    </h2>
-                    <p className='text-xs text-kr0n-muted mt-1'>
-                      Manage your active organization, rename it, or provision a new workspace.
-                    </p>
-                  </div>
-
-                  <button
-                    type='button'
-                    onClick={() => setNewOrgOpen(true)}
-                    className='clipped-btn flex items-center gap-1.5 bg-white hover:bg-neutral-200 text-black px-3 py-1.5 text-xs font-mono uppercase tracking-wider font-bold'
-                  >
-                    <Plus size={13} />
-                    <span>New Organization</span>
-                  </button>
-                </div>
-
+              <div className='lg:col-span-8 rounded-[6px] border border-kr0n-line bg-kr0n-black p-6 space-y-5'>
                 {activeOrg ? (
-                  <div className='space-y-5'>
-                    <div className='grid grid-cols-1 sm:grid-cols-3 gap-4'>
-                      <div className='p-3.5 bg-kr0n-black border border-kr0n-line'>
-                        <div className='text-[10px] font-mono uppercase text-kr0n-muted'>
-                          Organization Slug
-                        </div>
-                        <div className='text-sm font-mono text-white font-bold mt-1'>
-                          {activeOrg.slug}
-                        </div>
+                  <>
+                    <dl className='grid grid-cols-1 sm:grid-cols-3 gap-4 pb-4 border-b border-kr0n-line-soft text-xs'>
+                      <div className='space-y-1'>
+                        <dt className='text-kr0n-muted'>Slug</dt>
+                        <dd className='font-mono text-white truncate'>{activeOrg.slug}</dd>
                       </div>
-                      <div className='p-3.5 bg-kr0n-black border border-kr0n-line'>
-                        <div className='text-[10px] font-mono uppercase text-kr0n-muted'>
-                          Your Role
-                        </div>
-                        <div className='text-sm font-mono text-emerald-400 font-bold uppercase mt-1'>
-                          {activeOrg.role_id || 'member'}
-                        </div>
+                      <div className='space-y-1'>
+                        <dt className='text-kr0n-muted'>Your role</dt>
+                        <dd className='font-mono text-kr0n-healthy'>{activeOrg.role_id || 'member'}</dd>
                       </div>
-                      <div className='p-3.5 bg-kr0n-black border border-kr0n-line'>
-                        <div className='text-[10px] font-mono uppercase text-kr0n-muted'>
-                          Organization ID
-                        </div>
-                        <div className='text-xs font-mono text-kr0n-text-secondary mt-1 truncate' title={activeOrg.id}>
+                      <div className='space-y-1'>
+                        <dt className='text-kr0n-muted'>Organization ID</dt>
+                        <dd className='font-mono text-kr0n-text-secondary truncate' title={activeOrg.id}>
                           {activeOrg.id}
-                        </div>
+                        </dd>
                       </div>
-                    </div>
+                    </dl>
 
-                    {/* Rename Organization Form (PATCH /api/v1/orgs/{org_id}) */}
-                    <form onSubmit={handleRenameOrg} className='flex flex-col sm:flex-row sm:items-end gap-3 pt-2 border-t border-kr0n-line/50'>
+                    <form onSubmit={handleRenameOrg} className='flex flex-col sm:flex-row sm:items-end gap-3'>
                       <div className='flex-1 space-y-1.5'>
-                        <label className='block text-xs font-mono uppercase text-kr0n-muted'>
-                          Organization Name
+                        <label htmlFor='org-rename-input' className='block text-[13px] font-medium text-white'>
+                          Organization name
                         </label>
                         <input
+                          id='org-rename-input'
                           type='text'
                           required
                           maxLength={100}
                           value={orgNameEdit}
                           onChange={(e) => setOrgNameEdit(e.target.value)}
                           disabled={orgUpdating}
-                          className='w-full bg-kr0n-black border border-kr0n-line focus:border-white text-xs font-mono text-white px-3 py-2 outline-none'
+                          className='w-full h-9 rounded-[6px] bg-kr0n-canvas border border-kr0n-line focus:border-kr0n-accent text-sm text-white px-3 outline-none transition-colors duration-150'
                         />
                       </div>
                       <button
@@ -943,29 +899,26 @@ export default function GlobalSettingsPage() {
                           !orgNameEdit.trim() ||
                           orgNameEdit.trim() === activeOrg.name
                         }
-                        className='clipped-btn bg-white hover:bg-neutral-200 text-black px-4 py-2 text-xs font-mono uppercase font-bold tracking-wider disabled:opacity-50'
+                        className='h-9 px-4 rounded-[6px] bg-kr0n-text hover:bg-white text-kr0n-black text-xs font-medium disabled:opacity-40 transition-colors duration-150 cursor-pointer shrink-0'
                       >
-                        {orgUpdating ? 'Saving...' : 'Rename Organization'}
+                        {orgUpdating ? 'Saving...' : 'Rename'}
                       </button>
                     </form>
 
-                    {/* Delete Organization Danger Zone (DELETE /api/v1/orgs/{org_id}) */}
-                    <div className='border border-red-500/30 bg-red-950/10 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
-                      <div>
-                        <div className='text-xs font-mono uppercase font-bold text-red-400'>
-                          Delete Organization
-                        </div>
-                        <p className='text-xs text-kr0n-muted mt-0.5'>
-                          Permanently delete <span className='text-white font-mono'>{activeOrg.name}</span>. Note: Your sole remaining organization cannot be deleted.
+                    <div className='pt-4 border-t border-kr0n-line-soft flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
+                      <div className='space-y-0.5'>
+                        <div className='text-xs font-medium text-kr0n-error'>Delete organization</div>
+                        <p className='text-xs text-kr0n-muted'>
+                          Permanently delete <span className='text-white'>{activeOrg.name}</span>. Your sole remaining organization cannot be deleted.
                         </p>
                       </div>
                       {!confirmDeleteOrg ? (
                         <button
                           type='button'
                           onClick={() => setConfirmDeleteOrg(true)}
-                          className='shrink-0 border border-red-500/40 hover:border-red-400 bg-red-950/30 text-red-300 px-3 py-1.5 text-xs font-mono uppercase tracking-wider transition-colors'
+                          className='shrink-0 h-8 px-3 rounded-[6px] border border-red-500/40 hover:border-red-400 text-kr0n-error text-xs font-medium transition-colors duration-150 cursor-pointer'
                         >
-                          Delete Organization
+                          Delete
                         </button>
                       ) : (
                         <div className='flex items-center gap-2 shrink-0'>
@@ -973,828 +926,799 @@ export default function GlobalSettingsPage() {
                             type='button'
                             onClick={handleDeleteOrg}
                             disabled={orgDeleting}
-                            className='bg-red-500 hover:bg-red-400 text-black px-3 py-1.5 text-xs font-mono uppercase font-bold tracking-wider disabled:opacity-50'
+                            className='h-8 px-3 rounded-[6px] bg-kr0n-error text-white text-xs font-medium disabled:opacity-50 cursor-pointer'
                           >
-                            {orgDeleting ? 'Deleting...' : 'Confirm Delete'}
+                            {orgDeleting ? 'Deleting...' : 'Confirm delete'}
                           </button>
                           <button
                             type='button'
                             onClick={() => setConfirmDeleteOrg(false)}
-                            className='border border-kr0n-line text-kr0n-muted hover:text-white px-3 py-1.5 text-xs font-mono uppercase'
+                            className='h-8 px-3 rounded-[6px] border border-kr0n-line text-kr0n-muted hover:text-white text-xs cursor-pointer'
                           >
                             Cancel
                           </button>
                         </div>
                       )}
                     </div>
-                  </div>
+                  </>
                 ) : (
-                  <div className='p-6 text-center border border-dashed border-kr0n-line text-xs font-mono text-kr0n-muted'>
+                  <div className='py-6 text-center text-sm text-kr0n-muted'>
                     No active organization loaded.
                   </div>
                 )}
               </div>
+            </section>
 
-              {/* Session-Created Pending Invites (Copy Link & Revoke via DELETE /api/v1/orgs/{org_id}/invites/{invite_id}) */}
-              {activeOrgInvites.length > 0 && (
-                <div className='border border-kr0n-line bg-kr0n-surface'>
-                  <div className='p-4 border-b border-kr0n-line flex items-center justify-between'>
-                    <div>
-                      <h3 className='text-xs font-mono uppercase tracking-wider text-white font-bold'>
-                        Recent Pending Invitations
-                      </h3>
-                      <p className='text-[11px] text-kr0n-muted mt-0.5'>
-                        Copy the direct invite acceptance link or revoke pending tokens created in this session.
-                      </p>
-                    </div>
-                  </div>
-                  <div className='divide-y divide-kr0n-line/60'>
-                    {activeOrgInvites.map((inv) => {
-                      const invKey = inv.id || inv.token;
-                      return (
-                        <div
-                          key={invKey}
-                          className='p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3'
-                        >
-                          <div className='space-y-1 min-w-0'>
-                            <div className='text-xs font-mono text-white font-bold flex items-center gap-2'>
-                              <span>{inv.email}</span>
-                              <span className='text-[10px] px-1.5 py-0.5 border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 uppercase'>
-                                {inv.role_id || 'member'}
-                              </span>
-                            </div>
-                            <div className='text-[11px] font-mono text-kr0n-muted'>
-                              Expires: {formatTimestamp(inv.expires_at)}
-                            </div>
+            {/* Pending Session Invites */}
+            {activeOrgInvites.length > 0 && (
+              <section className='py-8 space-y-4'>
+                <div>
+                  <h3 className='text-base font-medium text-white'>Pending invitations</h3>
+                  <p className='text-xs text-kr0n-muted mt-0.5'>
+                    Copy an acceptance link or revoke pending invitations created in this session.
+                  </p>
+                </div>
+
+                <div className='rounded-[6px] border border-kr0n-line bg-kr0n-black divide-y divide-kr0n-line-soft'>
+                  {activeOrgInvites.map((inv) => {
+                    const invKey = inv.id || inv.token;
+                    return (
+                      <div key={invKey} className='px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
+                        <div className='space-y-0.5 min-w-0'>
+                          <div className='text-xs font-mono text-white flex items-center gap-2.5'>
+                            <span>{inv.email}</span>
+                            <span className='text-kr0n-healthy'>{inv.role_id || 'member'}</span>
                           </div>
-
-                          <div className='flex items-center gap-2 shrink-0'>
-                            {inv.token && (
-                              <button
-                                type='button'
-                                onClick={() => handleCopyInviteLink(inv)}
-                                className='flex items-center gap-1.5 border border-kr0n-line hover:border-white bg-kr0n-black text-white px-2.5 py-1.5 text-[11px] font-mono uppercase'
-                              >
-                                {copiedInviteId === invKey ? (
-                                  <>
-                                    <Check size={12} className='text-emerald-400' />
-                                    <span>Copied Link</span>
-                                  </>
-                                ) : (
-                                  <>
-                                    <Link2 size={12} />
-                                    <span>Copy Invite Link</span>
-                                  </>
-                                )}
-                              </button>
-                            )}
-                            {inv.id && (
-                              <button
-                                type='button'
-                                onClick={() => handleRevokeInvite(inv)}
-                                className='flex items-center gap-1 border border-red-500/30 hover:border-red-400 text-red-400 px-2.5 py-1.5 text-[11px] font-mono uppercase'
-                              >
-                                <Trash2 size={12} />
-                                <span>Revoke</span>
-                              </button>
-                            )}
+                          <div className='text-xs font-mono tabular-nums text-kr0n-muted'>
+                            Expires {formatTimestamp(inv.expires_at)}
                           </div>
                         </div>
-                      );
-                    })}
-                  </div>
+
+                        <div className='flex items-center gap-2 shrink-0'>
+                          {inv.token && (
+                            <button
+                              type='button'
+                              onClick={() => handleCopyInviteLink(inv)}
+                              className='h-8 px-3 rounded-[6px] inline-flex items-center gap-1.5 border border-kr0n-line hover:border-kr0n-line-strong text-white text-xs cursor-pointer'
+                            >
+                              {copiedInviteId === invKey ? (
+                                <>
+                                  <Check size={12} className='text-kr0n-healthy' />
+                                  <span>Copied</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Link2 size={12} />
+                                  <span>Copy link</span>
+                                </>
+                              )}
+                            </button>
+                          )}
+                          {inv.id && (
+                            <button
+                              type='button'
+                              onClick={() => handleRevokeInvite(inv)}
+                              className='h-8 px-3 rounded-[6px] inline-flex items-center gap-1.5 border border-red-500/35 text-kr0n-error text-xs cursor-pointer'
+                            >
+                              <Trash2 size={12} />
+                              <span>Revoke</span>
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
                 </div>
-              )}
+              </section>
+            )}
 
-              {/* Members Roster Table */}
-              <div className='border border-kr0n-line bg-kr0n-surface'>
-                <div className='p-5 border-b border-kr0n-line flex items-center justify-between'>
-                  <div>
-                    <h3 className='text-xs font-mono uppercase tracking-wider text-white font-bold'>
-                      Team Members ({members.length})
-                    </h3>
-                    <p className='text-[11px] text-kr0n-muted mt-0.5'>
-                      Manage role-based access control (RBAC) across your organization.
-                    </p>
-                  </div>
-
-                  <button
-                    type='button'
-                    onClick={() => setInviteOpen(true)}
-                    disabled={!activeOrg}
-                    className='clipped-btn flex items-center gap-1.5 bg-white hover:bg-neutral-200 text-black px-3 py-1.5 text-xs font-mono uppercase tracking-wider font-bold disabled:opacity-50'
-                  >
-                    <Plus size={13} />
-                    <span>Add / Invite Member</span>
-                  </button>
+            {/* Row 2: Members Table */}
+            <section className='pt-8 space-y-4'>
+              <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
+                <div>
+                  <h3 className='text-base font-medium text-white'>
+                    Members <span className='font-mono text-xs text-kr0n-muted tabular-nums ml-1'>{members.length}</span>
+                  </h3>
+                  <p className='text-xs text-kr0n-muted mt-0.5'>
+                    Role-based access control across this organization.
+                  </p>
                 </div>
 
+                <button
+                  type='button'
+                  onClick={() => setInviteOpen(true)}
+                  disabled={!activeOrg}
+                  className='h-9 px-3.5 rounded-[6px] inline-flex items-center gap-1.5 bg-kr0n-text hover:bg-white text-kr0n-black text-xs font-medium disabled:opacity-40 transition-colors duration-150 self-start sm:self-auto cursor-pointer'
+                >
+                  <Plus size={14} />
+                  <span>Add or invite member</span>
+                </button>
+              </div>
+
+              <div className='rounded-[6px] border border-kr0n-line bg-kr0n-black overflow-x-auto'>
                 {membersLoading ? (
-                  <div className='p-8 text-center text-xs font-mono text-kr0n-muted'>
-                    Loading organization members...
-                  </div>
+                  <div className='p-8 text-center text-[13px] text-kr0n-muted'>Loading members...</div>
                 ) : members.length === 0 ? (
-                  <div className='p-8 text-center text-xs font-mono text-kr0n-muted'>
+                  <div className='p-8 text-center text-[13px] text-kr0n-muted'>
                     No members found in this organization.
                   </div>
                 ) : (
-                  <div className='divide-y divide-kr0n-line/60'>
-                    {members.map((member) => {
-                      const memberId = member.user_id || member.id;
-                      const memberRole = member.role_id || member.role || 'member';
-                      const memberName =
-                        member.display_name ||
-                        member.name ||
-                        member.email?.split('@')[0] ||
-                        'User';
-                      return (
-                        <div
-                          key={memberId}
-                          className='p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/[0.01]'
-                        >
-                          <div className='flex items-center gap-3'>
-                            <div className='w-8 h-8 rounded-full bg-kr0n-black border border-kr0n-line flex items-center justify-center font-mono text-xs text-white font-bold uppercase'>
-                              {memberName.slice(0, 2)}
-                            </div>
-                            <div>
-                              <div className='text-xs font-bold text-white flex items-center gap-2'>
-                                <span>{memberName}</span>
-                              </div>
-                              <div className='text-[11px] font-mono text-kr0n-muted'>
-                                {member.email}
-                              </div>
-                            </div>
-                          </div>
-
-                          <div className='flex items-center gap-3'>
-                            <select
-                              value={memberRole}
-                              onChange={(e) => handleUpdateRole(memberId, e.target.value)}
-                              className='bg-kr0n-black border border-kr0n-line text-xs font-mono text-white px-2.5 py-1 outline-none uppercase'
-                            >
-                              {availableRoleOptions.map((r) => (
-                                <option key={r.id} value={r.id}>
-                                  {r.name || r.id}
-                                </option>
-                              ))}
-                            </select>
-
-                            <button
-                              type='button'
-                              onClick={() => handleRemoveMember(memberId)}
-                              className='text-kr0n-muted hover:text-red-400 p-1.5 transition-colors'
-                              title='Remove member'
-                            >
-                              <Trash2 size={14} />
-                            </button>
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                  <table className='w-full text-left text-[13px]'>
+                    <thead>
+                      <tr className='border-b border-kr0n-line text-xs text-kr0n-muted'>
+                        <th className='px-5 py-2.5 font-normal'>Member</th>
+                        <th className='px-4 py-2.5 font-normal'>Email</th>
+                        <th className='px-4 py-2.5 font-normal'>Role</th>
+                        <th className='px-5 py-2.5 font-normal text-right'>Remove</th>
+                      </tr>
+                    </thead>
+                    <tbody className='divide-y divide-kr0n-line-soft'>
+                      {members.map((member) => {
+                        const memberId = member.user_id || member.id;
+                        const memberRole = member.role_id || member.role || 'member';
+                        const memberName =
+                          member.display_name ||
+                          member.name ||
+                          member.email?.split('@')[0] ||
+                          'User';
+                        return (
+                          <tr key={memberId} className='hover:bg-kr0n-surface-2/40 transition-colors duration-150'>
+                            <td className='px-5 py-3 font-medium text-white'>{memberName}</td>
+                            <td className='px-4 py-3 font-mono text-xs text-kr0n-muted'>{member.email}</td>
+                            <td className='px-4 py-3'>
+                              <select
+                                value={memberRole}
+                                onChange={(e) => handleUpdateRole(memberId, e.target.value)}
+                                aria-label={`Role for ${memberName}`}
+                                className='h-8 rounded-[6px] bg-kr0n-canvas border border-kr0n-line hover:border-kr0n-line-strong text-xs font-mono text-white px-2.5 outline-none'
+                              >
+                                {availableRoleOptions.map((r) => (
+                                  <option key={r.id} value={r.id} className='bg-kr0n-black text-white'>
+                                    {r.name || r.id}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td className='px-5 py-3 text-right'>
+                              <button
+                                type='button'
+                                onClick={() => handleRemoveMember(memberId)}
+                                className='text-kr0n-muted hover:text-kr0n-error p-1 transition-colors duration-150 cursor-pointer'
+                                aria-label={`Remove ${memberName}`}
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 )}
               </div>
-            </div>
-          )}
+            </section>
+          </div>
+        )}
 
-          {/* ─── TAB 3: INTEGRATIONS (GitHub App) ─── */}
-          {activeTab === 'integrations' && (
-            <div className='space-y-6'>
-              <div className='border border-kr0n-line bg-kr0n-surface p-6 space-y-6'>
-                <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-kr0n-line pb-4'>
-                  <div className='flex items-center gap-3'>
-                    <div className='w-10 h-10 bg-kr0n-black border border-kr0n-line flex items-center justify-center text-white'>
-                      <Puzzle size={18} />
-                    </div>
-                    <div>
-                      <h2 className='text-sm font-mono uppercase tracking-wider text-white font-bold'>
-                        GitHub App Installations
-                      </h2>
-                      <p className='text-xs text-kr0n-muted mt-0.5'>
-                        Connect GitHub accounts or organizations to import repositories into {activeOrg?.name || 'your workspace'}.
-                      </p>
-                    </div>
-                  </div>
+        {/* TAB 3: INTEGRATIONS */}
+        {activeTab === 'integrations' && (
+          <section className='space-y-5'>
+            <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
+              <div>
+                <h2 className='text-base font-medium text-white'>GitHub App installations</h2>
+                <p className='text-xs text-kr0n-muted mt-0.5'>
+                  Connect GitHub accounts or organizations to import repositories into {activeOrg?.name || 'your workspace'}.
+                </p>
+              </div>
 
+              <div className='flex items-center gap-2.5 self-start sm:self-auto'>
+                {activeOrg && (
                   <button
                     type='button'
-                    onClick={handleConnectGitHub}
-                    disabled={ghLoading || !activeOrg}
-                    className='clipped-btn flex items-center gap-1.5 bg-white hover:bg-neutral-200 text-black px-3.5 py-2 text-xs font-mono uppercase tracking-wider font-bold transition-colors disabled:opacity-50'
+                    onClick={() => fetchOrgSubResources(activeOrg.id)}
+                    className='h-9 px-3 rounded-[6px] inline-flex items-center gap-1.5 border border-kr0n-line bg-kr0n-black text-xs text-kr0n-muted hover:text-white transition-colors duration-150 cursor-pointer'
                   >
-                    <Plus size={13} />
-                    <span>{ghLoading ? 'Connecting...' : 'Install GitHub App'}</span>
+                    <RefreshCw size={12} className={ghLoading ? 'animate-spin' : ''} />
+                    <span>Refresh</span>
                   </button>
+                )}
+                <button
+                  type='button'
+                  onClick={handleConnectGitHub}
+                  disabled={ghLoading || !activeOrg}
+                  className='h-9 px-4 rounded-[6px] inline-flex items-center gap-1.5 bg-kr0n-text hover:bg-white text-kr0n-black text-xs font-medium disabled:opacity-40 transition-colors duration-150 cursor-pointer'
+                >
+                  <Plus size={14} />
+                  <span>{ghLoading ? 'Connecting...' : 'Install GitHub App'}</span>
+                </button>
+              </div>
+            </div>
+
+            <div className='rounded-[6px] border border-kr0n-line bg-kr0n-black overflow-hidden'>
+              {ghInstallations.length === 0 ? (
+                <div className='p-10 text-center space-y-2'>
+                  <p className='text-sm font-medium text-white'>No GitHub installations connected</p>
+                  <p className='text-xs text-kr0n-muted max-w-md mx-auto leading-relaxed'>
+                    Install the kr0n GitHub App on your account or organization to discover repositories, branches, and monorepo directories.
+                  </p>
                 </div>
-
-                <div className='space-y-3'>
-                  <div className='flex items-center justify-between text-xs font-mono text-kr0n-muted uppercase'>
-                    <span>Connected Installations ({ghInstallations.length})</span>
-                    {activeOrg && (
-                      <button
-                        type='button'
-                        onClick={() => fetchOrgSubResources(activeOrg.id)}
-                        className='flex items-center gap-1 text-kr0n-muted hover:text-white transition-colors'
-                      >
-                        <RefreshCw size={11} className={ghLoading ? 'animate-spin' : ''} />
-                        <span>Refresh</span>
-                      </button>
-                    )}
-                  </div>
-
-                  {ghInstallations.length === 0 ? (
-                    <div className='border border-dashed border-kr0n-line bg-kr0n-black/40 p-8 text-center space-y-3'>
-                      <p className='text-xs font-mono text-white uppercase font-bold'>
-                        No GitHub App Installations Linked
-                      </p>
-                      <p className='text-xs text-kr0n-muted max-w-md mx-auto'>
-                        Install the KR0N GitHub App on your personal or organization GitHub account to discover repositories, branches, and build presets.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className='divide-y divide-kr0n-line border border-kr0n-line bg-kr0n-black'>
-                      {ghInstallations.map((inst) => {
-                        const ghInstId = inst.installation_id || inst.installationId;
-                        return (
-                          <div
-                            key={inst.id || ghInstId}
-                            className='p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4'
-                          >
-                            <div className='space-y-1'>
-                              <div className='flex items-center gap-2'>
-                                <span className='text-xs font-mono font-bold text-white'>
-                                  {inst.account_login || `GitHub Account #${ghInstId}`}
-                                </span>
-                                <span className='text-[9px] font-mono uppercase px-1.5 py-0.5 bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold'>
-                                  {inst.status || 'Active'}
-                                </span>
-                                {inst.account_type && (
-                                  <span className='text-[9px] font-mono uppercase px-1.5 py-0.5 bg-white/5 text-kr0n-muted border border-kr0n-line'>
-                                    {inst.account_type}
-                                  </span>
-                                )}
-                              </div>
-                              <div className='text-[11px] font-mono text-kr0n-muted'>
-                                GitHub Installation ID: <span className='text-white'>{ghInstId}</span>
-                                {inst.repository_selection && (
-                                  <span> &bull; Scope: {inst.repository_selection}</span>
-                                )}
-                              </div>
+              ) : (
+                <table className='w-full text-left text-[13px]'>
+                  <thead>
+                    <tr className='border-b border-kr0n-line text-xs text-kr0n-muted'>
+                      <th className='px-5 py-2.5 font-normal'>Account</th>
+                      <th className='px-4 py-2.5 font-normal'>Installation ID</th>
+                      <th className='px-4 py-2.5 font-normal'>Status</th>
+                      <th className='px-5 py-2.5 font-normal text-right'>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className='divide-y divide-kr0n-line-soft'>
+                    {ghInstallations.map((inst) => {
+                      const ghInstId = inst.installation_id || inst.installationId;
+                      return (
+                        <tr key={inst.id || ghInstId} className='hover:bg-kr0n-surface-2/40'>
+                          <td className='px-5 py-3.5'>
+                            <div className='font-mono text-white font-medium'>
+                              {inst.account_login || `GitHub #${ghInstId}`}
                             </div>
-
-                            <div className='flex items-center gap-2'>
+                            {inst.account_type && (
+                              <div className='text-xs text-kr0n-muted'>{inst.account_type}</div>
+                            )}
+                          </td>
+                          <td className='px-4 py-3.5 font-mono text-xs tabular-nums text-kr0n-text-secondary'>
+                            #{ghInstId}
+                            {inst.repository_selection ? ` · ${inst.repository_selection}` : ''}
+                          </td>
+                          <td className='px-4 py-3.5 font-mono text-xs text-kr0n-healthy'>
+                            {inst.status || 'active'}
+                          </td>
+                          <td className='px-5 py-3.5 text-right'>
+                            <div className='inline-flex items-center gap-3 text-xs'>
                               <a
                                 href='https://github.com/settings/installations'
                                 target='_blank'
                                 rel='noreferrer'
-                                className='flex items-center gap-1 border border-kr0n-line hover:border-white text-kr0n-muted hover:text-white px-2.5 py-1.5 text-[10px] font-mono uppercase transition-colors'
+                                className='text-kr0n-text-secondary hover:text-white inline-flex items-center gap-1'
                               >
-                                <span>Configure on GitHub</span>
+                                <span>Configure</span>
                                 <ExternalLink size={11} />
                               </a>
                               <button
                                 type='button'
                                 onClick={() => handleDisconnectGitHub(ghInstId)}
-                                className='flex items-center gap-1 border border-red-500/30 hover:border-red-400 text-red-400 px-2.5 py-1.5 text-[10px] font-mono uppercase transition-colors'
+                                className='text-kr0n-error hover:underline cursor-pointer'
                               >
-                                <Trash2 size={11} />
-                                <span>Disconnect</span>
+                                Disconnect
                               </button>
                             </div>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              )}
             </div>
-          )}
+          </section>
+        )}
 
-          {/* ─── TAB 4: SECURITY & SESSIONS ─── */}
-          {activeTab === 'security' && (
-            <div className='space-y-6'>
-              {/* Change Password */}
+        {/* TAB 4: SECURITY & SESSIONS */}
+        {activeTab === 'security' && (
+          <div className='divide-y divide-kr0n-line'>
+            {/* Two-column password change */}
+            <section className='pb-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start'>
+              <div className='lg:col-span-4 space-y-1.5 pt-1'>
+                <h2 className='text-base font-medium text-white'>Password</h2>
+                <p className='text-[13px] text-kr0n-muted leading-relaxed'>
+                  Passwords must be between 8 characters and 72 UTF-8 bytes.
+                </p>
+              </div>
+
               <form
                 onSubmit={handleChangePassword}
-                className='border border-kr0n-line bg-kr0n-surface p-6 space-y-4'
+                className='lg:col-span-8 rounded-[6px] border border-kr0n-line bg-kr0n-black p-6 space-y-4'
               >
-                <div className='border-b border-kr0n-line pb-4'>
-                  <h3 className='text-xs font-mono uppercase tracking-wider text-white font-bold flex items-center gap-2'>
-                    <Lock size={14} />
-                    <span>Change Account Password</span>
-                  </h3>
-                  <p className='text-[11px] text-kr0n-muted mt-0.5'>
-                    Passwords must be between 8 characters and 72 UTF-8 bytes.
-                  </p>
-                </div>
-
                 {passwordChangeError && (
-                  <div className='border border-red-500/40 bg-red-500/10 p-2.5 text-xs font-mono text-red-400'>
+                  <div className='rounded-[6px] border border-red-500/35 bg-red-500/10 p-3 text-xs text-red-300'>
                     {passwordChangeError}
                   </div>
                 )}
-
                 {passwordChangeSuccess && (
-                  <div className='border border-emerald-500/40 bg-emerald-500/10 p-2.5 text-xs font-mono text-emerald-400'>
+                  <div className='rounded-[6px] border border-kr0n-healthy/40 bg-kr0n-healthy/10 p-3 text-xs text-kr0n-healthy'>
                     {passwordChangeSuccess}
                   </div>
                 )}
 
-                <div className='grid grid-cols-1 sm:grid-cols-3 gap-3'>
-                  <div className='space-y-1'>
-                    <label className='block text-[10px] font-mono uppercase text-kr0n-muted'>
-                      Current Password
+                <div className='space-y-1.5'>
+                  <label htmlFor='sec-curr-pass' className='block text-[13px] font-medium text-white'>
+                    Current password
+                  </label>
+                  <input
+                    id='sec-curr-pass'
+                    type='password'
+                    required
+                    value={currentPassword}
+                    onChange={(e) => setCurrentPassword(e.target.value)}
+                    placeholder='Current password'
+                    className='w-full h-9 rounded-[6px] bg-kr0n-canvas border border-kr0n-line focus:border-kr0n-accent text-sm text-white px-3 outline-none'
+                  />
+                </div>
+
+                <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+                  <div className='space-y-1.5'>
+                    <label htmlFor='sec-new-pass' className='block text-[13px] font-medium text-white'>
+                      New password
                     </label>
                     <input
-                      type='password'
-                      required
-                      value={currentPassword}
-                      onChange={(e) => setCurrentPassword(e.target.value)}
-                      placeholder='••••••••'
-                      className='w-full bg-kr0n-black border border-kr0n-line focus:border-white text-xs font-mono text-white px-3 py-2 outline-none'
-                    />
-                  </div>
-                  <div className='space-y-1'>
-                    <label className='block text-[10px] font-mono uppercase text-kr0n-muted'>
-                      New Password
-                    </label>
-                    <input
+                      id='sec-new-pass'
                       type='password'
                       required
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
-                      placeholder='8–72 bytes'
-                      className='w-full bg-kr0n-black border border-kr0n-line focus:border-white text-xs font-mono text-white px-3 py-2 outline-none'
+                      placeholder='8 to 72 bytes'
+                      className='w-full h-9 rounded-[6px] bg-kr0n-canvas border border-kr0n-line focus:border-kr0n-accent text-sm text-white px-3 outline-none'
                     />
                   </div>
-                  <div className='space-y-1'>
-                    <label className='block text-[10px] font-mono uppercase text-kr0n-muted'>
-                      Confirm New Password
+                  <div className='space-y-1.5'>
+                    <label htmlFor='sec-confirm-pass' className='block text-[13px] font-medium text-white'>
+                      Confirm new password
                     </label>
                     <input
+                      id='sec-confirm-pass'
                       type='password'
                       required
                       value={confirmNewPassword}
                       onChange={(e) => setConfirmNewPassword(e.target.value)}
                       placeholder='Re-enter password'
-                      className='w-full bg-kr0n-black border border-kr0n-line focus:border-white text-xs font-mono text-white px-3 py-2 outline-none'
+                      className='w-full h-9 rounded-[6px] bg-kr0n-canvas border border-kr0n-line focus:border-kr0n-accent text-sm text-white px-3 outline-none'
                     />
                   </div>
                 </div>
 
-                <div className='flex justify-end'>
+                <div className='flex justify-end pt-1'>
                   <button
                     type='submit'
                     disabled={passwordChangeLoading || !currentPassword || !newPassword}
-                    className='clipped-btn bg-white hover:bg-neutral-200 text-black px-4 py-2 text-xs font-mono uppercase font-bold tracking-wider transition-colors disabled:opacity-50'
+                    className='h-9 px-4 rounded-[6px] bg-kr0n-text hover:bg-white text-kr0n-black text-xs font-medium disabled:opacity-40 transition-colors duration-150 cursor-pointer'
                   >
-                    {passwordChangeLoading ? 'Updating...' : 'Update Password'}
+                    {passwordChangeLoading ? 'Updating...' : 'Update password'}
                   </button>
                 </div>
               </form>
+            </section>
 
-              {/* Active Sessions */}
-              <div className='border border-kr0n-line bg-kr0n-surface'>
-                <div className='p-5 border-b border-kr0n-line'>
-                  <h3 className='text-xs font-mono uppercase tracking-wider text-white font-bold flex items-center gap-2'>
-                    <Monitor size={14} />
-                    <span>Active Sessions ({sessions.length})</span>
-                  </h3>
-                  <p className='text-[11px] text-kr0n-muted mt-0.5'>
-                    Authenticated browser and device sessions for your account.
-                  </p>
-                </div>
+            {/* Sessions table */}
+            <section className='pt-8 space-y-4'>
+              <div>
+                <h3 className='text-base font-medium text-white'>
+                  Active sessions <span className='font-mono text-xs text-kr0n-muted tabular-nums ml-1'>{sessions.length}</span>
+                </h3>
+                <p className='text-xs text-kr0n-muted mt-0.5'>
+                  Authenticated browser and device sessions for your account.
+                </p>
+              </div>
 
+              <div className='rounded-[6px] border border-kr0n-line bg-kr0n-black overflow-x-auto'>
                 {sessionsLoading ? (
-                  <div className='p-8 text-center text-xs font-mono text-kr0n-muted'>
-                    Loading active sessions...
-                  </div>
+                  <div className='p-8 text-center text-[13px] text-kr0n-muted'>Loading sessions...</div>
                 ) : sessions.length === 0 ? (
-                  <div className='p-8 text-center text-xs font-mono text-kr0n-muted'>
-                    No active sessions found.
-                  </div>
+                  <div className='p-8 text-center text-[13px] text-kr0n-muted'>No active sessions found.</div>
                 ) : (
-                  <div className='divide-y divide-kr0n-line/60'>
-                    {sessions.map((sess) => (
-                      <div
-                        key={sess.id}
-                        className='p-4 flex items-center justify-between gap-4'
-                      >
-                        <div className='space-y-1 min-w-0'>
-                          <div className='flex items-center gap-2'>
-                            <span className='text-xs font-bold text-white truncate max-w-lg'>
-                              {sess.user_agent || 'Authenticated Session'}
-                            </span>
-                            {sess.current && (
-                              <span className='text-[9px] font-mono uppercase px-1.5 py-0.2 bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 font-bold'>
-                                Current
+                  <table className='w-full text-left text-[13px]'>
+                    <thead>
+                      <tr className='border-b border-kr0n-line text-xs text-kr0n-muted'>
+                        <th className='px-5 py-2.5 font-normal'>Device / User agent</th>
+                        <th className='px-4 py-2.5 font-normal'>IP address</th>
+                        <th className='px-4 py-2.5 font-normal text-right'>Last active</th>
+                        <th className='px-5 py-2.5 font-normal text-right'>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className='divide-y divide-kr0n-line-soft'>
+                      {sessions.map((sess) => (
+                        <tr key={sess.id} className='hover:bg-kr0n-surface-2/40'>
+                          <td className='px-5 py-3.5 max-w-md'>
+                            <div className='text-white truncate'>
+                              {sess.user_agent || 'Authenticated session'}
+                            </div>
+                          </td>
+                          <td className='px-4 py-3.5 font-mono text-xs text-kr0n-muted'>
+                            {sess.ip_address || '—'}
+                          </td>
+                          <td className='px-4 py-3.5 font-mono text-xs tabular-nums text-kr0n-muted text-right'>
+                            {formatTimestamp(sess.last_seen_at || sess.created_at)}
+                          </td>
+                          <td className='px-5 py-3.5 text-right text-xs'>
+                            {sess.current ? (
+                              <span className='font-mono text-kr0n-healthy'>Current</span>
+                            ) : (
+                              <button
+                                type='button'
+                                onClick={() => handleRevokeSession(sess.id)}
+                                className='text-kr0n-error hover:underline cursor-pointer'
+                              >
+                                Revoke
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+            </section>
+          </div>
+        )}
+
+        {/* TAB 5: API TOKENS */}
+        {activeTab === 'tokens' && (
+          <div className='space-y-6'>
+            {createdTokenSecret && (
+              <div className='rounded-[6px] border border-kr0n-healthy/40 bg-kr0n-healthy/10 p-5 space-y-3'>
+                <div className='flex items-center justify-between gap-3'>
+                  <div className='flex items-center gap-2 text-kr0n-healthy text-sm font-medium'>
+                    <Key size={15} />
+                    <span>Copy your new API token now</span>
+                  </div>
+                  <button
+                    type='button'
+                    onClick={() => setCreatedTokenSecret(null)}
+                    className='text-xs text-kr0n-muted hover:text-white cursor-pointer'
+                  >
+                    Dismiss
+                  </button>
+                </div>
+                <p className='text-xs text-kr0n-text-secondary'>
+                  This secret is displayed once and cannot be retrieved again after you dismiss this banner.
+                </p>
+                <div className='flex items-center justify-between rounded-[6px] bg-kr0n-black border border-kr0n-line p-3 font-mono text-xs text-kr0n-healthy gap-3'>
+                  <span className='truncate select-all'>{createdTokenSecret}</span>
+                  <button
+                    type='button'
+                    onClick={() => handleCopyToken(createdTokenSecret)}
+                    className='inline-flex items-center gap-1.5 h-7 px-3 rounded-[6px] bg-kr0n-healthy text-kr0n-black text-xs font-sans font-medium shrink-0 cursor-pointer'
+                  >
+                    {copiedToken ? <Check size={12} /> : <Copy size={12} />}
+                    <span>{copiedToken ? 'Copied' : 'Copy'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
+            <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-3'>
+              <div>
+                <h2 className='text-base font-medium text-white'>
+                  API tokens <span className='font-mono text-xs text-kr0n-muted tabular-nums ml-1'>{apiTokens.length}</span>
+                </h2>
+                <p className='text-xs text-kr0n-muted mt-0.5'>
+                  Scoped bearer tokens for CI/CD pipelines and API automation in {activeOrg?.name || 'this organization'}.
+                </p>
+              </div>
+
+              <button
+                type='button'
+                onClick={() => setNewTokenOpen(true)}
+                disabled={!activeOrg}
+                className='h-9 px-4 rounded-[6px] inline-flex items-center gap-1.5 bg-kr0n-text hover:bg-white text-kr0n-black text-xs font-medium disabled:opacity-40 transition-colors duration-150 self-start sm:self-auto cursor-pointer'
+              >
+                <Plus size={14} />
+                <span>Create token</span>
+              </button>
+            </div>
+
+            <div className='rounded-[6px] border border-kr0n-line bg-kr0n-black overflow-x-auto'>
+              {tokensLoading ? (
+                <div className='p-8 text-center text-[13px] text-kr0n-muted'>Loading API tokens...</div>
+              ) : apiTokens.length === 0 ? (
+                <div className='p-8 text-center text-[13px] text-kr0n-muted'>
+                  No API tokens created for this organization yet.
+                </div>
+              ) : (
+                <table className='w-full text-left text-[13px]'>
+                  <thead>
+                    <tr className='border-b border-kr0n-line text-xs text-kr0n-muted'>
+                      <th className='px-5 py-2.5 font-normal'>Token</th>
+                      <th className='px-4 py-2.5 font-normal'>Scopes</th>
+                      <th className='px-4 py-2.5 font-normal text-right'>Expires</th>
+                      <th className='px-4 py-2.5 font-normal text-right'>Last used</th>
+                      <th className='px-5 py-2.5 font-normal text-right'>Revoke</th>
+                    </tr>
+                  </thead>
+                  <tbody className='divide-y divide-kr0n-line-soft'>
+                    {apiTokens.map((tok) => (
+                      <tr key={tok.id} className='hover:bg-kr0n-surface-2/40'>
+                        <td className='px-5 py-3.5'>
+                          <div className='font-medium text-white'>{tok.name}</div>
+                          <div className='font-mono text-xs text-kr0n-muted'>{tok.token_prefix}...</div>
+                        </td>
+                        <td className='px-4 py-3.5'>
+                          <div className='flex flex-wrap gap-1.5 max-w-sm'>
+                            {(tok.permissions || []).slice(0, 4).map((perm) => (
+                              <span key={perm} className='font-mono text-[11px] text-kr0n-text-secondary bg-kr0n-canvas border border-kr0n-line px-1.5 py-0.5 rounded-[4px]'>
+                                {perm}
+                              </span>
+                            ))}
+                            {(tok.permissions || []).length > 4 && (
+                              <span className='font-mono text-[11px] text-kr0n-muted'>
+                                +{tok.permissions.length - 4}
                               </span>
                             )}
                           </div>
-                          <div className='text-[11px] font-mono text-kr0n-muted'>
-                            IP: {sess.ip_address || '—'} &bull; Last Active: {formatTimestamp(sess.last_seen_at || sess.created_at)}
-                          </div>
-                        </div>
-
-                        {!sess.current && (
+                        </td>
+                        <td className='px-4 py-3.5 font-mono text-xs tabular-nums text-kr0n-muted text-right'>
+                          {formatTimestamp(tok.expires_at)}
+                        </td>
+                        <td className='px-4 py-3.5 font-mono text-xs tabular-nums text-kr0n-muted text-right'>
+                          {tok.last_used_at ? formatTimestamp(tok.last_used_at) : 'Never'}
+                        </td>
+                        <td className='px-5 py-3.5 text-right'>
                           <button
                             type='button'
-                            onClick={() => handleRevokeSession(sess.id)}
-                            className='text-xs font-mono uppercase text-red-400 hover:text-red-300 border border-red-500/30 px-2.5 py-1 transition-colors shrink-0'
+                            onClick={() => handleRevokeToken(tok.id)}
+                            className='text-xs text-kr0n-error hover:underline cursor-pointer'
                           >
                             Revoke
                           </button>
-                        )}
-                      </div>
+                        </td>
+                      </tr>
                     ))}
-                  </div>
-                )}
-              </div>
-            </div>
-          )}
-
-          {/* ─── TAB 5: API TOKENS ─── */}
-          {activeTab === 'tokens' && (
-            <div className='space-y-6'>
-              {createdTokenSecret && (
-                <div className='border border-emerald-500/40 bg-emerald-950/20 p-5 space-y-3'>
-                  <div className='flex items-center justify-between'>
-                    <div className='flex items-center gap-2 text-emerald-300 font-mono text-xs uppercase font-bold'>
-                      <Key size={14} />
-                      <span>Personal Access Token Generated &mdash; Copy Now</span>
-                    </div>
-                    <button
-                      type='button'
-                      onClick={() => setCreatedTokenSecret(null)}
-                      className='text-[10px] font-mono text-kr0n-muted hover:text-white uppercase'
-                    >
-                      Dismiss
-                    </button>
-                  </div>
-                  <p className='text-xs text-emerald-200/80'>
-                    For security reasons, this token secret is shown only once and cannot be retrieved again.
-                  </p>
-                  <div className='flex items-center justify-between bg-kr0n-black border border-emerald-500/30 p-3 font-mono text-xs text-emerald-300'>
-                    <span className='truncate select-all'>{createdTokenSecret}</span>
-                    <button
-                      type='button'
-                      onClick={() => handleCopyToken(createdTokenSecret)}
-                      className='flex items-center gap-1.5 bg-emerald-500 text-black px-2.5 py-1 text-[10px] font-bold uppercase ml-3 shrink-0'
-                    >
-                      {copiedToken ? <Check size={12} /> : <Copy size={12} />}
-                      <span>{copiedToken ? 'Copied' : 'Copy'}</span>
-                    </button>
-                  </div>
-                </div>
+                  </tbody>
+                </table>
               )}
+            </div>
+          </div>
+        )}
 
-              <div className='border border-kr0n-line bg-kr0n-surface'>
-                <div className='p-5 border-b border-kr0n-line flex items-center justify-between'>
-                  <div>
-                    <h2 className='text-sm font-mono uppercase tracking-wider text-white font-bold'>
-                      Organization API Tokens ({apiTokens.length})
-                    </h2>
-                    <p className='text-xs text-kr0n-muted mt-1'>
-                      Scoped bearer tokens for CI/CD pipelines and programmatic API access to {activeOrg?.name || 'this organization'}.
-                    </p>
-                  </div>
+        {/* TAB 6: AUDIT LOG */}
+        {activeTab === 'audit' && (
+          <div className='space-y-5'>
+            <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
+              <div>
+                <h2 className='text-base font-medium text-white'>Audit log</h2>
+                <p className='text-xs text-kr0n-muted mt-0.5'>
+                  Security and administrative event history for {activeOrg?.name || 'this organization'}.
+                </p>
+              </div>
 
-                  <button
-                    type='button'
-                    onClick={() => setNewTokenOpen(true)}
-                    disabled={!activeOrg}
-                    className='clipped-btn flex items-center gap-1.5 bg-white hover:bg-neutral-200 text-black px-3 py-1.5 text-xs font-mono uppercase tracking-wider font-bold disabled:opacity-50'
-                  >
-                    <Plus size={13} />
-                    <span>Create Token</span>
-                  </button>
-                </div>
-
-                {tokensLoading ? (
-                  <div className='p-8 text-center text-xs font-mono text-kr0n-muted'>
-                    Loading API tokens...
-                  </div>
-                ) : apiTokens.length === 0 ? (
-                  <div className='p-8 text-center text-xs font-mono text-kr0n-muted'>
-                    No API tokens have been created for this organization yet.
-                  </div>
-                ) : (
-                  <div className='divide-y divide-kr0n-line/60'>
-                    {apiTokens.map((tok) => (
-                      <div
-                        key={tok.id}
-                        className='p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/[0.01]'
-                      >
-                        <div className='space-y-1.5'>
-                          <div className='flex items-center gap-2.5 flex-wrap'>
-                            <span className='text-sm font-bold text-white'>{tok.name}</span>
-                            <span className='text-[11px] font-mono text-kr0n-muted bg-kr0n-black px-2 py-0.5 border border-kr0n-line'>
-                              {tok.token_prefix}...
-                            </span>
-                          </div>
-                          {Array.isArray(tok.permissions) && tok.permissions.length > 0 && (
-                            <div className='flex flex-wrap gap-1 pt-0.5'>
-                              {tok.permissions.map((perm) => (
-                                <span
-                                  key={perm}
-                                  className='text-[10px] font-mono px-1.5 py-0.5 bg-white/[0.04] border border-kr0n-line text-kr0n-text-secondary'
-                                >
-                                  {perm}
-                                </span>
-                              ))}
-                            </div>
-                          )}
-                          <div className='flex items-center gap-3 text-[11px] font-mono text-kr0n-muted pt-0.5'>
-                            <span>Created: {formatTimestamp(tok.created_at)}</span>
-                            <span>&bull;</span>
-                            <span>Expires: {formatTimestamp(tok.expires_at)}</span>
-                            <span>&bull;</span>
-                            <span>Last used: {tok.last_used_at ? formatTimestamp(tok.last_used_at) : 'Never'}</span>
-                          </div>
-                        </div>
-
-                        <button
-                          type='button'
-                          onClick={() => handleRevokeToken(tok.id)}
-                          className='flex items-center gap-1.5 text-xs font-mono uppercase text-red-400 hover:text-red-300 border border-red-500/30 px-3 py-1.5 transition-colors self-start sm:self-center shrink-0'
-                        >
-                          <Trash2 size={13} />
-                          <span>Revoke</span>
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              <div className='flex flex-wrap items-center gap-2'>
+                <input
+                  type='text'
+                  value={auditSearch}
+                  onChange={(e) => setAuditSearch(e.target.value)}
+                  placeholder='Filter events...'
+                  aria-label='Filter loaded audit events'
+                  className='h-9 rounded-[6px] bg-kr0n-black border border-kr0n-line focus:border-kr0n-accent text-xs text-white px-3 outline-none'
+                />
+                <select
+                  value={auditActionFilter}
+                  onChange={(e) => {
+                    setAuditOffset(0);
+                    setAuditActionFilter(e.target.value);
+                  }}
+                  aria-label='Filter by audit action'
+                  className='h-9 rounded-[6px] bg-kr0n-black border border-kr0n-line text-xs font-mono text-white px-2.5 outline-none'
+                >
+                  {AUDIT_ACTIONS.map((opt) => (
+                    <option key={opt.value} value={opt.value} className='bg-kr0n-black text-white'>
+                      {opt.label}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
-          )}
 
-          {/* ─── TAB 6: AUDIT LOG ─── */}
-          {activeTab === 'audit' && (
-            <div className='border border-kr0n-line bg-kr0n-surface'>
-              <div className='p-5 border-b border-kr0n-line flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
-                <div>
-                  <h2 className='text-sm font-mono uppercase tracking-wider text-white font-bold'>
-                    Organization Audit Trail
-                  </h2>
-                  <p className='text-xs text-kr0n-muted mt-1'>
-                    Immutable security and administrative event ledger for {activeOrg?.name || 'this organization'}.
-                  </p>
-                </div>
-
-                <div className='flex flex-wrap items-center gap-2'>
-                  <input
-                    type='text'
-                    value={auditSearch}
-                    onChange={(e) => setAuditSearch(e.target.value)}
-                    placeholder='Filter loaded events...'
-                    className='bg-kr0n-black border border-kr0n-line focus:border-white text-xs font-mono text-white px-3 py-1.5 outline-none'
-                  />
-
-                  <select
-                    value={auditActionFilter}
-                    onChange={(e) => {
-                      setAuditOffset(0);
-                      setAuditActionFilter(e.target.value);
-                    }}
-                    aria-label='Filter by audit action'
-                    className='bg-kr0n-black border border-kr0n-line text-xs font-mono text-white px-2.5 py-1.5 outline-none'
-                  >
-                    {AUDIT_ACTIONS.map((opt) => (
-                      <option key={opt.value} value={opt.value}>
-                        {opt.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
+            <div className='rounded-[6px] border border-kr0n-line bg-kr0n-black overflow-x-auto'>
               {auditLoading ? (
-                <div className='p-8 text-center text-xs font-mono text-kr0n-muted'>
-                  Loading audit trail...
-                </div>
+                <div className='p-8 text-center text-[13px] text-kr0n-muted'>Loading audit log...</div>
               ) : filteredAuditEvents.length === 0 ? (
-                <div className='p-8 text-center text-xs font-mono text-kr0n-muted'>
-                  No audit events recorded matching your filter.
+                <div className='p-8 text-center text-[13px] text-kr0n-muted'>
+                  No audit events match your filter.
                 </div>
               ) : (
-                <div className='divide-y divide-kr0n-line/60'>
-                  {filteredAuditEvents.map((entry) => (
-                    <div
-                      key={entry.id}
-                      className='p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 hover:bg-white/[0.01]'
-                    >
-                      <div className='space-y-1'>
-                        <div className='flex items-center gap-2.5 flex-wrap'>
-                          <span className='text-xs font-mono font-bold text-white bg-kr0n-black px-2 py-0.5 border border-kr0n-line'>
-                            {entry.action}
+                <table className='w-full text-left text-[13px]'>
+                  <thead>
+                    <tr className='border-b border-kr0n-line text-xs text-kr0n-muted'>
+                      <th className='px-5 py-2.5 font-normal'>Action</th>
+                      <th className='px-4 py-2.5 font-normal'>Resource</th>
+                      <th className='px-4 py-2.5 font-normal'>Actor &amp; IP</th>
+                      <th className='px-5 py-2.5 font-normal text-right'>Timestamp</th>
+                    </tr>
+                  </thead>
+                  <tbody className='divide-y divide-kr0n-line-soft'>
+                    {filteredAuditEvents.map((entry) => (
+                      <tr key={entry.id} className='hover:bg-kr0n-surface-2/40'>
+                        <td className='px-5 py-3 font-mono text-xs text-white whitespace-nowrap'>
+                          {entry.action}
+                        </td>
+                        <td className='px-4 py-3 font-mono text-xs text-kr0n-healthy truncate max-w-[240px]'>
+                          {entry.resource_type
+                            ? `${entry.resource_type}${entry.resource_id ? `:${entry.resource_id}` : ''}`
+                            : '—'}
+                        </td>
+                        <td className='px-4 py-3 font-mono text-xs text-kr0n-muted truncate max-w-[240px]'>
+                          <span className='text-kr0n-text-secondary'>
+                            {entry.actor_user_id || entry.actor_type || 'system'}
                           </span>
-                          {entry.resource_type && (
-                            <span className='text-xs font-mono text-emerald-400'>
-                              {entry.resource_type}
-                              {entry.resource_id ? `:${entry.resource_id}` : ''}
-                            </span>
-                          )}
-                        </div>
-                        <div className='text-[11px] font-mono text-kr0n-muted'>
-                          Actor: <span className='text-white'>{entry.actor_user_id || entry.actor_type || 'system'}</span>
-                          {entry.ip_address ? ` • IP: ${entry.ip_address}` : ''}
-                        </div>
-                      </div>
-
-                      <div className='flex items-center gap-1.5 text-[11px] font-mono text-kr0n-muted shrink-0'>
-                        <Clock size={11} />
-                        <span>{formatTimestamp(entry.created_at)}</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                          {entry.ip_address ? ` · ${entry.ip_address}` : ''}
+                        </td>
+                        <td className='px-5 py-3 font-mono text-xs tabular-nums text-kr0n-muted text-right whitespace-nowrap'>
+                          <span className='inline-flex items-center gap-1.5'>
+                            <Clock size={11} />
+                            {formatTimestamp(entry.created_at)}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
               )}
 
-              {/* Pagination Footer */}
-              <div className='p-4 border-t border-kr0n-line flex items-center justify-between text-xs font-mono text-kr0n-muted'>
-                <span>
-                  Showing offset {auditOffset} ({filteredAuditEvents.length} events)
+              <div className='px-5 py-3 border-t border-kr0n-line-soft bg-kr0n-canvas flex items-center justify-between text-xs text-kr0n-muted'>
+                <span className='font-mono tabular-nums'>
+                  Offset {auditOffset} · {filteredAuditEvents.length} events
                 </span>
                 <div className='flex items-center gap-2'>
                   <button
                     type='button'
                     disabled={auditOffset === 0 || auditLoading}
                     onClick={() => setAuditOffset((prev) => Math.max(0, prev - AUDIT_PAGE_SIZE))}
-                    className='flex items-center gap-1 border border-kr0n-line hover:border-white text-white px-2.5 py-1 disabled:opacity-40'
+                    className='h-7 px-2.5 rounded-[6px] inline-flex items-center gap-1 border border-kr0n-line hover:border-kr0n-line-strong text-white disabled:opacity-35 cursor-pointer'
                   >
-                    <ChevronLeft size={12} />
+                    <ChevronLeft size={13} />
                     <span>Prev</span>
                   </button>
                   <button
                     type='button'
                     disabled={auditEvents.length < AUDIT_PAGE_SIZE || auditLoading}
                     onClick={() => setAuditOffset((prev) => prev + AUDIT_PAGE_SIZE)}
-                    className='flex items-center gap-1 border border-kr0n-line hover:border-white text-white px-2.5 py-1 disabled:opacity-40'
+                    className='h-7 px-2.5 rounded-[6px] inline-flex items-center gap-1 border border-kr0n-line hover:border-kr0n-line-strong text-white disabled:opacity-35 cursor-pointer'
                   >
                     <span>Next</span>
-                    <ChevronRight size={12} />
+                    <ChevronRight size={13} />
                   </button>
                 </div>
               </div>
             </div>
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
-      {/* ─── ADD / INVITE MEMBER MODAL ─── */}
+      {/* ADD / INVITE MEMBER MODAL */}
       {inviteOpen && (
-        <div
-          role='dialog'
-          aria-modal='true'
-          aria-label='Add or Invite Team Member'
-          className='fixed inset-0 z-50 flex items-center justify-center p-4'
-        >
-          <div
-            className='fixed inset-0 bg-black/80 backdrop-blur-sm'
-            onClick={() => setInviteOpen(false)}
-          />
+        <div role='dialog' aria-modal='true' aria-label='Add or invite member' className='fixed inset-0 z-50 flex items-center justify-center p-4'>
+          <div className='fixed inset-0 bg-black/75' onClick={() => setInviteOpen(false)} />
           <form
             onSubmit={handleAddOrInviteMember}
-            className='relative w-full max-w-md border border-kr0n-line-strong bg-kr0n-canvas-raised p-6 z-10 space-y-4'
+            className='relative w-full max-w-md rounded-[6px] border border-kr0n-line bg-kr0n-black p-6 z-10 space-y-4 shadow-[0_12px_28px_rgba(0,0,0,0.5)]'
           >
-            <h3 className='text-sm font-mono uppercase tracking-wider text-white font-bold'>
-              Add or Invite Team Member
-            </h3>
+            <h3 className='text-base font-semibold text-white'>Add or invite member</h3>
 
-            <div className='grid grid-cols-2 gap-2 p-1 bg-kr0n-black border border-kr0n-line'>
+            <div className='flex items-center gap-5 border-b border-kr0n-line text-xs'>
               <button
                 type='button'
                 onClick={() => setInviteMode('invite')}
-                className={`py-1.5 text-[11px] font-mono uppercase tracking-wider transition-colors ${
+                className={`pb-2 border-b transition-colors duration-150 cursor-pointer ${
                   inviteMode === 'invite'
-                    ? 'bg-white text-black font-bold'
-                    : 'text-kr0n-muted hover:text-white'
+                    ? 'border-kr0n-accent text-white font-medium'
+                    : 'border-transparent text-kr0n-muted hover:text-white'
                 }`}
               >
-                Send Email Invite
+                Send email invite
               </button>
               <button
                 type='button'
                 onClick={() => setInviteMode('direct')}
-                className={`py-1.5 text-[11px] font-mono uppercase tracking-wider transition-colors ${
+                className={`pb-2 border-b transition-colors duration-150 cursor-pointer ${
                   inviteMode === 'direct'
-                    ? 'bg-white text-black font-bold'
-                    : 'text-kr0n-muted hover:text-white'
+                    ? 'border-kr0n-accent text-white font-medium'
+                    : 'border-transparent text-kr0n-muted hover:text-white'
                 }`}
               >
-                Add Existing User
+                Add existing user
               </button>
             </div>
 
-            <p className='text-[11px] font-mono text-kr0n-muted'>
+            <p className='text-xs text-kr0n-muted leading-relaxed'>
               {inviteMode === 'invite'
-                ? 'Dispatches an invitation email with an acceptance token link (/invites/accept?token=...).'
-                : 'Directly adds an already-registered KR0N user to this organization by email.'}
+                ? 'Sends an invitation email with an acceptance link (/invites/accept?token=...).'
+                : 'Adds an already-registered kr0n account directly to this organization.'}
             </p>
 
             <div className='space-y-1.5'>
-              <label className='text-xs font-mono uppercase text-kr0n-muted'>
-                Email Address
+              <label htmlFor='invite-email-input' className='block text-xs font-medium text-kr0n-text-secondary'>
+                Email address
               </label>
               <input
+                id='invite-email-input'
                 type='email'
                 required
                 value={inviteEmail}
                 onChange={(e) => setInviteEmail(e.target.value)}
-                placeholder='engineer@company.com'
-                className='w-full bg-kr0n-black border border-kr0n-line focus:border-white text-xs font-mono text-white px-3 py-2 outline-none'
+                placeholder='engineer@northstar.dev'
+                className='w-full h-9 rounded-[6px] bg-kr0n-canvas border border-kr0n-line focus:border-kr0n-accent text-sm text-white px-3 outline-none'
               />
             </div>
 
             <div className='space-y-1.5'>
-              <label className='text-xs font-mono uppercase text-kr0n-muted'>
-                Role Assignment
+              <label htmlFor='invite-role-select' className='block text-xs font-medium text-kr0n-text-secondary'>
+                Role
               </label>
               <select
+                id='invite-role-select'
                 value={inviteRole}
                 onChange={(e) => setInviteRole(e.target.value)}
-                className='w-full bg-kr0n-black border border-kr0n-line text-xs font-mono text-white px-3 py-2 outline-none uppercase'
+                className='w-full h-9 rounded-[6px] bg-kr0n-canvas border border-kr0n-line text-sm text-white px-3 outline-none'
               >
                 {availableRoleOptions.map((r) => (
-                  <option key={r.id} value={r.id}>
+                  <option key={r.id} value={r.id} className='bg-kr0n-black text-white'>
                     {r.name || r.id}
                   </option>
                 ))}
               </select>
             </div>
 
-            <div className='flex justify-end gap-2 pt-3 border-t border-kr0n-line'>
+            <div className='flex justify-end gap-2 pt-3 border-t border-kr0n-line-soft'>
               <button
                 type='button'
                 onClick={() => setInviteOpen(false)}
-                className='border border-kr0n-line text-kr0n-muted hover:text-white px-3 py-1.5 text-xs font-mono uppercase'
+                className='h-9 px-3.5 rounded-[6px] border border-kr0n-line text-kr0n-text-secondary hover:text-white text-xs font-medium cursor-pointer'
               >
                 Cancel
               </button>
               <button
                 type='submit'
                 disabled={inviteLoading}
-                className='clipped-btn bg-white text-black px-4 py-1.5 text-xs font-mono uppercase font-bold disabled:opacity-50'
+                className='h-9 px-4 rounded-[6px] bg-kr0n-text hover:bg-white text-kr0n-black text-xs font-medium disabled:opacity-40 cursor-pointer'
               >
                 {inviteLoading
                   ? 'Submitting...'
                   : inviteMode === 'invite'
-                    ? 'Send Invitation'
-                    : 'Add Member'}
+                  ? 'Send invitation'
+                  : 'Add member'}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* ─── CREATE API TOKEN MODAL ─── */}
+      {/* CREATE API TOKEN MODAL */}
       {newTokenOpen && (
-        <div
-          role='dialog'
-          aria-modal='true'
-          aria-label='Generate Scoped API Token'
-          className='fixed inset-0 z-50 flex items-center justify-center p-4'
-        >
-          <div
-            className='fixed inset-0 bg-black/80 backdrop-blur-sm'
-            onClick={() => setNewTokenOpen(false)}
-          />
+        <div role='dialog' aria-modal='true' aria-label='Create API token' className='fixed inset-0 z-50 flex items-center justify-center p-4'>
+          <div className='fixed inset-0 bg-black/75' onClick={() => setNewTokenOpen(false)} />
           <form
             onSubmit={handleCreateToken}
-            className='relative w-full max-w-lg border border-kr0n-line-strong bg-kr0n-canvas-raised p-6 z-10 space-y-4 max-h-[90vh] overflow-y-auto'
+            className='relative w-full max-w-lg rounded-[6px] border border-kr0n-line bg-kr0n-black p-6 z-10 space-y-4 max-h-[90vh] overflow-y-auto shadow-[0_12px_28px_rgba(0,0,0,0.5)]'
           >
-            <h3 className='text-sm font-mono uppercase tracking-wider text-white font-bold'>
-              Generate Scoped API Token
-            </h3>
+            <h3 className='text-base font-semibold text-white'>Create API token</h3>
 
-            <div className='grid grid-cols-1 sm:grid-cols-2 gap-3'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-3.5'>
               <div className='space-y-1.5'>
-                <label className='text-xs font-mono uppercase text-kr0n-muted'>
-                  Token Name
+                <label htmlFor='token-name-input' className='block text-xs font-medium text-kr0n-text-secondary'>
+                  Token name
                 </label>
                 <input
+                  id='token-name-input'
                   type='text'
                   required
                   value={tokenName}
                   onChange={(e) => setTokenName(e.target.value)}
-                  placeholder='e.g., github-actions-deploy'
-                  className='w-full bg-kr0n-black border border-kr0n-line focus:border-white text-xs font-mono text-white px-3 py-2 outline-none'
+                  placeholder='github-actions-ci'
+                  className='w-full h-9 rounded-[6px] bg-kr0n-canvas border border-kr0n-line focus:border-kr0n-accent text-sm text-white px-3 outline-none'
                 />
               </div>
 
               <div className='space-y-1.5'>
-                <label className='text-xs font-mono uppercase text-kr0n-muted'>
+                <label htmlFor='token-expiry-select' className='block text-xs font-medium text-kr0n-text-secondary'>
                   Expiration
                 </label>
                 <select
+                  id='token-expiry-select'
                   value={tokenExpirySeconds}
                   onChange={(e) => setTokenExpirySeconds(Number(e.target.value))}
-                  className='w-full bg-kr0n-black border border-kr0n-line text-xs font-mono text-white px-3 py-2 outline-none'
+                  className='w-full h-9 rounded-[6px] bg-kr0n-canvas border border-kr0n-line text-sm text-white px-3 outline-none'
                 >
                   {TOKEN_EXPIRY_OPTIONS.map((opt) => (
-                    <option key={opt.seconds} value={opt.seconds}>
+                    <option key={opt.seconds} value={opt.seconds} className='bg-kr0n-black text-white'>
                       {opt.label}
                     </option>
                   ))}
@@ -1803,48 +1727,44 @@ export default function GlobalSettingsPage() {
             </div>
 
             <div className='space-y-2'>
-              <div className='flex items-center justify-between'>
-                <label className='text-xs font-mono uppercase text-kr0n-muted'>
+              <div className='flex items-center justify-between text-xs'>
+                <span className='font-medium text-kr0n-text-secondary'>
                   Permissions ({tokenPermissions.length} selected)
-                </label>
-                <div className='flex items-center gap-2'>
+                </span>
+                <div className='flex items-center gap-3 text-kr0n-muted'>
                   <button
                     type='button'
-                    onClick={() =>
-                      setTokenPermissions(
-                        callerPermissions.filter((p) => p.endsWith(':read'))
-                      )
-                    }
-                    className='text-[10px] font-mono text-kr0n-muted hover:text-white underline uppercase'
+                    onClick={() => setTokenPermissions(callerPermissions.filter((p) => p.endsWith(':read')))}
+                    className='hover:text-white cursor-pointer'
                   >
-                    Read-Only
+                    Read-only
                   </button>
                   <button
                     type='button'
                     onClick={() => setTokenPermissions([...callerPermissions])}
-                    className='text-[10px] font-mono text-kr0n-muted hover:text-white underline uppercase'
+                    className='hover:text-white cursor-pointer'
                   >
-                    Select All
+                    Select all
                   </button>
                   <button
                     type='button'
                     onClick={() => setTokenPermissions([])}
-                    className='text-[10px] font-mono text-kr0n-muted hover:text-white underline uppercase'
+                    className='hover:text-white cursor-pointer'
                   >
                     Clear
                   </button>
                 </div>
               </div>
 
-              <div className='grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-52 overflow-y-auto p-2.5 bg-kr0n-black border border-kr0n-line'>
+              <div className='grid grid-cols-2 sm:grid-cols-3 gap-1.5 max-h-52 overflow-y-auto p-2.5 rounded-[6px] bg-kr0n-canvas border border-kr0n-line'>
                 {callerPermissions.map((perm) => {
                   const checked = tokenPermissions.includes(perm);
                   return (
                     <label
                       key={perm}
-                      className={`flex items-center gap-2 px-2 py-1.5 text-[11px] font-mono cursor-pointer border transition-colors ${
+                      className={`flex items-center gap-2 px-2 py-1.5 rounded-[4px] text-xs font-mono cursor-pointer border transition-colors duration-150 ${
                         checked
-                          ? 'border-white/40 bg-white/[0.06] text-white'
+                          ? 'border-kr0n-accent bg-kr0n-black text-white'
                           : 'border-transparent text-kr0n-muted hover:text-white'
                       }`}
                     >
@@ -1852,7 +1772,7 @@ export default function GlobalSettingsPage() {
                         type='checkbox'
                         checked={checked}
                         onChange={() => toggleTokenPermission(perm)}
-                        className='accent-white'
+                        className='accent-kr0n-accent'
                       />
                       <span className='truncate'>{perm}</span>
                     </label>
@@ -1861,51 +1781,42 @@ export default function GlobalSettingsPage() {
               </div>
             </div>
 
-            <div className='flex justify-end gap-2 pt-3 border-t border-kr0n-line'>
+            <div className='flex justify-end gap-2 pt-3 border-t border-kr0n-line-soft'>
               <button
                 type='button'
                 onClick={() => setNewTokenOpen(false)}
-                className='border border-kr0n-line text-kr0n-muted hover:text-white px-3 py-1.5 text-xs font-mono uppercase'
+                className='h-9 px-3.5 rounded-[6px] border border-kr0n-line text-kr0n-text-secondary hover:text-white text-xs font-medium cursor-pointer'
               >
                 Cancel
               </button>
               <button
                 type='submit'
                 disabled={tokenCreating || !tokenName.trim() || tokenPermissions.length === 0}
-                className='clipped-btn bg-white text-black px-4 py-1.5 text-xs font-mono uppercase font-bold disabled:opacity-50'
+                className='h-9 px-4 rounded-[6px] bg-kr0n-text hover:bg-white text-kr0n-black text-xs font-medium disabled:opacity-40 cursor-pointer'
               >
-                {tokenCreating ? 'Generating...' : 'Generate Token'}
+                {tokenCreating ? 'Creating...' : 'Create token'}
               </button>
             </div>
           </form>
         </div>
       )}
 
-      {/* ─── CREATE ORGANIZATION MODAL ─── */}
+      {/* CREATE ORGANIZATION MODAL */}
       {newOrgOpen && (
-        <div
-          role='dialog'
-          aria-modal='true'
-          aria-label='Create New Organization'
-          className='fixed inset-0 z-50 flex items-center justify-center p-4'
-        >
-          <div
-            className='fixed inset-0 bg-black/80 backdrop-blur-sm'
-            onClick={() => setNewOrgOpen(false)}
-          />
+        <div role='dialog' aria-modal='true' aria-label='Create organization' className='fixed inset-0 z-50 flex items-center justify-center p-4'>
+          <div className='fixed inset-0 bg-black/75' onClick={() => setNewOrgOpen(false)} />
           <form
             onSubmit={handleCreateOrg}
-            className='relative w-full max-w-md border border-kr0n-line-strong bg-kr0n-canvas-raised p-6 z-10 space-y-4'
+            className='relative w-full max-w-md rounded-[6px] border border-kr0n-line bg-kr0n-black p-6 z-10 space-y-4 shadow-[0_12px_28px_rgba(0,0,0,0.5)]'
           >
-            <h3 className='text-sm font-mono uppercase tracking-wider text-white font-bold'>
-              Create New Organization
-            </h3>
+            <h3 className='text-base font-semibold text-white'>Create organization</h3>
 
             <div className='space-y-1.5'>
-              <label className='text-xs font-mono uppercase text-kr0n-muted'>
-                Organization Name
+              <label htmlFor='new-org-name' className='block text-xs font-medium text-kr0n-text-secondary'>
+                Organization name
               </label>
               <input
+                id='new-org-name'
                 type='text'
                 required
                 maxLength={100}
@@ -1914,41 +1825,42 @@ export default function GlobalSettingsPage() {
                   setNewOrgName(e.target.value);
                   setNewOrgSlug(slugifyOrgName(e.target.value));
                 }}
-                placeholder='e.g., Acme Cloud'
-                className='w-full bg-kr0n-black border border-kr0n-line focus:border-white text-xs font-mono text-white px-3 py-2 outline-none'
+                placeholder='Harbor Studio'
+                className='w-full h-9 rounded-[6px] bg-kr0n-canvas border border-kr0n-line focus:border-kr0n-accent text-sm text-white px-3 outline-none'
               />
             </div>
 
             <div className='space-y-1.5'>
-              <label className='text-xs font-mono uppercase text-kr0n-muted'>
-                Organization Slug (2–63 chars)
+              <label htmlFor='new-org-slug' className='block text-xs font-medium text-kr0n-text-secondary'>
+                Organization slug (2–63 characters)
               </label>
               <input
+                id='new-org-slug'
                 type='text'
                 required
                 minLength={2}
                 maxLength={63}
                 value={newOrgSlug}
                 onChange={(e) => setNewOrgSlug(e.target.value.toLowerCase())}
-                placeholder='acme-cloud'
-                className='w-full bg-kr0n-black border border-kr0n-line focus:border-white text-xs font-mono text-white px-3 py-2 outline-none'
+                placeholder='harbor-studio'
+                className='w-full h-9 rounded-[6px] bg-kr0n-canvas border border-kr0n-line focus:border-kr0n-accent text-sm font-mono text-white px-3 outline-none'
               />
             </div>
 
-            <div className='flex justify-end gap-2 pt-3 border-t border-kr0n-line'>
+            <div className='flex justify-end gap-2 pt-3 border-t border-kr0n-line-soft'>
               <button
                 type='button'
                 onClick={() => setNewOrgOpen(false)}
-                className='border border-kr0n-line text-kr0n-muted hover:text-white px-3 py-1.5 text-xs font-mono uppercase'
+                className='h-9 px-3.5 rounded-[6px] border border-kr0n-line text-kr0n-text-secondary hover:text-white text-xs font-medium cursor-pointer'
               >
                 Cancel
               </button>
               <button
                 type='submit'
                 disabled={newOrgLoading || !newOrgName.trim()}
-                className='clipped-btn bg-white text-black px-4 py-1.5 text-xs font-mono uppercase font-bold disabled:opacity-50'
+                className='h-9 px-4 rounded-[6px] bg-kr0n-text hover:bg-white text-kr0n-black text-xs font-medium disabled:opacity-40 cursor-pointer'
               >
-                {newOrgLoading ? 'Creating...' : 'Create Organization'}
+                {newOrgLoading ? 'Creating...' : 'Create organization'}
               </button>
             </div>
           </form>

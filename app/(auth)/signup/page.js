@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { useState, useEffect } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Eye, EyeOff, AlertCircle, CheckCircle } from "lucide-react";
+import { useState, useEffect } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { Eye, EyeOff } from 'lucide-react';
 import {
   register,
   login,
@@ -12,24 +12,23 @@ import {
   validateDisplayNamePolicy,
   validatePasswordPolicy,
   getMe,
-} from "@/lib/auth";
-import { useKr0nStore } from "@/lib/kr0n-state";
-import OAuthButtons from "@/components/auth/OAuthButtons";
+} from '@/lib/auth';
+import OAuthButtons from '@/components/auth/OAuthButtons';
+import AuthCard, { AuthBanner } from '@/components/auth/AuthCard';
 
 export default function SignupPage() {
   const router = useRouter();
-  const { syncAuthUser } = useKr0nStore();
 
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
+  const [name, setName] = useState('');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [socialLoading, setSocialLoading] = useState(null);
-  const [error, setError] = useState("");
-  const [successMsg, setSuccessMsg] = useState("");
+  const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
 
   useEffect(() => {
     const destination = resolveAuthRedirect();
@@ -44,11 +43,11 @@ export default function SignupPage() {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    setSuccessMsg("");
+    setError('');
+    setSuccessMsg('');
 
     if (!name || !email || !password || !confirmPassword) {
-      setError("All fields are required.");
+      setError('All fields are required.');
       return;
     }
 
@@ -59,7 +58,7 @@ export default function SignupPage() {
     }
 
     if (password !== confirmPassword) {
-      setError("Passwords do not match.");
+      setError('Passwords do not match.');
       return;
     }
 
@@ -74,38 +73,35 @@ export default function SignupPage() {
       await register(email, password, name);
 
       try {
-        const authData = await login(email, password);
-        if (authData?.user) {
-          syncAuthUser(authData.user);
-        }
-        setSuccessMsg("Account created and signed in! Redirecting...");
+        await login(email, password);
+        setSuccessMsg('Account created. Redirecting...');
         router.push(resolveAuthRedirect());
       } catch (loginErr) {
         if (
           loginErr.message &&
-          loginErr.message.toLowerCase().includes("verif")
+          loginErr.message.toLowerCase().includes('verif')
         ) {
           setSuccessMsg(
-            "Account created! Please verify your email before signing in."
+            'Account created. Verify your email address before signing in.'
           );
-          setTimeout(() => router.push("/login"), 3000);
+          setTimeout(() => router.push('/login'), 3000);
         } else {
           setSuccessMsg(
-            "Account registered! Please sign in with your credentials."
+            'Account registered. Sign in with your credentials.'
           );
-          setTimeout(() => router.push("/login"), 1500);
+          setTimeout(() => router.push('/login'), 1500);
         }
       }
     } catch (err) {
-      setError(err.message || "Failed to create account. Please try again.");
+      setError(err.message || 'Failed to create account. Please try again.');
     } finally {
       setIsLoading(false);
     }
   };
 
   const handleOAuth = async (provider) => {
-    setError("");
-    setSuccessMsg("");
+    setError('');
+    setSuccessMsg('');
     setSocialLoading(provider);
 
     try {
@@ -117,147 +113,148 @@ export default function SignupPage() {
   };
 
   return (
-    <div className="min-h-screen bg-[#090B0E] text-[#F3F4F6] flex items-center justify-center p-4">
-      <div className="w-full max-w-sm border border-[#242930] bg-[#0D1014] p-6 sm:p-8">
-        <div className="mb-6 text-center">
-          <Link
-            href="/"
-            className="text-xl font-bold tracking-wider text-white inline-block">
-            KR0N
-          </Link>
-          <h1 className="text-xs font-mono text-[#858C95] mt-1">
-            Create your account
-          </h1>
-        </div>
-
-        {error && (
-          <div className="border border-red-500/40 bg-red-500/10 p-2.5 text-xs font-mono text-red-400 mb-4 flex items-start gap-2">
-            <AlertCircle size={15} className="shrink-0 mt-0.5 text-red-400" />
-            <span className="leading-tight">{error}</span>
-          </div>
-        )}
-
-        {successMsg && (
-          <div className="border border-emerald-500/40 bg-emerald-500/10 p-2.5 text-xs font-mono text-emerald-400 mb-4 flex items-start gap-2">
-            <CheckCircle size={15} className="shrink-0 mt-0.5 text-emerald-400" />
-            <span className="leading-tight">{successMsg}</span>
-          </div>
-        )}
-
-        <OAuthButtons
-          onSelectProvider={handleOAuth}
-          socialLoading={socialLoading}
-          disabled={isLoading}
-        />
-
-        <div className="relative flex items-center justify-center my-5">
-          <div className="absolute inset-0 flex items-center">
-            <div className="w-full border-t border-[#242930]" />
-          </div>
-          <span className="relative bg-[#0D1014] px-2 text-[10px] font-mono text-[#858C95] uppercase">
-            or
-          </span>
-        </div>
-
-        <form onSubmit={handleSubmit} className="space-y-3.5">
-          <div>
-            <label className="block text-xs font-mono text-[#C4C8CE] mb-1">
-              Name
-            </label>
-            <input
-              type="text"
-              required
-              maxLength={100}
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
-              disabled={isLoading}
-              className="w-full bg-[#090B0E] border border-[#242930] hover:border-[#363D47] focus:border-white text-sm text-white px-3 py-2 outline-none transition-colors placeholder:text-[#4E5560]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-mono text-[#C4C8CE] mb-1">
-              Email
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="name@example.com"
-              disabled={isLoading}
-              className="w-full bg-[#090B0E] border border-[#242930] hover:border-[#363D47] focus:border-white text-sm text-white px-3 py-2 outline-none transition-colors placeholder:text-[#4E5560]"
-            />
-          </div>
-
-          <div>
-            <label className="block text-xs font-mono text-[#C4C8CE] mb-1">
-              Password
-            </label>
-            <div className="relative">
-              <input
-                type={showPassword ? "text" : "password"}
-                required
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="8–72 characters"
-                disabled={isLoading}
-                className="w-full bg-[#090B0E] border border-[#242930] hover:border-[#363D47] focus:border-white text-sm font-mono text-white px-3 py-2 pr-9 outline-none transition-colors placeholder:text-[#4E5560]"
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#858C95] hover:text-white p-0.5"
-                aria-label={showPassword ? "Hide password" : "Show password"}>
-                {showPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-              </button>
-            </div>
-          </div>
-
-          <div>
-            <label className="block text-xs font-mono text-[#C4C8CE] mb-1">
-              Confirm Password
-            </label>
-            <div className="relative">
-              <input
-                type={showConfirmPassword ? "text" : "password"}
-                required
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                placeholder="••••••••"
-                disabled={isLoading}
-                className="w-full bg-[#090B0E] border border-[#242930] hover:border-[#363D47] focus:border-white text-sm font-mono text-white px-3 py-2 pr-9 outline-none transition-colors placeholder:text-[#4E5560]"
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-[#858C95] hover:text-white p-0.5"
-                aria-label={
-                  showConfirmPassword
-                    ? "Hide confirm password"
-                    : "Show confirm password"
-                }>
-                {showConfirmPassword ? <EyeOff size={14} /> : <Eye size={14} />}
-              </button>
-            </div>
-          </div>
-
-          <button
-            type="submit"
-            disabled={isLoading || !!socialLoading}
-            className="clipped-btn w-full bg-white hover:bg-neutral-200 text-black py-2.5 text-xs font-mono uppercase font-bold tracking-wider transition-colors disabled:opacity-50 mt-2">
-            {isLoading ? "Creating Account..." : "Create Account"}
-          </button>
-        </form>
-
-        <div className="text-center text-xs font-mono text-[#858C95] mt-6 pt-4 border-t border-[#1A1E24]">
-          <span>Already have an account? </span>
-          <Link href="/login" className="text-white hover:underline">
+    <AuthCard
+      title='Create your account'
+      subtitle='Set up your kr0n workspace and connect repositories.'
+      footer={
+        <>
+          Already have an account?{' '}
+          <Link href='/login' className='text-kr0n-text font-medium hover:underline'>
             Sign in
           </Link>
-        </div>
+        </>
+      }
+    >
+      <AuthBanner type='error' message={error} />
+      <AuthBanner type='success' message={successMsg} />
+
+      <OAuthButtons
+        onSelectProvider={handleOAuth}
+        socialLoading={socialLoading}
+        disabled={isLoading}
+      />
+
+      <div className='relative flex items-center justify-center'>
+        <div className='w-full border-t border-kr0n-line' />
+        <span className='absolute bg-kr0n-surface px-2.5 text-xs text-kr0n-muted'>
+          or
+        </span>
       </div>
-    </div>
+
+      <form onSubmit={handleSubmit} className='space-y-4'>
+        <div className='space-y-1.5'>
+          <label
+            htmlFor='signup-name'
+            className='block text-xs font-medium text-kr0n-text-secondary'
+          >
+            Display name
+          </label>
+          <input
+            id='signup-name'
+            type='text'
+            required
+            maxLength={100}
+            autoComplete='name'
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder='Your name'
+            disabled={isLoading}
+            className='w-full h-10 rounded-lg bg-kr0n-black border border-kr0n-line hover:border-kr0n-line-strong focus:border-kr0n-accent text-sm text-kr0n-text px-3 outline-none transition-colors duration-150'
+          />
+        </div>
+
+        <div className='space-y-1.5'>
+          <label
+            htmlFor='signup-email'
+            className='block text-xs font-medium text-kr0n-text-secondary'
+          >
+            Email
+          </label>
+          <input
+            id='signup-email'
+            type='email'
+            required
+            autoComplete='email'
+            value={email}
+            onChange={(e) => setEmail(e.target.value)}
+            placeholder='name@company.com'
+            disabled={isLoading}
+            className='w-full h-10 rounded-lg bg-kr0n-black border border-kr0n-line hover:border-kr0n-line-strong focus:border-kr0n-accent text-sm text-kr0n-text px-3 outline-none transition-colors duration-150'
+          />
+        </div>
+
+        <div className='space-y-1.5'>
+          <label
+            htmlFor='signup-password'
+            className='block text-xs font-medium text-kr0n-text-secondary'
+          >
+            Password
+          </label>
+          <div className='relative'>
+            <input
+              id='signup-password'
+              type={showPassword ? 'text' : 'password'}
+              required
+              autoComplete='new-password'
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              placeholder='8 to 72 characters'
+              disabled={isLoading}
+              className='w-full h-10 rounded-lg bg-kr0n-black border border-kr0n-line hover:border-kr0n-line-strong focus:border-kr0n-accent text-sm text-kr0n-text px-3 pr-10 outline-none transition-colors duration-150'
+            />
+            <button
+              type='button'
+              onClick={() => setShowPassword(!showPassword)}
+              className='absolute right-2.5 top-1/2 -translate-y-1/2 text-kr0n-muted hover:text-kr0n-text p-1 rounded cursor-pointer'
+              aria-label={showPassword ? 'Hide password' : 'Show password'}
+            >
+              {showPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+            </button>
+          </div>
+        </div>
+
+        <div className='space-y-1.5'>
+          <label
+            htmlFor='signup-confirm-password'
+            className='block text-xs font-medium text-kr0n-text-secondary'
+          >
+            Confirm password
+          </label>
+          <div className='relative'>
+            <input
+              id='signup-confirm-password'
+              type={showConfirmPassword ? 'text' : 'password'}
+              required
+              autoComplete='new-password'
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder='Re-enter password'
+              disabled={isLoading}
+              className='w-full h-10 rounded-lg bg-kr0n-black border border-kr0n-line hover:border-kr0n-line-strong focus:border-kr0n-accent text-sm text-kr0n-text px-3 pr-10 outline-none transition-colors duration-150'
+            />
+            <button
+              type='button'
+              onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+              className='absolute right-2.5 top-1/2 -translate-y-1/2 text-kr0n-muted hover:text-kr0n-text p-1 rounded cursor-pointer'
+              aria-label={
+                showConfirmPassword
+                  ? 'Hide confirm password'
+                  : 'Show confirm password'
+              }
+            >
+              {showConfirmPassword ? <EyeOff size={15} /> : <Eye size={15} />}
+            </button>
+          </div>
+        </div>
+
+        <button
+          type='submit'
+          disabled={isLoading || !!socialLoading}
+          className='w-full h-10 rounded-lg bg-kr0n-text hover:bg-white text-kr0n-black text-sm font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-colors duration-150 disabled:opacity-50 cursor-pointer'
+        >
+          {isLoading ? 'Creating account...' : 'Create account'}
+        </button>
+      </form>
+    </AuthCard>
   );
 }

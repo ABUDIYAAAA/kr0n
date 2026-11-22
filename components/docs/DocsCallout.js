@@ -1,40 +1,40 @@
-"use client";
+'use client';
 
-import { Info, AlertTriangle, ShieldCheck, Terminal } from "lucide-react";
+import { Info, AlertTriangle, ShieldCheck, Terminal } from 'lucide-react';
 
 export default function DocsCallout({
-  type = "info",
+  type = 'info',
   title = null,
   children,
 }) {
   const configs = {
     info: {
-      border: "border-white/15",
-      bg: "bg-white/[0.02]",
-      badge: "border-white/20 text-white",
+      border: 'border-kr0n-line',
+      bg: 'bg-kr0n-surface',
+      accent: 'text-kr0n-text',
       icon: Info,
-      label: "NOTE",
+      label: 'Note',
     },
     spec: {
-      border: "border-white/20",
-      bg: "bg-white/[0.03]",
-      badge: "border-white/30 text-white font-mono",
+      border: 'border-kr0n-line-strong',
+      bg: 'bg-kr0n-surface',
+      accent: 'text-kr0n-text',
       icon: ShieldCheck,
-      label: "SYSTEM SPEC",
+      label: 'Specification',
     },
     warning: {
-      border: "border-amber-500/30",
-      bg: "bg-amber-500/[0.03]",
-      badge: "border-amber-500/40 text-amber-300",
+      border: 'border-amber-500/30',
+      bg: 'bg-amber-500/[0.05]',
+      accent: 'text-amber-300',
       icon: AlertTriangle,
-      label: "ATTENTION",
+      label: 'Note',
     },
     terminal: {
-      border: "border-white/15",
-      bg: "bg-black/40",
-      badge: "border-white/20 text-white font-mono",
+      border: 'border-kr0n-line',
+      bg: 'bg-kr0n-black',
+      accent: 'text-kr0n-text',
       icon: Terminal,
-      label: "RUNTIME_OUTPUT",
+      label: 'Output',
     },
   };
 
@@ -43,15 +43,13 @@ export default function DocsCallout({
 
   return (
     <div
-      className={`my-6 border ${conf.border} ${conf.bg} p-5 text-sm leading-relaxed backdrop-blur-sm relative overflow-hidden`}>
-      <div className="flex items-center gap-2 mb-2.5">
-        <Icon size={14} className="text-white/70" />
-        <span
-          className={`border px-2 py-0.5 text-[10px] font-mono uppercase tracking-widest ${conf.badge}`}>
-          {title || conf.label}
-        </span>
+      className={`my-6 rounded-xl border ${conf.border} ${conf.bg} p-5 text-sm leading-relaxed`}
+    >
+      <div className={`flex items-center gap-2 mb-2 text-xs font-semibold ${conf.accent}`}>
+        <Icon size={14} />
+        <span>{title || conf.label}</span>
       </div>
-      <div className="text-zinc-300 text-xs md:text-sm pl-0.5 space-y-2">
+      <div className='text-kr0n-text-secondary text-sm space-y-2'>
         {children}
       </div>
     </div>

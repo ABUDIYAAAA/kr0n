@@ -6,64 +6,58 @@ import { getMe, consumeOAuthRedirect } from '@/lib/auth';
 import SiteHeader from './components/SiteHeader';
 import HeroSection from './components/HeroSection';
 import ManifestoScene from './components/ManifestoScene';
+import RepoTypeDemo from './components/RepoTypeDemo';
 import OperationalSurface from './components/OperationalSurface';
+import FaqSection from './components/FaqSection';
 import FinalCTA from './components/FinalCTA';
 import SiteFooter from './components/SiteFooter';
 import CommandLayer from './components/CommandLayer';
 
 export default function HomePage() {
-	const router = useRouter();
-	const [commandOpen, setCommandOpen] = useState(false);
+  const router = useRouter();
+  const [commandOpen, setCommandOpen] = useState(false);
 
-	useEffect(() => {
-		getMe()
-			.then((user) => {
-				if (user) {
-					router.replace(consumeOAuthRedirect('/dashboard'));
-				}
-			})
-			.catch(() => {});
-	}, [router]);
+  useEffect(() => {
+    getMe()
+      .then((user) => {
+        if (user) {
+          router.replace(consumeOAuthRedirect('/dashboard'));
+        }
+      })
+      .catch(() => {});
+  }, [router]);
 
-	useEffect(() => {
-		const handleKeyDown = (e) => {
-			if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-				e.preventDefault();
-				setCommandOpen((prev) => !prev);
-			}
-		};
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+        e.preventDefault();
+        setCommandOpen((prev) => !prev);
+      }
+    };
 
-		window.addEventListener('keydown', handleKeyDown);
-		return () => window.removeEventListener('keydown', handleKeyDown);
-	}, []);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
-	return (
-		<div className='min-h-screen bg-[#090B0E] text-[#F3F4F6] flex flex-col font-sans selection:bg-white/20 selection:text-white'>
-			{/* Command Layer Modal (Triggered by ⌘K or buttons) */}
-			<CommandLayer
-				isOpen={commandOpen}
-				onClose={() => setCommandOpen(false)}
-			/>
+  return (
+    <div className='min-h-svh bg-kr0n-canvas text-kr0n-text flex flex-col font-sans'>
+      <CommandLayer
+        isOpen={commandOpen}
+        onClose={() => setCommandOpen(false)}
+      />
 
-			{/* Sparse, Low-profile Site Header */}
-			<SiteHeader onOpenCommand={() => setCommandOpen(true)} />
+      <SiteHeader />
 
-			<main className='flex-1'>
-				{/* Section 00: Hero — Editorial Message + Embedded KR0N Technical Visual */}
-				<HeroSection onOpenCommand={() => setCommandOpen(true)} />
+      <main className='flex-1'>
+        <HeroSection />
+        <ManifestoScene />
+        <RepoTypeDemo />
+        <OperationalSurface />
+        <FaqSection />
+        <FinalCTA />
+      </main>
 
-				{/* Section 01: Manifesto / Typographic Interruption (Principle 1) */}
-				<ManifestoScene />
-
-				{/* Section 02: The Quiet Operating State (Floating Operational Surface) */}
-				<OperationalSurface />
-
-				{/* Section 03: Final CTA / Cinematic Ending */}
-				<FinalCTA onOpenCommand={() => setCommandOpen(true)} />
-			</main>
-
-			{/* Minimal Site Footer */}
-			<SiteFooter onOpenCommand={() => setCommandOpen(true)} />
-		</div>
-	);
+      <SiteFooter onOpenCommand={() => setCommandOpen(true)} />
+    </div>
+  );
 }

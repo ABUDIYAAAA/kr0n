@@ -1,227 +1,174 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { motion } from 'motion/react';
-import { RotateCcw, Check, Radio, Activity } from 'lucide-react';
+import { GitBranch, Folder, ShieldCheck, Key } from 'lucide-react';
 
-const RELEASES = [
-	{
-		version: 'v1.8.4',
-		status: 'LIVE',
-		branch: 'main',
-		commit: 'a83f2c1',
-		message: 'feat(cart): instant optimistic checkout updates',
-		time: '2m ago',
-		duration: '31.9s',
-		isLive: true,
-	},
-	{
-		version: 'v1.8.3',
-		status: 'ROLLED BACK',
-		branch: 'main',
-		commit: '19fe102',
-		message: 'fix(session): token expiration in middleware',
-		time: '18m ago',
-		duration: '29.4s',
-		isLive: false,
-	},
-	{
-		version: 'v1.8.2',
-		status: 'SUPERSEDED',
-		branch: 'feat/search',
-		commit: 'c41d8e0',
-		message: 'perf(catalog): batch query filters for search indexing',
-		time: '42m ago',
-		duration: '35.1s',
-		isLive: false,
-	},
+const STAGES = [
+  {
+    id: 'connect',
+    label: 'Connect GitHub',
+    headline: 'Install the GitHub App once.',
+    detail:
+      'Grant access to specific personal or organization repositories. No SSH deploy keys to rotate and no broad personal access tokens.',
+    fragmentTitle: 'GitHub App installation',
+    rows: [
+      { left: 'northstar-labs', right: '4 repositories scoped' },
+      { left: 'Installation', right: '#8419204, active' },
+      { left: 'Authentication', right: 'Verified state handshake' },
+    ],
+    icon: GitBranch,
+  },
+  {
+    id: 'monorepo',
+    label: 'Map monorepos',
+    headline: 'Pick any branch and root folder.',
+    detail:
+      'Browse repository branches and nested directories directly inside kr0n. Run web frontends, APIs, and workers from the same repository without duplicating config.',
+    fragmentTitle: 'Directory discovery',
+    rows: [
+      { left: 'apps/web', right: 'Next.js detected' },
+      { left: 'services/api', right: 'Go detected' },
+      { left: 'services/worker', right: 'Python detected' },
+    ],
+    icon: Folder,
+  },
+  {
+    id: 'revisions',
+    label: 'Track revisions',
+    headline: 'Override builds with revision safety.',
+    detail:
+      'Keep detected preset commands or override install, build, and output steps per project. Every update increments a revision counter and rejects stale writes.',
+    fragmentTitle: 'Build revision v4',
+    rows: [
+      { left: 'Install command', right: 'Preset default' },
+      { left: 'Build command', right: 'pnpm build (custom)' },
+      { left: 'Concurrency', right: 'expected_revision: 4' },
+    ],
+    icon: ShieldCheck,
+  },
+  {
+    id: 'teams',
+    label: 'Govern teams',
+    headline: 'Separate teams, roles, and tokens.',
+    detail:
+      'Isolate projects by organization, invite teammates with owner, admin, or member roles, issue scoped bearer tokens for CI, and review every administrative action in the audit log.',
+    fragmentTitle: 'Access and tokens',
+    rows: [
+      { left: 'Nadia Okafor', right: 'owner' },
+      { left: 'github-actions-ci', right: 'project:read, 30d' },
+      { left: 'Audit log', right: 'Immutable event trail' },
+    ],
+    icon: Key,
+  },
 ];
 
 export default function OperationalSurface() {
-	const [selectedVersion, setSelectedVersion] = useState('v1.8.4');
-	const [pulseTick, setPulseTick] = useState(24);
+  const [stageIndex, setStageIndex] = useState(0);
+  const current = STAGES[stageIndex] || STAGES[0];
+  const Icon = current.icon;
 
-	// Subtle live latency jitter to make telemetry feel alive
-	useEffect(() => {
-		const interval = setInterval(() => {
-			setPulseTick((prev) => 22 + Math.floor(Math.random() * 5));
-		}, 2000);
-		return () => clearInterval(interval);
-	}, []);
+  return (
+    <section
+      id='how-it-works'
+      className='bg-kr0n-black'
+    >
+      <div className='max-w-[1320px] mx-auto px-6 sm:px-8 py-24 sm:py-32 space-y-12'>
+        {/* 50/50 Split stage display separated by flat tone steps */}
+        <div className='grid grid-cols-1 lg:grid-cols-12 overflow-hidden rounded-[6px]'>
+          <motion.div
+            key={current.id}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.22 }}
+            className='lg:col-span-6 p-8 sm:p-12 bg-kr0n-canvas flex flex-col justify-between gap-10 min-h-[340px]'
+          >
+            <h2
+              className='font-semibold text-white tracking-[-0.03em] leading-[1.05]'
+              style={{
+                fontSize: 'clamp(2rem, 3.8vw, 3.5rem)',
+                textWrap: 'balance',
+              }}
+            >
+              {current.headline}
+            </h2>
+            <p className='text-base text-kr0n-text-secondary leading-relaxed max-w-[46ch]'>
+              {current.detail}
+            </p>
+          </motion.div>
 
-	return (
-		<section
-			id='releases'
-			className='relative py-20 sm:py-28 px-6 sm:px-12 bg-[#090B0E] border-b border-[#242930] overflow-hidden'
-			data-kr0n-motion='OperationalScene'
-		>
-			<div className='max-w-7xl mx-auto space-y-12'>
-				{/* Section Header */}
-				<div className='flex flex-col sm:flex-row sm:items-end justify-between gap-6 pb-6 border-b border-[#242930]'>
-					<div className='space-y-3 max-w-2xl'>
-						<div className='inline-flex items-center gap-2 text-xs font-mono uppercase tracking-widest text-[#858C95]'>
-							<span className='w-1.5 h-1.5 bg-white' />
-							<span>PRODUCT SURFACE // 06</span>
-							<span className='text-[#363D47] select-none'>|</span>
-							<span className='text-white font-semibold'>CALM OPERATIONAL VISIBILITY</span>
-						</div>
+          <div className='lg:col-span-6 p-8 sm:p-12 bg-kr0n-surface-2 flex items-center justify-center'>
+            <motion.div
+              key={`${current.id}-ui`}
+              initial={{ opacity: 0, y: 8 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.22 }}
+              data-ui='true'
+              className='w-full max-w-md bg-kr0n-black rounded-[6px] overflow-hidden'
+            >
+              <div className='px-4 h-11 bg-kr0n-canvas flex items-center justify-between text-[13px]'>
+                <span className='inline-flex items-center gap-2 font-medium text-white'>
+                  <Icon size={14} className='text-kr0n-accent' />
+                  {current.fragmentTitle}
+                </span>
+                <span className='text-kr0n-muted tabular-nums'>
+                  {stageIndex + 1} / {STAGES.length}
+                </span>
+              </div>
+              <dl className='p-2 space-y-1 text-[13px]'>
+                {current.rows.map((r) => (
+                  <div
+                    key={r.left}
+                    className='px-3 py-3 rounded-[4px] bg-kr0n-canvas/60 flex items-center justify-between gap-4'
+                  >
+                    <dt className='text-kr0n-text truncate'>{r.left}</dt>
+                    <dd className='text-kr0n-muted text-right shrink-0'>
+                      {r.right}
+                    </dd>
+                  </div>
+                ))}
+              </dl>
+            </motion.div>
+          </div>
+        </div>
 
-						<h2 className='text-3xl sm:text-5xl lg:text-6xl font-black uppercase tracking-tight text-[#F3F4F6] leading-[1.04]'>
-							Calm operational <br />
-							<span className='text-[#6C7480] font-extrabold'>visibility.</span>
-						</h2>
-					</div>
+        {/* Range slider + clickable stage stops */}
+        <div className='space-y-4'>
+          <label htmlFor='workflow-stage-slider' className='sr-only'>
+            Select workflow stage
+          </label>
+          <input
+            id='workflow-stage-slider'
+            type='range'
+            min={0}
+            max={STAGES.length - 1}
+            step={1}
+            value={stageIndex}
+            onChange={(e) => setStageIndex(Number(e.target.value))}
+            className='kr0n-stage-slider'
+          />
 
-					<div className='text-xs font-mono text-[#858C95] text-left sm:text-right space-y-1'>
-						<div>IMMUTABLE RELEASE AUDIT</div>
-						<div className='text-white font-bold'>INSTANT ROLLBACK ARMED</div>
-					</div>
-				</div>
-
-				{/* Cinematic Operational Surface */}
-				<div
-					data-kr0n-motion='OperationalSurface'
-					className='bg-[#0D1014] border border-[#242930] p-6 sm:p-8 space-y-8 shadow-2xl'
-				>
-					{/* Top System Context Bar */}
-					<div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-[#242930]'>
-						<div className='space-y-1'>
-							<div className='text-xl sm:text-2xl font-black font-mono uppercase text-white tracking-tight flex items-center gap-3'>
-								<span>storefront</span>
-								<span className='text-xs px-2 py-0.5 border border-[#363D47] bg-[#15191E] font-normal text-[#C4C8CE]'>
-									production
-								</span>
-							</div>
-							<div className='text-xs font-mono text-[#858C95]'>
-								CANARY CUTOVER MESH ACTIVE // AUTOMATED ROLLBACK POINT PRESERVED
-							</div>
-						</div>
-
-						<div
-							data-kr0n-live='LiveIndicator'
-							className='inline-flex items-center gap-2.5 border border-emerald-500/40 bg-emerald-500/10 px-3.5 py-1.5 text-xs font-mono text-emerald-400 self-start sm:self-auto'
-						>
-							<span className='w-2 h-2 rounded-full bg-emerald-400 animate-pulse' />
-							<span className='font-bold tracking-wider'>● LIVE // 100% TRAFFIC</span>
-						</div>
-					</div>
-
-					{/* Restrained Release Rows */}
-					<div
-						data-kr0n-motion='ReleaseRows'
-						className='divide-y divide-[#242930] font-mono text-xs sm:text-sm overflow-x-auto'
-					>
-						{RELEASES.map((row) => {
-							const isSelected = selectedVersion === row.version;
-							return (
-								<div
-									key={row.version}
-									onClick={() => setSelectedVersion(row.version)}
-									className={`py-4 px-3 sm:px-4 flex items-center justify-between gap-6 cursor-pointer transition-colors min-w-[620px] ${
-										isSelected
-											? 'bg-[#15191E] text-white'
-											: 'hover:bg-white/[0.03] text-[#C4C8CE]'
-									}`}
-								>
-									{/* Version & Commit */}
-									<div className='flex items-center gap-4 w-44 shrink-0'>
-										<span className='font-bold text-white'>{row.version}</span>
-										<span className='text-[#4E5560]'>/</span>
-										<span className='text-[#858C95] text-xs'>{row.commit}</span>
-									</div>
-
-									{/* Status Indicator */}
-									<div className='w-32 shrink-0 flex items-center gap-2'>
-										<span
-											className={`w-2 h-2 rounded-full ${
-												row.status === 'LIVE'
-													? 'bg-emerald-400 animate-pulse'
-													: row.status === 'ROLLED BACK'
-													? 'bg-amber-400'
-													: 'bg-white/20'
-											}`}
-										/>
-										<span
-											className={`text-xs font-bold tracking-wider ${
-												row.status === 'LIVE'
-													? 'text-emerald-400'
-													: row.status === 'ROLLED BACK'
-													? 'text-amber-400'
-													: 'text-[#858C95]'
-											}`}
-										>
-											{row.status}
-										</span>
-									</div>
-
-									{/* Commit Message */}
-									<div className='flex-1 truncate text-xs font-sans text-[#C4C8CE] font-normal'>
-										{row.message}
-									</div>
-
-									{/* Timestamp */}
-									<div className='w-24 shrink-0 text-right text-xs text-[#858C95]'>
-										{row.time}
-									</div>
-								</div>
-							);
-						})}
-					</div>
-
-					{/* Living Telemetry & Signal Wave Bar */}
-					<div
-						data-kr0n-motion='MetricCluster'
-						className='pt-6 border-t border-[#242930] grid grid-cols-1 md:grid-cols-12 gap-6 items-center font-mono'
-					>
-						{/* Real-time Telemetry Metrics (col-span-8) */}
-						<div className='md:col-span-8 grid grid-cols-3 gap-4'>
-							<div className='p-3 bg-[#111419] border border-[#242930] space-y-1'>
-								<div className='text-[10px] text-[#858C95] uppercase'>EDGE LATENCY (p99)</div>
-								<div className='text-xl sm:text-2xl font-bold text-white flex items-center gap-2'>
-									<span>{pulseTick}ms</span>
-									<span className='w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping' />
-								</div>
-								<div className='text-[10px] text-emerald-400'>Synthetic probe OK</div>
-							</div>
-
-							<div className='p-3 bg-[#111419] border border-[#242930] space-y-1'>
-								<div className='text-[10px] text-[#858C95] uppercase'>SYSTEM HEALTH</div>
-								<div className='text-xl sm:text-2xl font-bold text-white'>NOMINAL</div>
-								<div className='text-[10px] text-[#858C95]'>0 errors detected</div>
-							</div>
-
-							<div className='p-3 bg-[#111419] border border-[#242930] space-y-1'>
-								<div className='text-[10px] text-[#858C95] uppercase'>RESTORE SPEED</div>
-								<div className='text-xl sm:text-2xl font-bold text-white'>&lt;1s</div>
-								<div className='text-[10px] text-[#858C95]'>Instant state revert</div>
-							</div>
-						</div>
-
-						{/* Real-time Sparkline Graph (col-span-4) */}
-						<div className='md:col-span-4 p-3 bg-[#111419] border border-[#242930] space-y-2'>
-							<div className='flex items-center justify-between text-[10px] text-[#858C95]'>
-								<span>SIGNAL TIMELINE</span>
-								<span className='text-emerald-400'>ACTIVE</span>
-							</div>
-
-							{/* SVG Live Latency Curve */}
-							<div className='h-10 w-full overflow-hidden flex items-end'>
-								<svg viewBox='0 0 100 30' className='w-full h-full stroke-emerald-400 fill-none' preserveAspectRatio='none'>
-									<path
-										d='M0,20 Q15,10 30,18 T60,12 T85,22 T100,15'
-										strokeWidth='1.5'
-										strokeLinecap='round'
-									/>
-								</svg>
-							</div>
-
-							<div className='text-[10px] text-[#858C95] text-right'>
-								ILLUSTRATIVE TELEMETRY STREAM
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
-		</section>
-	);
+          <div className='grid grid-cols-2 sm:grid-cols-4 gap-4 pt-1'>
+            {STAGES.map((stage, idx) => {
+              const active = idx === stageIndex;
+              return (
+                <button
+                  key={stage.id}
+                  type='button'
+                  onClick={() => setStageIndex(idx)}
+                  className={`text-left text-sm sm:text-base transition-colors duration-150 cursor-pointer pb-1 ${
+                    active
+                      ? 'text-white font-medium underline decoration-kr0n-accent underline-offset-8'
+                      : 'text-kr0n-muted hover:text-kr0n-text'
+                  }`}
+                >
+                  {stage.label}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
 }

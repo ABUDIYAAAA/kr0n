@@ -1,365 +1,357 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { motion } from 'motion/react';
 import Link from 'next/link';
 import {
   ArrowRight,
-  Rocket,
-  Activity,
-  AlertTriangle,
-  Clock,
-  Globe,
   GitBranch,
+  Folder,
+  Plus,
+  Check,
+  Settings,
 } from 'lucide-react';
-import { useKr0nStore } from '@/lib/kr0n-state';
-import { getMe, useAuthUser } from '@/lib/auth';
+import { useWorkspace } from '@/lib/workspace-context';
+import { getAuditLogs, getMembers } from '@/lib/auth';
+import { githubApi } from '@/lib/github-api';
 
-function getGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Good morning';
-  if (hour < 17) return 'Good afternoon';
-  return 'Good evening';
+function formatShortDate(ts) {
+  if (!ts) return '—';
+  const d = new Date(ts);
+  if (Number.isNaN(d.getTime())) return '—';
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
 }
 
 export default function DashboardOverview() {
-  const { projects = [], deployments = {}, alerts = [] } = useKr0nStore();
-  const authUser = useAuthUser();
-  const [liveUser, setLiveUser] = useState(null);
-  const currentUser = liveUser || authUser;
+  const {
+    activeOrg,
+    activeOrgId,
+    projects = [],
+    isLoadingProjects,
+  } = useWorkspace();
+
+  const [auditEvents, setAuditEvents] = useState([]);
+  const [membersCount, setMembersCount] = useState(null);
+  const [installationsCount, setInstallationsCount] = useState(null);
+  const [metaLoading, setMetaLoading] = useState(false);
 
   useEffect(() => {
-    let mounted = true;
-    getMe()
-      .then((user) => {
-        if (mounted && user) {
-          setLiveUser(user);
-        }
+    if (!activeOrgId) return;
+    let active = true;
+    Promise.resolve()
+      .then(() => {
+        if (active) setMetaLoading(true);
+        return Promise.all([
+          getAuditLogs(activeOrgId, { limit: 5, offset: 0 }).catch(() => []),
+          getMembers(activeOrgId).catch(() => []),
+          githubApi(`orgs/${activeOrgId}/github/installations`).catch(() => ({
+            installations: [],
+          })),
+        ]);
       })
-      .catch(() => {});
+      .then(([events, members, gh]) => {
+        if (!active) return;
+        setAuditEvents(Array.isArray(events) ? events : []);
+        setMembersCount(Array.isArray(members) ? members.length : 0);
+        setInstallationsCount(Array.isArray(gh?.installations) ? gh.installations.length : 0);
+      })
+      .finally(() => {
+        if (active) setMetaLoading(false);
+      });
+
     return () => {
-      mounted = false;
+      active = false;
     };
-  }, []);
+  }, [activeOrgId]);
 
-  const greeting = getGreeting();
-  const userName =
-    currentUser?.displayName ||
-    currentUser?.display_name ||
-    currentUser?.name ||
-    (currentUser?.email ? currentUser.email.split('@')[0] : null);
-  const headingText = userName ? `${greeting}, ${userName}.` : `${greeting}.`;
+  const showSetupChecklist =
+    !metaLoading &&
+    !isLoadingProjects &&
+    (projects.length === 0 || installationsCount === 0);
 
-  const totalServices = (projects || []).reduce((acc, p) => acc + (p.services?.length || 0), 0);
-  const healthyCount = (projects || []).filter((p) => p.status === 'healthy').length;
-  const attentionCount = (projects || []).filter(
-    (p) => p.status === 'warning' || p.status === 'failed'
-  ).length;
-
-  // Derive real recent activities from alerts and deployments
-  const recentActivity = [];
-
-  (alerts || []).forEach((alert, idx) => {
-    recentActivity.push({
-      id: alert.id || `alert_${alert.timestamp || idx}`,
-      project: alert.projectName || alert.project || 'System',
-      action: alert.title || 'Health alert',
-      version: alert.serviceName || alert.service || 'system',
-      environment: alert.environment || 'production',
-      time: alert.timestamp || alert.time || 'Recently',
-      status: alert.severity === 'critical' || alert.status === 'firing' ? 'warning' : 'success',
-      timestampSort: alert.createdAt ? new Date(alert.createdAt).getTime() : 0,
-    });
-  });
-
-  Object.entries(deployments || {}).forEach(([key, depList]) => {
-    if (Array.isArray(depList)) {
-      const proj = (projects || []).find((p) => p.id === key || p.services?.some((s) => s.id === key));
-      depList.forEach((dep) => {
-        recentActivity.push({
-          id: dep.id,
-          project: proj?.name || dep.projectName || 'Project',
-          action:
-            dep.status === 'ready' || dep.status === 'success'
-              ? 'Deployed'
-              : dep.status === 'building'
-              ? 'Deploying'
-              : 'Failed',
-          version: dep.version || 'v1.0.0',
-          environment: dep.environment || proj?.environment || 'production',
-          time: dep.timestamp || 'Just now',
-          status:
-            dep.status === 'ready' || dep.status === 'success'
-              ? 'success'
-              : dep.status === 'building'
-              ? 'in_progress'
-              : 'failed',
-          timestampSort: dep.createdAt ? new Date(dep.createdAt).getTime() : 0,
-        });
-      });
-    }
-  });
-
-  (projects || []).forEach((p) => {
-    if (p.currentDeployment && !recentActivity.some((a) => a.id === p.currentDeployment.id)) {
-      recentActivity.push({
-        id: p.currentDeployment.id,
-        project: p.name,
-        action:
-          p.currentDeployment.status === 'ready' || p.currentDeployment.status === 'success'
-            ? 'Deployed'
-            : p.currentDeployment.status === 'building'
-            ? 'Deploying'
-            : 'Failed',
-        version: p.currentDeployment.version || 'v1.0.0',
-        environment: p.environment || 'production',
-        time: p.currentDeployment.timestamp || p.updatedAt || 'Just now',
-        status:
-          p.currentDeployment.status === 'ready' || p.currentDeployment.status === 'success'
-            ? 'success'
-            : p.currentDeployment.status === 'building'
-            ? 'in_progress'
-            : 'failed',
-        timestampSort: 0,
-      });
-    }
-  });
+  const checklistSteps = [
+    {
+      label: 'Organization active',
+      done: Boolean(activeOrg?.id),
+      href: '/settings',
+      cta: activeOrg?.name || 'Manage',
+    },
+    {
+      label: 'Connect GitHub App',
+      done: (installationsCount || 0) > 0,
+      href: '/projects/new',
+      cta: 'Install',
+    },
+    {
+      label: 'Import first repository',
+      done: projects.length > 0,
+      href: '/projects/new',
+      cta: 'Import',
+    },
+    {
+      label: 'Invite teammates',
+      done: (membersCount || 0) > 1,
+      href: '/settings',
+      cta: 'Members',
+    },
+  ];
 
   return (
     <div className='flex-1 overflow-auto'>
-      {/* ─── Hero Section ─── */}
-      <div className='px-6 sm:px-8 pt-8 pb-6 border-b border-kr0n-line'>
-        <motion.div
-          initial={{ opacity: 0, y: 8 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className='flex flex-col sm:flex-row sm:items-center justify-between gap-4'
-        >
-          <div className='space-y-1.5'>
-            <h1 className='text-2xl sm:text-3xl font-black font-mono tracking-tight text-white'>
-              {headingText}
+      {/* Title Row */}
+      <div className='px-6 sm:px-8 pt-7 pb-6 border-b border-kr0n-line'>
+        <div className='max-w-[1240px] flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
+          <div className='space-y-1'>
+            <h1 className='text-2xl font-semibold tracking-tight text-white'>
+              {activeOrg?.name || 'Overview'}
             </h1>
-            <p className='text-xs font-mono uppercase tracking-wider text-kr0n-muted'>
-              KR0N Edge Application Workspace &mdash; {projects.length} {projects.length === 1 ? 'project' : 'projects'} active
+            <p className='text-[13px] text-kr0n-muted flex flex-wrap items-center gap-x-2 gap-y-1'>
+              {activeOrg?.slug && (
+                <span className='font-mono text-kr0n-text-secondary'>{activeOrg.slug}</span>
+              )}
+              <span>·</span>
+              <span className='font-mono'>{activeOrg?.role_id || 'member'}</span>
+              {installationsCount !== null && (
+                <>
+                  <span>·</span>
+                  <span>
+                    {installationsCount > 0
+                      ? `${installationsCount} GitHub ${installationsCount === 1 ? 'installation' : 'installations'} linked`
+                      : 'GitHub App not connected'}
+                  </span>
+                </>
+              )}
             </p>
           </div>
-        </motion.div>
+
+          <Link
+            href='/projects/new'
+            className='inline-flex items-center gap-1.5 h-9 px-4 rounded-[6px] bg-kr0n-text hover:bg-white text-kr0n-black text-[13px] font-medium transition-colors duration-150 self-start sm:self-auto'
+          >
+            <Plus size={14} />
+            <span>Import repository</span>
+          </Link>
+        </div>
       </div>
 
-      <div className='px-6 sm:px-8 py-8 space-y-8 max-w-5xl'>
-        {/* ─── Quick Stats ─── */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.1 }}
-          className='grid grid-cols-2 md:grid-cols-4 gap-4'
-        >
-          <div className='bg-kr0n-surface border border-kr0n-line p-4 space-y-1'>
-            <div className='text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-wider font-bold'>
-              Projects
-            </div>
-            <div className='text-2xl font-bold text-white'>{projects.length}</div>
-          </div>
-          <div className='bg-kr0n-surface border border-kr0n-line p-4 space-y-1'>
-            <div className='text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-wider font-bold'>
-              Services
-            </div>
-            <div className='text-2xl font-bold text-white'>{totalServices}</div>
-          </div>
-          <div className='bg-kr0n-surface border border-kr0n-line p-4 space-y-1'>
-            <div className='text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-wider font-bold'>
-              Healthy
-            </div>
-            <div className='text-2xl font-bold text-emerald-400 flex items-center gap-2'>
-              {healthyCount}
-              <span className='w-2 h-2 rounded-full bg-emerald-400 animate-pulse' />
+      <div className='px-6 sm:px-8 py-6 space-y-6 max-w-[1240px]'>
+        {/* Divided 3-column summary strip (no tiles, no decorative icons) */}
+        <div className='grid grid-cols-1 sm:grid-cols-3 rounded-[6px] border border-kr0n-line bg-kr0n-black overflow-hidden divide-y sm:divide-y-0 sm:divide-x divide-kr0n-line'>
+          <div className='px-5 py-4 space-y-1'>
+            <div className='text-xs text-kr0n-muted'>Connected projects</div>
+            <div className='text-2xl font-normal font-mono tabular-nums text-white'>
+              {projects.length}
             </div>
           </div>
-          <div className='bg-kr0n-surface border border-kr0n-line p-4 space-y-1'>
-            <div className='text-[10px] font-mono text-kr0n-text-secondary uppercase tracking-wider font-bold'>
-              Attention
-            </div>
-            <div
-              className={`text-2xl font-bold ${
-                attentionCount > 0 ? 'text-amber-400' : 'text-kr0n-muted'
-              }`}
-            >
-              {attentionCount}
-              {attentionCount > 0 && (
-                <AlertTriangle
-                  size={14}
-                  className='inline ml-2 text-amber-400'
-                />
-              )}
+          <div className='px-5 py-4 space-y-1'>
+            <div className='text-xs text-kr0n-muted'>GitHub installations</div>
+            <div className='text-2xl font-normal font-mono tabular-nums text-white'>
+              {installationsCount === null ? '—' : installationsCount}
             </div>
           </div>
-        </motion.div>
+          <div className='px-5 py-4 space-y-1'>
+            <div className='text-xs text-kr0n-muted'>Organization members</div>
+            <div className='text-2xl font-normal font-mono tabular-nums text-white'>
+              {membersCount === null ? '—' : membersCount}
+            </div>
+          </div>
+        </div>
 
-        {/* ─── Recent Activity ─── */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.2 }}
-          className='space-y-3'
-        >
-          <div className='flex items-center justify-between'>
-            <h2 className='text-xs font-mono uppercase tracking-widest text-kr0n-text-secondary font-bold'>
-              Recent Activity
-            </h2>
-            <Link
-              href='/projects'
-              className='text-[11px] font-mono text-kr0n-text-secondary hover:text-white transition-colors flex items-center gap-1 uppercase tracking-wider font-bold'
-            >
-              View all
-              <ArrowRight size={11} />
-            </Link>
-          </div>
-
-          {recentActivity.length === 0 ? (
-            <div className='bg-kr0n-surface border border-kr0n-line p-8 text-center'>
-              <Activity size={24} className='mx-auto text-kr0n-muted mb-2 opacity-50' />
-              <div className='text-xs font-mono uppercase tracking-wider text-kr0n-text-secondary'>
-                No recent activity
-              </div>
-              <div className='text-[11px] font-mono text-kr0n-muted mt-1'>
-                Deployments and service events will appear here.
-              </div>
+        {/* Onboarding Setup Checklist when org has no GitHub App or projects */}
+        {showSetupChecklist && (
+          <div className='rounded-[6px] border border-kr0n-line bg-kr0n-black overflow-hidden'>
+            <div className='px-5 py-3 border-b border-kr0n-line-soft flex items-center justify-between text-xs'>
+              <span className='font-medium text-white'>Workspace setup</span>
+              <span className='font-mono tabular-nums text-kr0n-muted'>
+                {checklistSteps.filter((s) => s.done).length} / {checklistSteps.length} complete
+              </span>
             </div>
-          ) : (
-            <div className='bg-kr0n-surface border border-kr0n-line divide-y divide-kr0n-line-soft'>
-              {recentActivity.slice(0, 5).map((act) => (
-                <div
-                  key={act.id}
-                  className='flex items-center justify-between px-4 py-3 hover:bg-white/[0.015] transition-colors'
+            <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 divide-y sm:divide-y-0 sm:divide-x divide-kr0n-line-soft'>
+              {checklistSteps.map((step) => (
+                <Link
+                  key={step.label}
+                  href={step.href}
+                  className='px-5 py-4 flex items-center justify-between gap-3 hover:bg-kr0n-surface-2/50 transition-colors duration-150'
                 >
-                  <div className='flex items-center gap-3 min-w-0'>
+                  <div className='flex items-center gap-2.5 min-w-0'>
                     <span
-                      className={`w-2 h-2 rounded-full shrink-0 ${
-                        act.status === 'success'
-                          ? 'bg-emerald-400'
-                          : act.status === 'in_progress'
-                          ? 'bg-blue-400 animate-pulse'
-                          : act.status === 'warning'
-                          ? 'bg-amber-400'
-                          : 'bg-red-400'
+                      className={`w-4 h-4 rounded-full flex items-center justify-center shrink-0 border ${
+                        step.done
+                          ? 'border-kr0n-healthy bg-kr0n-healthy/15 text-kr0n-healthy'
+                          : 'border-kr0n-line-strong'
                       }`}
-                    />
-                    <div className='min-w-0'>
-                      <div className='text-xs text-white truncate'>
-                        <span className='font-bold'>{act.project}</span>
-                        <span className='text-kr0n-muted mx-1.5'>·</span>
-                        <span className='text-kr0n-text-secondary'>{act.action}</span>
-                      </div>
-                      <div className='text-[11px] font-mono text-kr0n-muted flex items-center gap-2 mt-0.5 font-medium'>
-                        <span className='text-kr0n-text-secondary font-mono'>{act.version}</span>
-                        <span className='text-kr0n-line-strong'>|</span>
-                        <span>{act.environment}</span>
-                      </div>
-                    </div>
+                    >
+                      {step.done && <Check size={10} />}
+                    </span>
+                    <span
+                      className={`text-[13px] truncate ${
+                        step.done ? 'text-kr0n-muted' : 'text-white font-medium'
+                      }`}
+                    >
+                      {step.label}
+                    </span>
                   </div>
-                  <span className='text-[11px] font-mono text-kr0n-muted shrink-0 ml-4 font-medium'>
-                    {act.time}
-                  </span>
-                </div>
+                  {!step.done && (
+                    <span className='text-xs text-kr0n-accent shrink-0'>{step.cta}</span>
+                  )}
+                </Link>
               ))}
             </div>
-          )}
-        </motion.div>
-
-        {/* ─── Recent Projects ─── */}
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.3 }}
-          className='space-y-3'
-        >
-          <div className='flex items-center justify-between'>
-            <h2 className='text-xs font-mono uppercase tracking-widest text-kr0n-text-secondary font-bold'>
-              Projects
-            </h2>
-            <Link
-              href='/projects'
-              className='text-[11px] font-mono text-kr0n-text-secondary hover:text-white transition-colors flex items-center gap-1 uppercase tracking-wider font-bold'
-            >
-              Open workspace
-              <ArrowRight size={11} />
-            </Link>
           </div>
+        )}
 
-          <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3'>
-            {projects.length === 0 ? (
-              <div className='col-span-full bg-kr0n-surface border border-kr0n-line p-8 text-center'>
-                <div className='text-xs font-mono uppercase tracking-wider text-kr0n-text-secondary'>
-                  No projects deployed
+        {/* Balanced 2-column content: Projects Table + Recent Audit Activity */}
+        <div className='grid grid-cols-1 lg:grid-cols-12 gap-6 items-start'>
+          {/* Projects Table */}
+          <div className='lg:col-span-8 rounded-[6px] border border-kr0n-line bg-kr0n-black overflow-hidden'>
+            <div className='px-5 h-11 border-b border-kr0n-line-soft flex items-center justify-between'>
+              <h2 className='text-[13px] font-semibold text-white'>
+                Projects
+              </h2>
+              <Link
+                href='/projects'
+                className='text-xs text-kr0n-muted hover:text-white inline-flex items-center gap-1 transition-colors duration-150'
+              >
+                <span>View all</span>
+                <ArrowRight size={12} />
+              </Link>
+            </div>
+
+            {isLoadingProjects ? (
+              <div className='px-5 py-10 text-center text-[13px] text-kr0n-muted'>
+                Loading projects...
+              </div>
+            ) : projects.length === 0 ? (
+              <div className='px-5 py-10 text-center space-y-3'>
+                <p className='text-[13px] font-medium text-white'>
+                  No repositories connected yet
+                </p>
+                <p className='text-xs text-kr0n-muted max-w-sm mx-auto'>
+                  Import a GitHub repository to configure its branch, root directory, and build settings.
+                </p>
+                <div className='pt-1'>
+                  <Link
+                    href='/projects/new'
+                    className='inline-flex items-center gap-1.5 h-8 px-3.5 rounded-[6px] bg-kr0n-text hover:bg-white text-kr0n-black text-xs font-medium transition-colors duration-150'
+                  >
+                    <Plus size={13} />
+                    <span>Import repository</span>
+                  </Link>
                 </div>
-                <div className='text-[11px] font-mono text-kr0n-muted mt-1 mb-4'>
-                  Create or import a project to launch your services.
-                </div>
-                <Link
-                  href='/projects'
-                  className='clipped-btn inline-flex items-center gap-2 bg-white hover:bg-neutral-200 text-black px-3 py-1.5 text-xs font-mono uppercase tracking-wider font-bold transition-colors'
-                >
-                  <span>Launch Workspace</span>
-                  <ArrowRight size={12} />
-                </Link>
               </div>
             ) : (
-              projects
-                .filter(
-                  (p, i, arr) => arr.findIndex((x) => x.name === p.name) === i
-                )
-                .slice(0, 4)
-                .map((project, i) => (
-                  <motion.div
-                    key={project.id}
-                    initial={{ opacity: 0, y: 8 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ duration: 0.3, delay: 0.3 + i * 0.05 }}
-                  >
-                    <Link
-                      href={`/projects/${project.id}`}
-                      className='block bg-kr0n-surface border border-kr0n-line hover:border-kr0n-line-strong p-4 space-y-3 transition-colors group'
-                    >
-                      <div className='flex items-center justify-between'>
-                        <div className='flex items-center gap-2'>
-                          <span
-                            className={`w-2 h-2 rounded-full ${
-                              project.status === 'healthy'
-                                ? 'bg-emerald-400'
-                                : project.status === 'warning'
-                                ? 'bg-amber-400'
-                                : 'bg-red-400'
-                            }`}
-                          />
-                          <span className='text-sm font-bold text-white uppercase tracking-wider'>
+              <div className='overflow-x-auto'>
+                <table className='w-full text-left text-[13px]'>
+                  <thead>
+                    <tr className='border-b border-kr0n-line-soft text-xs text-kr0n-muted'>
+                      <th className='px-5 py-2.5 font-normal'>Project</th>
+                      <th className='px-4 py-2.5 font-normal'>Branch &amp; root</th>
+                      <th className='px-4 py-2.5 font-normal'>Preset</th>
+                      <th className='px-4 py-2.5 font-normal text-right'>Rev</th>
+                      <th className='px-5 py-2.5 font-normal text-right'>Updated</th>
+                    </tr>
+                  </thead>
+                  <tbody className='divide-y divide-kr0n-line-soft'>
+                    {projects.slice(0, 6).map((project) => (
+                      <tr
+                        key={project.id}
+                        className='hover:bg-kr0n-surface-2/50 transition-colors duration-150'
+                      >
+                        <td className='px-5 py-3'>
+                          <Link
+                            href={`/projects/${project.id}`}
+                            className='font-medium text-white hover:text-kr0n-accent transition-colors duration-150 block truncate max-w-[220px]'
+                          >
                             {project.name}
-                          </span>
-                        </div>
-                        <ArrowRight
-                          size={13}
-                          className='text-kr0n-muted group-hover:text-white transition-colors'
-                        />
-                      </div>
-                      <p className='text-xs text-kr0n-text-secondary'>{project.description}</p>
-                      <div className='flex items-center gap-3 text-[11px] font-mono text-kr0n-text-secondary font-medium'>
-                        <span>{project.services?.length || 0} services</span>
-                        <span className='text-kr0n-line-strong'>|</span>
-                        <span>{project.environment}</span>
-                        {project.currentDeployment?.version && (
-                          <>
-                            <span className='text-kr0n-line-strong'>|</span>
-                            <span className='text-white font-mono'>
-                              {project.currentDeployment.version}
+                          </Link>
+                          <div className='font-mono text-xs text-kr0n-muted truncate max-w-[220px]'>
+                            {project.repo_full_name || project.slug}
+                          </div>
+                        </td>
+                        <td className='px-4 py-3 font-mono text-xs text-kr0n-text-secondary'>
+                          <div className='flex items-center gap-3'>
+                            <span className='inline-flex items-center gap-1'>
+                              <GitBranch size={12} className='text-kr0n-muted' />
+                              {project.production_branch || 'main'}
                             </span>
-                          </>
-                        )}
-                      </div>
-                    </Link>
-                  </motion.div>
-                ))
+                            <span className='inline-flex items-center gap-1 text-kr0n-muted'>
+                              <Folder size={12} />
+                              {project.root_directory || './'}
+                            </span>
+                          </div>
+                        </td>
+                        <td className='px-4 py-3 font-mono text-xs text-kr0n-text-secondary'>
+                          {project.application_preset || 'auto'}
+                        </td>
+                        <td className='px-4 py-3 text-right font-mono text-xs tabular-nums text-white'>
+                          v{project.revision || 1}
+                        </td>
+                        <td className='px-5 py-3 text-right'>
+                          <div className='inline-flex items-center justify-end gap-3'>
+                            <span className='font-mono text-xs tabular-nums text-kr0n-muted'>
+                              {formatShortDate(project.updated_at || project.created_at)}
+                            </span>
+                            <Link
+                              href={`/projects/${project.id}/settings`}
+                              aria-label={`Settings for ${project.name}`}
+                              className='text-kr0n-muted hover:text-white transition-colors duration-150'
+                            >
+                              <Settings size={13} />
+                            </Link>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
-        </motion.div>
+
+          {/* Recent Organization Activity (Live Audit Stream) */}
+          <div className='lg:col-span-4 rounded-[6px] border border-kr0n-line bg-kr0n-black overflow-hidden'>
+            <div className='px-5 h-11 border-b border-kr0n-line-soft flex items-center justify-between'>
+              <h2 className='text-[13px] font-semibold text-white'>
+                Recent activity
+              </h2>
+              <Link
+                href='/settings'
+                className='text-xs text-kr0n-muted hover:text-white transition-colors duration-150'
+              >
+                Audit log
+              </Link>
+            </div>
+
+            {metaLoading && auditEvents.length === 0 ? (
+              <div className='px-5 py-8 text-center text-xs text-kr0n-muted'>
+                Loading activity...
+              </div>
+            ) : auditEvents.length === 0 ? (
+              <div className='px-5 py-8 text-center text-xs text-kr0n-muted'>
+                No organization events recorded yet.
+              </div>
+            ) : (
+              <div className='divide-y divide-kr0n-line-soft'>
+                {auditEvents.map((ev) => (
+                  <div key={ev.id} className='px-5 py-3 space-y-1'>
+                    <div className='flex items-center justify-between gap-2 text-xs'>
+                      <span className='font-mono text-kr0n-text truncate'>
+                        {ev.action}
+                      </span>
+                      <span className='font-mono tabular-nums text-kr0n-muted shrink-0'>
+                        {formatShortDate(ev.created_at)}
+                      </span>
+                    </div>
+                    <div className='font-mono text-xs text-kr0n-muted truncate'>
+                      {ev.resource_type
+                        ? `${ev.resource_type}${ev.resource_id ? `:${ev.resource_id.slice(0, 8)}` : ''}`
+                        : ev.actor_user_id || ev.actor_type || 'system'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       </div>
     </div>
   );

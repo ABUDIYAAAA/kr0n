@@ -1,27 +1,24 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { motion, AnimatePresence } from 'motion/react';
 import {
   Search,
   LayoutGrid,
   Home,
-  Rocket,
+  FolderGit2,
   Plus,
   BookOpen,
   Activity,
   CreditCard,
   Settings,
   Bell,
-  ArrowRight,
-  ExternalLink,
 } from 'lucide-react';
-import { useKr0nStore } from '@/lib/kr0n-state';
+import { useWorkspace } from '@/lib/workspace-context';
 
 export default function CommandPalette({ isOpen, onClose }) {
   const router = useRouter();
-  const { projects } = useKr0nStore();
+  const { projects } = useWorkspace();
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
 
@@ -34,28 +31,28 @@ export default function CommandPalette({ isOpen, onClose }) {
   if (!isOpen) return null;
 
   const staticActions = [
-    { id: 'dash', label: 'Go to Dashboard', icon: Home, href: '/dashboard', category: 'Navigation' },
-    { id: 'proj', label: 'Open Projects Workspace', icon: LayoutGrid, href: '/projects', category: 'Navigation' },
-    { id: 'new', label: 'Import GitHub Repository', icon: Plus, href: '/projects/new', category: 'Actions' },
-    { id: 'alerts', label: 'Operational Alerts Inbox', desc: 'Active firing alerts and conditions', icon: Bell, href: '/alerts', category: 'Observability' },
-    { id: 'usage', label: 'View Cluster Usage', icon: Activity, href: '/usage', category: 'Observability' },
-    { id: 'capacity', label: 'View Resource Capacity', icon: Activity, href: '/capacity', category: 'Observability' },
-    { id: 'status', label: 'System Status & History', icon: Activity, href: '/status', category: 'Observability' },
-    { id: 'bill', label: 'Billing & Invoices', icon: CreditCard, href: '/billing', category: 'Navigation' },
-    { id: 'settings', label: 'Organization & Security Settings', icon: Settings, href: '/settings', category: 'Navigation' },
-    { id: 'docs', label: 'Platform Documentation', icon: BookOpen, href: '/docs', category: 'Resources' },
+    { id: 'dash', label: 'Overview', desc: 'Organization summary and activity', icon: Home, href: '/dashboard', category: 'Workspace' },
+    { id: 'proj', label: 'Projects', desc: 'All connected repositories', icon: LayoutGrid, href: '/projects', category: 'Workspace' },
+    { id: 'new', label: 'Import GitHub repository', desc: 'Connect a repo and configure build', icon: Plus, href: '/projects/new', category: 'Action' },
+    { id: 'settings', label: 'Settings', desc: 'Organization, members, tokens, audit log', icon: Settings, href: '/settings', category: 'Workspace' },
+    { id: 'docs', label: 'Documentation', desc: 'Guides and API reference', icon: BookOpen, href: '/docs', category: 'Docs' },
+    { id: 'alerts', label: 'Alerts', desc: 'Coming soon', icon: Bell, href: '/alerts', category: 'Roadmap' },
+    { id: 'usage', label: 'Usage', desc: 'Coming soon', icon: Activity, href: '/usage', category: 'Roadmap' },
+    { id: 'capacity', label: 'Capacity', desc: 'Coming soon', icon: Activity, href: '/capacity', category: 'Roadmap' },
+    { id: 'status', label: 'Status', desc: 'Coming soon', icon: Activity, href: '/status', category: 'Roadmap' },
+    { id: 'bill', label: 'Billing', desc: 'Coming soon', icon: CreditCard, href: '/billing', category: 'Roadmap' },
   ];
 
   const projectActions = (projects || []).map((p) => ({
     id: `p_${p.id}`,
-    label: `${p.name} (${p.environment || 'production'})`,
-    desc: p.description,
-    icon: Rocket,
+    label: p.name,
+    desc: p.repo_full_name || p.description || 'Project configuration',
+    icon: FolderGit2,
     href: `/projects/${p.id}`,
-    category: 'Projects',
+    category: 'Project',
   }));
 
-  const allItems = [...staticActions, ...projectActions];
+  const allItems = [...projectActions, ...staticActions];
 
   const filteredItems = query.trim()
     ? allItems.filter(
@@ -66,91 +63,103 @@ export default function CommandPalette({ isOpen, onClose }) {
       )
     : allItems;
 
+  const clampedIndex = filteredItems.length > 0 ? Math.min(selectedIndex, filteredItems.length - 1) : 0;
+
   const handleSelect = (item) => {
+    setQuery('');
     onClose();
-    if (item.href) {
-      router.push(item.href);
-    }
+    if (item.href) router.push(item.href);
   };
 
   const handleKeyDown = (e) => {
-    if (e.key === 'ArrowDown') {
+    if (e.key === 'ArrowDown' && filteredItems.length > 0) {
       e.preventDefault();
       setSelectedIndex((prev) => (prev + 1) % filteredItems.length);
-    } else if (e.key === 'ArrowUp') {
+    } else if (e.key === 'ArrowUp' && filteredItems.length > 0) {
       e.preventDefault();
       setSelectedIndex((prev) => (prev - 1 + filteredItems.length) % filteredItems.length);
-    } else if (e.key === 'Enter') {
+    } else if (e.key === 'Enter' && filteredItems[clampedIndex]) {
       e.preventDefault();
-      if (filteredItems[selectedIndex]) {
-        handleSelect(filteredItems[selectedIndex]);
-      }
+      handleSelect(filteredItems[clampedIndex]);
     } else if (e.key === 'Escape') {
       e.preventDefault();
+      setQuery('');
       onClose();
     }
   };
 
   return (
-    <div className='fixed inset-0 z-50 flex items-start justify-center pt-24 px-4 bg-black/70 backdrop-blur-md'>
-      <motion.div
-        initial={{ opacity: 0, scale: 0.96, y: -10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.96, y: -10 }}
-        transition={{ duration: 0.15 }}
-        className='w-full max-w-xl bg-kr0n-surface border border-kr0n-line shadow-2xl overflow-hidden'
+    <div
+      className='fixed inset-0 z-50 flex items-start justify-center pt-20 sm:pt-24 px-4 bg-black/75'
+      role='dialog'
+      aria-modal='true'
+      aria-label='Search workspace'
+      onClick={() => {
+        setQuery('');
+        onClose();
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        className='w-full max-w-xl rounded-[6px] bg-kr0n-black border border-kr0n-line shadow-[0_12px_28px_rgba(0,0,0,0.45)] overflow-hidden'
       >
-        {/* Search Input Bar */}
-        <div className='flex items-center gap-3 px-4 py-3.5 border-b border-kr0n-line bg-kr0n-canvas-raised'>
-          <Search size={16} className='text-kr0n-muted shrink-0' />
+        <div className='flex items-center gap-3 px-4 h-12 border-b border-kr0n-line bg-kr0n-canvas'>
+          <Search size={15} className='text-kr0n-muted shrink-0' />
           <input
             autoFocus
             type='text'
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder='Type a command or search projects...'
-            className='w-full bg-transparent text-sm font-mono text-white placeholder-kr0n-muted outline-none'
+            placeholder='Search projects, settings, or pages...'
+            className='w-full bg-transparent text-sm text-kr0n-text placeholder:text-kr0n-faint outline-none'
           />
-          <kbd className='px-1.5 py-0.5 border border-kr0n-line text-[10px] font-mono text-kr0n-muted bg-kr0n-surface-2 font-medium'>
-            ESC
+          <kbd className='px-1.5 py-0.5 rounded-[4px] border border-kr0n-line text-[11px] font-mono text-kr0n-muted bg-kr0n-black shrink-0'>
+            Esc
           </kbd>
         </div>
 
-        {/* Results List */}
-        <div className='max-h-80 overflow-y-auto p-2 divide-y divide-kr0n-line-soft font-mono'>
+        <div className='max-h-80 overflow-y-auto divide-y divide-kr0n-line-soft'>
           {filteredItems.length === 0 ? (
-            <div className='p-6 text-center text-xs text-kr0n-muted'>
-              No commands or projects match &quot;{query}&quot;
+            <div className='py-10 text-center text-sm text-kr0n-muted'>
+              No results matching &ldquo;{query}&rdquo;
             </div>
           ) : (
             filteredItems.map((item, index) => {
               const Icon = item.icon;
-              const isSelected = index === selectedIndex;
+              const isSelected = index === clampedIndex;
               return (
                 <button
                   key={item.id}
                   type='button'
                   onClick={() => handleSelect(item)}
                   onMouseEnter={() => setSelectedIndex(index)}
-                  className={`w-full flex items-center justify-between px-3 py-2 text-left text-xs transition-colors ${
+                  className={`relative w-full flex items-center justify-between gap-3 px-4 h-11 text-left transition-colors duration-150 cursor-pointer ${
                     isSelected
-                      ? 'bg-white/10 text-white font-bold'
+                      ? 'bg-kr0n-surface-2 text-white'
                       : 'text-kr0n-text-secondary hover:text-white'
                   }`}
                 >
+                  {isSelected && (
+                    <span
+                      aria-hidden='true'
+                      className='absolute left-0 top-0 bottom-0 w-[2px] bg-kr0n-accent'
+                    />
+                  )}
                   <div className='flex items-center gap-3 min-w-0'>
-                    <Icon size={14} className={isSelected ? 'text-white' : 'text-kr0n-muted'} />
-                    <div className='truncate'>
-                      <span className={isSelected ? 'text-white' : 'text-kr0n-text'}>{item.label}</span>
+                    <Icon size={14} className={isSelected ? 'text-white shrink-0' : 'text-kr0n-muted shrink-0'} />
+                    <div className='min-w-0 flex items-baseline gap-2'>
+                      <span className='text-[13px] font-medium truncate text-kr0n-text'>
+                        {item.label}
+                      </span>
                       {item.desc && (
-                        <span className='text-[10px] text-kr0n-muted ml-2 truncate hidden sm:inline'>
-                          — {item.desc}
+                        <span className='text-xs text-kr0n-muted truncate hidden sm:inline'>
+                          {item.desc}
                         </span>
                       )}
                     </div>
                   </div>
-                  <span className='text-[10px] uppercase tracking-wider text-kr0n-muted shrink-0 ml-3 font-semibold'>
+                  <span className='text-xs text-kr0n-muted shrink-0'>
                     {item.category}
                   </span>
                 </button>
@@ -159,16 +168,14 @@ export default function CommandPalette({ isOpen, onClose }) {
           )}
         </div>
 
-        {/* Footer shortcuts */}
-        <div className='px-4 py-2.5 border-t border-kr0n-line bg-kr0n-surface-2 flex items-center justify-between text-[10px] font-mono text-kr0n-muted'>
-          <div className='flex items-center gap-3'>
+        <div className='px-4 py-2 border-t border-kr0n-line bg-kr0n-canvas flex items-center justify-between text-xs text-kr0n-muted'>
+          <div className='flex items-center gap-4'>
             <span>↑↓ Navigate</span>
-            <span>↵ Select</span>
-            <span>ESC Close</span>
+            <span>↵ Open</span>
           </div>
-          <span className='font-bold text-white tracking-wider'>KR0N COMMAND LAYER</span>
+          <span className='font-mono'>kr0n</span>
         </div>
-      </motion.div>
+      </div>
     </div>
   );
 }

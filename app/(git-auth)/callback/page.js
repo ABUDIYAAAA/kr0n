@@ -1,22 +1,21 @@
-"use client";
+'use client';
 
-import { useEffect, useState, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
-import Link from "next/link";
-import { Loader2, AlertCircle, CheckCircle } from "lucide-react";
+import { useEffect, useState, Suspense } from 'react';
+import { useRouter, useSearchParams } from 'next/navigation';
+import Link from 'next/link';
+import { Loader2, CheckCircle2 } from 'lucide-react';
 import {
   completeOAuthCallback,
   consumeOAuthRedirect,
   getMe,
-} from "@/lib/auth";
-import { useKr0nStore } from "@/lib/kr0n-state";
+} from '@/lib/auth';
+import AuthCard, { AuthBanner } from '@/components/auth/AuthCard';
 
 function CallbackHandler() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { syncAuthUser } = useKr0nStore();
 
-  const [status, setStatus] = useState("Verifying authorization handshake...");
+  const [status, setStatus] = useState('Verifying authorization...');
   const [error, setError] = useState(null);
   const [isSuccess, setIsSuccess] = useState(false);
 
@@ -24,8 +23,8 @@ function CallbackHandler() {
     let active = true;
 
     async function processCallback() {
-      const errParam = searchParams.get("error");
-      const errDesc = searchParams.get("error_description");
+      const errParam = searchParams.get('error');
+      const errDesc = searchParams.get('error_description');
       if (errParam) {
         if (active) {
           setError(errDesc || `Authentication failed: ${errParam}`);
@@ -33,34 +32,31 @@ function CallbackHandler() {
         return;
       }
 
-      const code = searchParams.get("code");
-      const state = searchParams.get("state");
-      const providerParam = searchParams.get("provider");
+      const code = searchParams.get('code');
+      const state = searchParams.get('state');
+      const providerParam = searchParams.get('provider');
 
       if (code) {
         if (active) {
-          setStatus("Exchanging code with KR0N control plane...");
+          setStatus('Completing sign-in...');
         }
 
         try {
-          const { user, redirect } = await completeOAuthCallback(
+          const { redirect } = await completeOAuthCallback(
             providerParam,
             code,
             state
           );
-          if (user) {
-            syncAuthUser(user);
-          }
 
           if (active) {
             setIsSuccess(true);
-            setStatus("Authentication confirmed. Directing to workspace...");
+            setStatus('Signed in. Redirecting to console...');
             setTimeout(() => router.replace(redirect), 500);
           }
           return;
         } catch (err) {
           if (active) {
-            setError(err.message || "Failed to exchange OAuth authorization code.");
+            setError(err.message || 'Failed to exchange OAuth authorization code.');
           }
           return;
         }
@@ -70,10 +66,9 @@ function CallbackHandler() {
       if (!active) return;
 
       if (existingUser) {
-        syncAuthUser(existingUser);
-        router.replace(consumeOAuthRedirect("/dashboard"));
+        router.replace(consumeOAuthRedirect('/dashboard'));
       } else {
-        router.replace("/login");
+        router.replace('/login');
       }
     }
 
@@ -82,63 +77,48 @@ function CallbackHandler() {
     return () => {
       active = false;
     };
-  }, [searchParams, router, syncAuthUser]);
+  }, [searchParams, router]);
 
   return (
-    <div className="w-full max-w-sm border border-[#242930] bg-[#0D1014] p-6 sm:p-8 text-center">
-      <Link
-        href="/"
-        className="text-xl font-bold tracking-wider text-white inline-block mb-6">
-        KR0N
-      </Link>
-
+    <AuthCard title={error ? 'Sign-in failed' : isSuccess ? 'Signed in' : 'Signing in'}>
       {error ? (
-        <div className="space-y-4">
-          <div className="border border-red-500/40 bg-red-500/10 p-3 text-xs font-mono text-red-400 flex items-start gap-2 text-left">
-            <AlertCircle size={16} className="shrink-0 mt-0.5 text-red-400" />
-            <span className="leading-tight">{error}</span>
-          </div>
+        <div className='space-y-4'>
+          <AuthBanner type='error' message={error} />
           <Link
-            href="/login"
-            className="clipped-btn block w-full bg-white hover:bg-neutral-200 text-black py-2.5 text-xs font-mono uppercase font-bold tracking-wider transition-colors">
-            Return to Sign In
+            href='/login'
+            className='flex items-center justify-center w-full h-10 rounded-lg bg-kr0n-text hover:bg-white text-kr0n-black text-sm font-medium shadow-[inset_0_1px_0_rgba(255,255,255,0.6)] transition-colors duration-150'
+          >
+            Back to sign in
           </Link>
         </div>
       ) : isSuccess ? (
-        <div className="space-y-4 py-2">
-          <div className="flex justify-center text-emerald-400">
-            <CheckCircle size={28} />
-          </div>
-          <p className="text-xs font-mono text-emerald-400 font-bold tracking-wide">
-            {status}
-          </p>
+        <div className='py-4 text-center space-y-3'>
+          <CheckCircle2 size={24} className='text-kr0n-healthy mx-auto' />
+          <p className='text-sm text-kr0n-text-secondary'>{status}</p>
         </div>
       ) : (
-        <div className="space-y-4 py-3">
-          <div className="flex justify-center text-white/60">
-            <Loader2 size={24} className="animate-spin text-white" />
-          </div>
-          <p className="text-xs font-mono text-[#858C95]">
-            {status}
-          </p>
+        <div className='py-4 text-center space-y-3'>
+          <Loader2 size={22} className='animate-spin text-kr0n-muted mx-auto' />
+          <p className='text-sm text-kr0n-muted'>{status}</p>
         </div>
       )}
-    </div>
+    </AuthCard>
   );
 }
 
 export default function CallbackPage() {
   return (
-    <div className="min-h-screen bg-[#090B0E] text-[#F3F4F6] flex items-center justify-center p-4">
-      <Suspense
-        fallback={
-          <div className="w-full max-w-sm border border-[#242930] bg-[#0D1014] p-8 text-center">
-            <Loader2 size={24} className="animate-spin text-white mx-auto mb-3" />
-            <p className="text-xs font-mono text-[#858C95]">Loading session...</p>
+    <Suspense
+      fallback={
+        <AuthCard title='Signing in'>
+          <div className='py-4 text-center space-y-3'>
+            <Loader2 size={22} className='animate-spin text-kr0n-muted mx-auto' />
+            <p className='text-sm text-kr0n-muted'>Loading session...</p>
           </div>
-        }>
-        <CallbackHandler />
-      </Suspense>
-    </div>
+        </AuthCard>
+      }
+    >
+      <CallbackHandler />
+    </Suspense>
   );
 }

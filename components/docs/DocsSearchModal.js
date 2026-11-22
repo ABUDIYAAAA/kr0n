@@ -1,33 +1,31 @@
-"use client";
+'use client';
 
-import { useEffect, useRef, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { Search, X, ArrowRight, CornerDownLeft, FileText } from "lucide-react";
-import { SEARCH_INDEX } from "@/lib/docs-data";
+import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'next/navigation';
+import { Search, X, ArrowRight, FileText } from 'lucide-react';
+import { SEARCH_INDEX } from '@/lib/docs-data';
 
 export default function DocsSearchModal({ isOpen, onClose }) {
   const router = useRouter();
   const inputRef = useRef(null);
-  const [query, setQuery] = useState("");
+  const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
 
   useEffect(() => {
     if (isOpen) {
-      const timer = setTimeout(() => inputRef.current?.focus(), 50);
+      const timer = setTimeout(() => inputRef.current?.focus(), 30);
       return () => clearTimeout(timer);
     }
   }, [isOpen]);
 
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === "Escape" && isOpen) {
+      if (e.key === 'Escape' && isOpen) {
         onClose();
       }
     };
-
-    window.addEventListener("keydown", handleKeyDown);
-    return () => window.removeEventListener("keydown", handleKeyDown);
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isOpen, onClose]);
 
   const filtered = query.trim()
@@ -42,120 +40,122 @@ export default function DocsSearchModal({ isOpen, onClose }) {
       })
     : SEARCH_INDEX.slice(0, 6);
 
+  const clampedIndex = filtered.length > 0 ? Math.min(selectedIndex, filtered.length - 1) : 0;
+
   const handleSelect = (slug) => {
+    setQuery('');
     onClose();
     router.push(slug);
   };
 
   const handleKeyNavigation = (e) => {
-    if (e.key === "ArrowDown") {
+    if (e.key === 'ArrowDown' && filtered.length > 0) {
       e.preventDefault();
-      setSelectedIndex((prev) => (prev + 1) % Math.max(1, filtered.length));
-    } else if (e.key === "ArrowUp") {
+      setSelectedIndex((prev) => (prev + 1) % filtered.length);
+    } else if (e.key === 'ArrowUp' && filtered.length > 0) {
       e.preventDefault();
-      setSelectedIndex((prev) => (prev - 1 + filtered.length) % Math.max(1, filtered.length));
-    } else if (e.key === "Enter" && filtered[selectedIndex]) {
+      setSelectedIndex((prev) => (prev - 1 + filtered.length) % filtered.length);
+    } else if (e.key === 'Enter' && filtered[clampedIndex]) {
       e.preventDefault();
-      handleSelect(filtered[selectedIndex].slug);
+      handleSelect(filtered[clampedIndex].slug);
     }
   };
 
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 sm:pt-28 px-4 bg-black/80 backdrop-blur-md animate-in fade-in duration-150">
+    <div
+      role='dialog'
+      aria-modal='true'
+      aria-label='Search documentation'
+      onClick={onClose}
+      className='fixed inset-0 z-50 flex items-start justify-center pt-20 sm:pt-28 px-4 bg-black/75 backdrop-blur-sm'
+    >
       <div
-        className="w-full max-w-2xl border border-white/20 bg-[#0b0c0e] shadow-2xl overflow-hidden relative"
-        onClick={(e) => e.stopPropagation()}>
-        {/* INPUT CONTAINER */}
-        <div className="flex items-center px-5 border-b border-white/10 bg-white/[0.02]">
-          <Search size={18} className="text-white/40 shrink-0 mr-3" />
+        className='w-full max-w-xl rounded-xl border border-kr0n-line bg-kr0n-surface shadow-2xl overflow-hidden'
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className='flex items-center px-4 h-13 border-b border-kr0n-line bg-kr0n-canvas-raised gap-3'>
+          <Search size={16} className='text-kr0n-muted shrink-0' />
           <input
             ref={inputRef}
-            type="text"
+            type='text'
             value={query}
             onChange={(e) => {
               setQuery(e.target.value);
               setSelectedIndex(0);
             }}
             onKeyDown={handleKeyNavigation}
-            placeholder="Search documentation, API protocols, CLI commands..."
-            className="w-full h-14 bg-transparent text-sm text-white placeholder:text-zinc-500 outline-none font-mono"
+            placeholder='Search documentation...'
+            className='w-full bg-transparent text-sm text-kr0n-text placeholder:text-kr0n-faint outline-none'
           />
           {query ? (
             <button
-              type="button"
-              onClick={() => setQuery("")}
-              className="text-white/40 hover:text-white p-1 text-xs">
-              <X size={16} />
+              type='button'
+              onClick={() => setQuery('')}
+              aria-label='Clear search'
+              className='text-kr0n-muted hover:text-kr0n-text p-1 cursor-pointer'
+            >
+              <X size={15} />
             </button>
           ) : (
-            <span className="hidden sm:inline-block border border-white/20 px-2 py-0.5 text-[10px] font-mono text-white/40">
-              ESC
-            </span>
+            <kbd className='hidden sm:inline-block rounded-md border border-kr0n-line bg-kr0n-black px-1.5 py-0.5 text-[11px] font-mono text-kr0n-muted'>
+              Esc
+            </kbd>
           )}
         </div>
 
-        {/* RESULTS CONTAINER */}
-        <div className="max-h-[60vh] overflow-y-auto p-2 no-scrollbar">
+        <div className='max-h-[60vh] overflow-y-auto p-2 space-y-0.5'>
           {filtered.length > 0 ? (
-            <div className="space-y-1">
-              {filtered.map((item, idx) => {
-                const isSelected = idx === selectedIndex;
-                return (
-                  <button
-                    key={item.slug}
-                    type="button"
-                    onClick={() => handleSelect(item.slug)}
-                    onMouseEnter={() => setSelectedIndex(idx)}
-                    className={`w-full text-left p-3.5 flex items-start justify-between gap-4 transition-colors ${
-                      isSelected
-                        ? "bg-white/10 border-l-2 border-white"
-                        : "hover:bg-white/[0.04] border-l-2 border-transparent"
-                    }`}>
-                    <div className="space-y-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="border border-white/15 bg-white/5 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-white/70">
-                          {item.section}
-                        </span>
-                        <span className="text-sm font-bold text-white tracking-tight truncate">
-                          {item.title}
-                        </span>
-                      </div>
-                      <p className="text-xs text-zinc-400 line-clamp-1">
-                        {item.snippet}
-                      </p>
+            filtered.map((item, idx) => {
+              const isSelected = idx === clampedIndex;
+              return (
+                <button
+                  key={item.slug}
+                  type='button'
+                  onClick={() => handleSelect(item.slug)}
+                  onMouseEnter={() => setSelectedIndex(idx)}
+                  className={`w-full text-left px-3 py-2.5 rounded-lg flex items-center justify-between gap-4 transition-colors duration-150 cursor-pointer ${
+                    isSelected
+                      ? 'bg-kr0n-surface-2 text-kr0n-text'
+                      : 'text-kr0n-text-secondary hover:bg-kr0n-surface-2/60'
+                  }`}
+                >
+                  <div className='space-y-0.5 min-w-0'>
+                    <div className='flex items-center gap-2'>
+                      <span className='text-[11px] font-mono text-kr0n-muted'>
+                        {item.section}
+                      </span>
+                      <span className='text-sm font-medium text-kr0n-text truncate'>
+                        {item.title}
+                      </span>
                     </div>
-
-                    <div className="shrink-0 flex items-center gap-2 pt-1 text-white/40">
-                      {isSelected && (
-                        <CornerDownLeft size={13} className="text-white" />
-                      )}
-                      <ArrowRight size={14} className={isSelected ? "text-white" : "text-white/20"} />
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
+                    <p className='text-xs text-kr0n-muted line-clamp-1'>
+                      {item.snippet}
+                    </p>
+                  </div>
+                  <ArrowRight
+                    size={14}
+                    className={isSelected ? 'text-kr0n-text shrink-0' : 'text-kr0n-faint shrink-0'}
+                  />
+                </button>
+              );
+            })
           ) : (
-            <div className="py-16 text-center text-zinc-500 font-mono text-xs">
-              <FileText size={24} className="mx-auto mb-3 text-zinc-600" />
-              <p>No matching documentation entries found for &quot;{query}&quot;</p>
-              <p className="text-zinc-600 text-[11px] mt-1">
-                Try searching for &quot;quick start&quot;, &quot;ast&quot;, &quot;cli&quot;, or &quot;templates&quot;
-              </p>
+            <div className='py-12 text-center text-kr0n-muted text-sm space-y-2'>
+              <FileText size={20} className='mx-auto text-kr0n-faint' />
+              <p>No documentation matches &ldquo;{query}&rdquo;.</p>
             </div>
           )}
         </div>
 
-        {/* FOOTER */}
-        <div className="px-5 py-2.5 bg-black/60 border-t border-white/10 flex items-center justify-between text-[10px] font-mono text-zinc-500">
-          <div className="flex items-center gap-3">
-            <span>↑↓ to navigate</span>
-            <span>↵ to select</span>
-            <span>esc to close</span>
+        <div className='px-4 py-2.5 bg-kr0n-canvas-raised border-t border-kr0n-line flex items-center justify-between text-xs text-kr0n-muted'>
+          <div className='flex items-center gap-4'>
+            <span>↑↓ Navigate</span>
+            <span>↵ Open</span>
+            <span>Esc Close</span>
           </div>
-          <span className="text-white/30">PROTOCOL // SEARCH_V1</span>
+          <span className='font-mono'>kr0n docs</span>
         </div>
       </div>
     </div>

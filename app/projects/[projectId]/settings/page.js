@@ -1,387 +1,629 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
   Save,
-  Trash2,
-  Plus,
-  Layers,
   AlertTriangle,
   CheckCircle2,
-  ShieldAlert,
-  Server,
-  Activity,
-  GitBranch,
+  Loader2,
 } from 'lucide-react';
-import { useKr0nStore } from '@/lib/kr0n-state';
+import { useWorkspace } from '@/lib/workspace-context';
+import {
+  getProject,
+  buildBuildSettingsPayload,
+} from '@/lib/projects-api';
+import { APPLICATION_PRESETS } from '@/components/projects/github-picker/constants';
 import BrandedNotFound from '@/components/common/BrandedNotFound';
 
 export default function ProjectSettingsPage({ params }) {
   const { projectId } = use(params);
   const router = useRouter();
   const {
+    activeOrgId,
     projects,
+    presets,
+    hasLoaded,
     updateProject,
+    updateProjectBuildSettings,
     deleteProject,
-    createEnvironment,
-  } = useKr0nStore();
+    refreshProjects,
+  } = useWorkspace();
 
-  const project = projects.find((p) => p.id === projectId);
+  const cachedProject = projects.find((p) => p.id === projectId) || null;
+  const [liveProject, setLiveProject] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
-  const [name, setName] = useState(project?.name || '');
-  const [description, setDescription] = useState(project?.description || '');
-  const [environments, setEnvironments] = useState(project?.environments || ['production', 'staging']);
-  const [newEnvInput, setNewEnvInput] = useState('');
-  const [showAddEnvModal, setShowAddEnvModal] = useState(false);
+  const project = liveProject || cachedProject;
 
-  const [isDirty, setIsDirty] = useState(false);
-  const [savedFeedback, setSavedFeedback] = useState(false);
-  const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [confirmName, setConfirmName] = useState('');
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [productionBranch, setProductionBranch] = useState('main');
+  const [rootDirectory, setRootDirectory] = useState('./');
+  const [applicationPreset, setApplicationPreset] = useState('auto');
 
-  if (!project) {
-    return <BrandedNotFound type='Project' id={projectId} backHref='/projects' backLabel='Back to Projects' />;
+  const [installOverride, setInstallOverride] = useState(false);
+  const [customInstallCommand, setCustomInstallCommand] = useState('');
+  const [buildOverride, setBuildOverride] = useState(false);
+  const [customBuildCommand, setCustomBuildCommand] = useState('');
+  const [outputOverride, setOutputOverride] = useState(false);
+  const [customOutputDir, setCustomOutputDir] = useState('');
+
+  const [syncedRevisionKey, setSyncedRevisionKey] = useState('');
+  const currentRevisionKey = project ? `${project.id}:${project.revision}` : '';
+  if (project && syncedRevisionKey !== currentRevisionKey) {
+    setSyncedRevisionKey(currentRevisionKey);
+    setName(project.name || '');
+    setDescription(project.description || '');
+    setProductionBranch(project.production_branch || 'main');
+    setRootDirectory(project.root_directory || './');
+    setApplicationPreset(project.application_preset || 'auto');
+
+    const bs = project.build_settings || {};
+    setInstallOverride(Boolean(bs.install_command_override));
+    setCustomInstallCommand(bs.install_command || '');
+    setBuildOverride(Boolean(bs.build_command_override));
+    setCustomBuildCommand(bs.build_command || '');
+    setOutputOverride(Boolean(bs.output_directory_override));
+    setCustomOutputDir(bs.output_directory || '');
   }
 
-  const handleSave = () => {
-    updateProject(projectId, {
-      name: name.trim() || project.name,
-      description: description.trim() || project.description,
-      environments,
-    });
-    setIsDirty(false);
-    setSavedFeedback(true);
-    setTimeout(() => setSavedFeedback(false), 3000);
-  };
+  const [isMetaDirty, setIsMetaDirty] = useState(false);
+  const [isBuildDirty, setIsBuildDirty] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState('');
+  const [savedFeedback, setSavedFeedback] = useState('');
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [confirmName, setConfirmName] = useState('');
+  const [deleting, setDeleting] = useState(false);
 
-  const handleAddEnv = (e) => {
-    e.preventDefault();
-    if (!newEnvInput.trim()) return;
-    const cleanEnv = newEnvInput.trim().toLowerCase();
-    if (!environments.includes(cleanEnv)) {
-      const updated = [...environments, cleanEnv];
-      setEnvironments(updated);
-      createEnvironment(projectId, cleanEnv);
+  useEffect(() => {
+    if (!showDeleteModal) return;
+    const onKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setShowDeleteModal(false);
+        setConfirmName('');
+      }
+    };
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [showDeleteModal]);
+
+  useEffect(() => {
+    if (!activeOrgId) {
+      if (hasLoaded) {
+        Promise.resolve().then(() => {
+          setLoading(false);
+          setNotFound(true);
+        });
+      }
+      return;
     }
-    setNewEnvInput('');
-    setShowAddEnvModal(false);
-    setIsDirty(true);
+
+    let active = true;
+    Promise.resolve()
+      .then(() => {
+        if (!active) return null;
+        setLoading(true);
+        setNotFound(false);
+        return getProject(activeOrgId, projectId);
+      })
+      .then((proj) => {
+        if (!active) return;
+        if (proj?.id) {
+          setLiveProject(proj);
+          setNotFound(false);
+        } else {
+          setNotFound(true);
+        }
+      })
+      .catch(() => {
+        if (active) setNotFound(true);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [activeOrgId, projectId, hasLoaded]);
+
+  if (loading && !project) {
+    return (
+      <div className='min-h-[60vh] flex flex-col items-center justify-center p-8 text-center space-y-3'>
+        <Loader2 size={20} className='animate-spin text-kr0n-muted' />
+        <p className='text-sm text-kr0n-muted'>Loading project settings...</p>
+      </div>
+    );
+  }
+
+  if (notFound || !project) {
+    return (
+      <BrandedNotFound
+        type='Project'
+        id={projectId}
+        backHref='/projects'
+        backLabel='Back to projects'
+      />
+    );
+  }
+
+  const availablePresets =
+    Array.isArray(presets) && presets.length > 0 ? presets : APPLICATION_PRESETS;
+  const selectedPresetMeta =
+    availablePresets.find((p) => p.id === applicationPreset) || availablePresets[0];
+
+  const isDirty = isMetaDirty || isBuildDirty;
+
+  const handleReset = () => {
+    setName(project.name || '');
+    setDescription(project.description || '');
+    setProductionBranch(project.production_branch || 'main');
+    setRootDirectory(project.root_directory || './');
+    setApplicationPreset(project.application_preset || 'auto');
+
+    const bs = project.build_settings || {};
+    setInstallOverride(Boolean(bs.install_command_override));
+    setCustomInstallCommand(bs.install_command || '');
+    setBuildOverride(Boolean(bs.build_command_override));
+    setCustomBuildCommand(bs.build_command || '');
+    setOutputOverride(Boolean(bs.output_directory_override));
+    setCustomOutputDir(bs.output_directory || '');
+
+    setIsMetaDirty(false);
+    setIsBuildDirty(false);
+    setSaveError('');
   };
 
-  const handleDeleteProject = () => {
-    if (confirmName === project.name) {
-      deleteProject(projectId);
+  const handleSave = async () => {
+    if (!activeOrgId || !project?.id || !isDirty) return;
+    setSaving(true);
+    setSaveError('');
+    setSavedFeedback('');
+
+    try {
+      let currentProj = project;
+
+      if (isMetaDirty) {
+        currentProj = await updateProject(project.id, {
+          orgId: activeOrgId,
+          name: name.trim() || project.name,
+          description: description.trim(),
+          production_branch: productionBranch.trim() || 'main',
+          root_directory: rootDirectory.trim() || './',
+          application_preset: applicationPreset,
+          expected_revision: currentProj.revision,
+        });
+        setLiveProject(currentProj);
+        setIsMetaDirty(false);
+      }
+
+      if (isBuildDirty) {
+        const buildPayload = buildBuildSettingsPayload({
+          installOverride,
+          customInstallCommand,
+          buildOverride,
+          customBuildCommand,
+          outputOverride,
+          customOutputDir,
+        });
+        currentProj = await updateProjectBuildSettings(project.id, {
+          orgId: activeOrgId,
+          build_settings: buildPayload,
+          expected_revision: currentProj.revision,
+        });
+        setLiveProject(currentProj);
+        setIsBuildDirty(false);
+      }
+
+      setSavedFeedback(`Saved changes (revision ${currentProj.revision}).`);
+      setTimeout(() => setSavedFeedback(''), 3000);
+    } catch (err) {
+      setSaveError(err.message || 'Failed to save project settings.');
+      if (err.status === 409) {
+        const latest = await getProject(activeOrgId, project.id).catch(() => null);
+        if (latest) setLiveProject(latest);
+      }
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteProject = async () => {
+    if (confirmName !== project.name || !activeOrgId) return;
+    setDeleting(true);
+    setSaveError('');
+    try {
+      await deleteProject(project.id, activeOrgId);
+      await refreshProjects().catch(() => {});
       setShowDeleteModal(false);
       router.push('/projects');
+    } catch (err) {
+      setSaveError(err.message || 'Failed to delete project.');
+      setDeleting(false);
     }
   };
 
   return (
     <div className='flex-1 flex flex-col h-full overflow-auto bg-kr0n-canvas text-kr0n-text'>
-      {/* ─── Breadcrumb Bar ─── */}
-      <div className='h-12 border-b border-kr0n-line bg-kr0n-canvas-raised/80 backdrop-blur-sm flex items-center justify-between px-4 sm:px-6 shrink-0'>
-        <div className='flex items-center gap-2.5 text-xs font-mono'>
-          <Link
-            href={`/projects/${projectId}`}
-            className='flex items-center gap-1 text-kr0n-text-secondary hover:text-white transition-colors uppercase tracking-wider font-medium'
-          >
-            <ArrowLeft size={12} />
-            <span>{project.name}</span>
-          </Link>
-          <span className='text-kr0n-muted'>/</span>
-          <span className='text-white font-bold uppercase tracking-wider'>Project Settings</span>
-        </div>
+      {/* Header */}
+      <div className='border-b border-kr0n-line bg-kr0n-canvas px-6 sm:px-8 py-6'>
+        <div className='max-w-[1152px] flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
+          <div className='space-y-1'>
+            <Link
+              href={`/projects/${projectId}`}
+              className='inline-flex items-center gap-1.5 text-xs text-kr0n-muted hover:text-white transition-colors duration-150'
+            >
+              <ArrowLeft size={13} />
+              <span>{project.name}</span>
+            </Link>
+            <h1 className='text-2xl font-semibold tracking-tight text-white'>
+              Project settings
+            </h1>
+          </div>
 
-        <Link
-          href={`/projects/${projectId}`}
-          className='text-xs font-mono text-kr0n-text-secondary hover:text-white transition-colors'
-        >
-          View Overview →
-        </Link>
+          <div className='flex items-center gap-3'>
+            <span className='font-mono text-xs tabular-nums text-kr0n-muted'>
+              rev {project.revision}
+            </span>
+            <button
+              type='button'
+              disabled={!isDirty || saving}
+              onClick={handleSave}
+              className='inline-flex items-center gap-1.5 h-9 px-4 rounded-[6px] bg-kr0n-text hover:bg-white text-kr0n-black text-[13px] font-medium transition-colors duration-150 disabled:opacity-35 cursor-pointer'
+            >
+              <Save size={14} />
+              <span>{saving ? 'Saving...' : 'Save changes'}</span>
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Dirty notification */}
+      {/* Dirty / Feedback Strips */}
       {isDirty && (
-        <div className='sticky top-0 z-30 bg-kr0n-surface border-b border-white/20 px-4 sm:px-6 py-2.5 flex items-center justify-between text-xs font-mono shadow-xl'>
-          <span className='text-white font-bold flex items-center gap-2'>
-            <span className='w-2 h-2 rounded-full bg-amber-400 animate-pulse' />
-            Unsaved changes to project parameters
+        <div className='sticky top-0 z-30 bg-kr0n-black border-b border-kr0n-accent px-6 sm:px-8 py-2.5 flex items-center justify-between gap-4 text-xs'>
+          <span className='text-white font-medium'>
+            Unsaved edits against revision {project.revision}
           </span>
           <div className='flex items-center gap-3'>
             <button
               type='button'
-              onClick={() => {
-                setName(project.name);
-                setDescription(project.description);
-                setIsDirty(false);
-              }}
-              className='text-kr0n-text-secondary hover:text-white px-2 py-1'
+              disabled={saving}
+              onClick={handleReset}
+              className='text-kr0n-muted hover:text-white transition-colors duration-150 cursor-pointer'
             >
-              Reset
+              Discard
             </button>
             <button
               type='button'
+              disabled={saving}
               onClick={handleSave}
-              className='clipped-btn bg-white hover:bg-neutral-200 text-black px-4 py-1 font-bold uppercase tracking-wider'
+              className='h-7 px-3 rounded-[6px] bg-kr0n-text hover:bg-white text-kr0n-black font-medium disabled:opacity-50 transition-colors duration-150 cursor-pointer'
             >
-              Save Project
+              {saving ? 'Saving...' : 'Save'}
             </button>
           </div>
         </div>
       )}
 
-      {/* Feedback Toast */}
-      {savedFeedback && (
-        <div className='sticky top-0 z-30 bg-emerald-500/10 border-b border-emerald-500/30 px-4 sm:px-6 py-2.5 flex items-center gap-2 text-xs font-mono text-emerald-400'>
-          <CheckCircle2 size={14} />
-          <span>Project settings saved successfully.</span>
+      {saveError && (
+        <div className='bg-red-500/10 border-b border-red-500/30 px-6 sm:px-8 py-2.5 flex items-center gap-2 text-xs text-red-300'>
+          <AlertTriangle size={14} className='text-kr0n-error shrink-0' />
+          <span>{saveError}</span>
         </div>
       )}
 
-      <div className='flex-1 p-4 sm:p-6 lg:p-8 max-w-4xl mx-auto w-full space-y-10'>
-        {/* Header */}
-        <div>
-          <h1 className='text-xl font-bold font-mono text-white tracking-wide uppercase'>
-            Project Settings
-          </h1>
-          <p className='text-xs font-mono text-kr0n-text-secondary mt-1'>
-            Configure project identity, environment isolation tiers, and workspace deletion rules.
-          </p>
+      {savedFeedback && (
+        <div className='sticky top-0 z-30 bg-kr0n-healthy/15 border-b border-kr0n-healthy/40 px-6 sm:px-8 py-2.5 flex items-center gap-2 text-xs text-kr0n-healthy'>
+          <CheckCircle2 size={14} className='shrink-0' />
+          <span>{savedFeedback}</span>
         </div>
+      )}
 
-        {/* ─── 1. General Project Details ─── */}
-        <section className='space-y-4'>
-          <div className='border-b border-kr0n-line-soft pb-2'>
-            <h2 className='text-sm font-mono font-bold uppercase tracking-wider text-white'>
-              Project Details
-            </h2>
+      {/* Two-Column Settings Layout */}
+      <div className='flex-1 px-6 sm:px-8 py-8 max-w-[1152px] w-full divide-y divide-kr0n-line'>
+        {/* Row 1: Identity */}
+        <section className='pb-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start'>
+          <div className='lg:col-span-4 space-y-2 pt-1'>
+            <h2 className='text-base font-medium text-white'>Project identity</h2>
+            <p className='text-[13px] text-kr0n-muted leading-relaxed'>
+              Name and summary shown across your organization workspace.
+            </p>
+            <dl className='pt-3 space-y-1.5 text-xs font-mono text-kr0n-muted'>
+              <div>
+                <dt className='inline text-kr0n-faint'>Slug: </dt>
+                <dd className='inline text-kr0n-text-secondary'>{project.slug}</dd>
+              </div>
+              <div className='truncate'>
+                <dt className='inline text-kr0n-faint'>ID: </dt>
+                <dd className='inline text-kr0n-text-secondary select-all'>{project.id}</dd>
+              </div>
+            </dl>
           </div>
 
-          <div className='space-y-4 text-xs font-mono'>
-            <div>
-              <label className='block text-kr0n-text-secondary uppercase tracking-wider font-bold mb-1.5'>
-                Project Name
+          <div className='lg:col-span-8 rounded-[6px] border border-kr0n-line bg-kr0n-black p-6 space-y-4'>
+            <div className='space-y-1.5'>
+              <label htmlFor='proj-name' className='block text-[13px] font-medium text-white'>
+                Project name
               </label>
               <input
+                id='proj-name'
                 type='text'
+                maxLength={100}
                 value={name}
                 onChange={(e) => {
                   setName(e.target.value);
-                  setIsDirty(true);
+                  setIsMetaDirty(true);
                 }}
-                className='w-full bg-kr0n-surface border border-kr0n-line px-3 py-2 text-white outline-none focus:border-white'
+                className='w-full h-10 rounded-[6px] bg-kr0n-canvas border border-kr0n-line focus:border-kr0n-accent px-3 text-sm text-white outline-none transition-colors duration-150'
               />
             </div>
 
-            <div>
-              <label className='block text-kr0n-text-secondary uppercase tracking-wider font-bold mb-1.5'>
+            <div className='space-y-1.5'>
+              <label htmlFor='proj-desc' className='block text-[13px] font-medium text-white'>
                 Description
               </label>
               <textarea
-                rows={3}
+                id='proj-desc'
+                rows={2}
+                maxLength={500}
                 value={description}
                 onChange={(e) => {
                   setDescription(e.target.value);
-                  setIsDirty(true);
+                  setIsMetaDirty(true);
                 }}
-                className='w-full bg-kr0n-surface border border-kr0n-line px-3 py-2 text-white outline-none focus:border-white resize-none'
+                placeholder='Optional project summary'
+                className='w-full rounded-[6px] bg-kr0n-canvas border border-kr0n-line focus:border-kr0n-accent px-3 py-2 text-sm text-white outline-none resize-none transition-colors duration-150'
               />
-            </div>
-
-            <div className='p-3 border border-kr0n-line-soft bg-kr0n-black flex items-center justify-between text-xs'>
-              <div>
-                <span className='text-kr0n-muted text-[10px] uppercase font-bold block'>Project Identifier</span>
-                <span className='text-white font-mono font-bold select-all'>{project.id}</span>
-              </div>
-              <span className='text-kr0n-text-secondary text-[11px]'>{project.services.length} Microservices</span>
             </div>
           </div>
         </section>
 
-        {/* ─── 2. Environment Management ─── */}
-        <section className='space-y-4'>
-          <div className='border-b border-kr0n-line-soft pb-2 flex items-center justify-between'>
-            <div>
-              <h2 className='text-sm font-mono font-bold uppercase tracking-wider text-white'>
-                Environments
-              </h2>
-              <p className='text-xs text-kr0n-text-secondary mt-0.5'>
-                Logical isolation barriers for staging, production, and transient preview branches.
-              </p>
+        {/* Row 2: Git Source & Preset */}
+        <section className='py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start'>
+          <div className='lg:col-span-4 space-y-2 pt-1'>
+            <h2 className='text-base font-medium text-white'>Git source and preset</h2>
+            <p className='text-[13px] text-kr0n-muted leading-relaxed'>
+              Control the production branch, monorepo root directory, and stack preset bound to this repository.
+            </p>
+            <div className='pt-3 space-y-1 text-xs font-mono text-kr0n-muted'>
+              <div className='truncate text-kr0n-text-secondary'>
+                {project.repo_full_name || '—'}
+              </div>
+              <div>Installation #{project.github_installation_id || '—'}</div>
             </div>
-            <button
-              type='button'
-              onClick={() => setShowAddEnvModal(true)}
-              className='px-3 py-1.5 border border-kr0n-line bg-white/5 hover:border-white text-white text-xs font-mono font-bold'
-            >
-              + Create Environment
-            </button>
           </div>
 
-          <div className='border border-kr0n-line bg-kr0n-surface divide-y divide-kr0n-line-soft font-mono text-xs'>
-            {environments.map((env) => (
-              <div key={env} className='p-4 flex items-center justify-between'>
-                <div className='flex items-center gap-3'>
-                  <span
-                    className={`w-2 h-2 rounded-full ${env === 'production' ? 'bg-emerald-400' : 'bg-blue-400'}`}
-                  />
-                  <div>
-                    <span className='text-white font-bold uppercase'>{env}</span>
-                    <span className='text-kr0n-text-secondary text-[11px] ml-2'>
-                      {env === 'production' ? 'Primary live routing' : 'Ephemeral isolated pipeline'}
-                    </span>
-                  </div>
+          <div className='lg:col-span-8 rounded-[6px] border border-kr0n-line bg-kr0n-black p-6 space-y-4'>
+            <div className='grid grid-cols-1 sm:grid-cols-2 gap-4'>
+              <div className='space-y-1.5'>
+                <label htmlFor='proj-branch' className='block text-[13px] font-medium text-white'>
+                  Production branch
+                </label>
+                <input
+                  id='proj-branch'
+                  type='text'
+                  maxLength={255}
+                  value={productionBranch}
+                  onChange={(e) => {
+                    setProductionBranch(e.target.value);
+                    setIsMetaDirty(true);
+                  }}
+                  placeholder='main'
+                  className='w-full h-10 rounded-[6px] bg-kr0n-canvas border border-kr0n-line focus:border-kr0n-accent px-3 text-sm font-mono text-white outline-none transition-colors duration-150'
+                />
+              </div>
+
+              <div className='space-y-1.5'>
+                <label htmlFor='proj-root' className='block text-[13px] font-medium text-white'>
+                  Root directory
+                </label>
+                <input
+                  id='proj-root'
+                  type='text'
+                  maxLength={255}
+                  value={rootDirectory}
+                  onChange={(e) => {
+                    setRootDirectory(e.target.value);
+                    setIsMetaDirty(true);
+                  }}
+                  placeholder='./'
+                  className='w-full h-10 rounded-[6px] bg-kr0n-canvas border border-kr0n-line focus:border-kr0n-accent px-3 text-sm font-mono text-white outline-none transition-colors duration-150'
+                />
+              </div>
+            </div>
+
+            <div className='space-y-1.5'>
+              <label htmlFor='proj-preset' className='block text-[13px] font-medium text-white'>
+                Application preset
+              </label>
+              <select
+                id='proj-preset'
+                value={applicationPreset}
+                onChange={(e) => {
+                  setApplicationPreset(e.target.value);
+                  setIsMetaDirty(true);
+                }}
+                className='w-full h-10 rounded-[6px] bg-kr0n-canvas border border-kr0n-line focus:border-kr0n-accent px-3 text-sm text-white outline-none transition-colors duration-150'
+              >
+                {availablePresets.map((p) => (
+                  <option key={p.id} value={p.id} className='bg-kr0n-black text-white'>
+                    {p.name} ({p.id})
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        </section>
+
+        {/* Row 3: Build Overrides */}
+        <section className='py-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start'>
+          <div className='lg:col-span-4 space-y-2 pt-1'>
+            <h2 className='text-base font-medium text-white'>Build command overrides</h2>
+            <p className='text-[13px] text-kr0n-muted leading-relaxed'>
+              Override default commands for <span className='text-white'>{selectedPresetMeta?.name}</span>. Leaving an enabled override blank intentionally skips that step.
+            </p>
+          </div>
+
+          <div className='lg:col-span-8 rounded-[6px] border border-kr0n-line bg-kr0n-black p-6 space-y-4'>
+            {[
+              {
+                id: 'settings-install-cmd',
+                label: 'Install command',
+                override: installOverride,
+                setOverride: setInstallOverride,
+                value: customInstallCommand,
+                setValue: setCustomInstallCommand,
+                fallback: selectedPresetMeta?.installCommand || 'Leave empty to skip install step',
+                defaultText: selectedPresetMeta?.installCommand || '(none)',
+              },
+              {
+                id: 'settings-build-cmd',
+                label: 'Build command',
+                override: buildOverride,
+                setOverride: setBuildOverride,
+                value: customBuildCommand,
+                setValue: setCustomBuildCommand,
+                fallback: selectedPresetMeta?.buildCommand || 'Leave empty to skip build step',
+                defaultText: selectedPresetMeta?.buildCommand || '(none)',
+              },
+              {
+                id: 'settings-output-dir',
+                label: 'Output directory',
+                override: outputOverride,
+                setOverride: setOutputOverride,
+                value: customOutputDir,
+                setValue: setCustomOutputDir,
+                fallback: selectedPresetMeta?.outputDir || 'Output directory',
+                defaultText: selectedPresetMeta?.outputDir || '(none)',
+              },
+            ].map((field) => (
+              <div key={field.id} className='space-y-1.5'>
+                <div className='flex items-center justify-between gap-2'>
+                  <label htmlFor={field.id} className='text-[13px] font-medium text-white'>
+                    {field.label}
+                  </label>
+                  <button
+                    type='button'
+                    role='switch'
+                    aria-checked={field.override}
+                    onClick={() => {
+                      const next = !field.override;
+                      field.setOverride(next);
+                      if (!next) field.setValue('');
+                      setIsBuildDirty(true);
+                    }}
+                    className={`text-xs pb-0.5 border-b transition-colors duration-150 cursor-pointer ${
+                      field.override
+                        ? 'border-kr0n-accent text-white font-medium'
+                        : 'border-transparent text-kr0n-muted hover:text-white'
+                    }`}
+                  >
+                    {field.override ? 'Custom override' : 'Preset default'}
+                  </button>
                 </div>
-                <span className='px-2 py-0.5 border border-kr0n-line text-[10px] text-kr0n-text-secondary uppercase font-bold'>
-                  Active
-                </span>
+                <input
+                  id={field.id}
+                  type='text'
+                  disabled={!field.override}
+                  value={field.override ? field.value : ''}
+                  onChange={(e) => {
+                    field.setValue(e.target.value);
+                    setIsBuildDirty(true);
+                  }}
+                  placeholder={field.override ? field.fallback : field.defaultText}
+                  className='w-full h-10 rounded-[6px] bg-kr0n-canvas border border-kr0n-line focus:border-kr0n-accent px-3 text-sm font-mono text-white outline-none disabled:opacity-45 disabled:cursor-not-allowed transition-colors duration-150'
+                />
               </div>
             ))}
           </div>
         </section>
 
-        {/* ─── 3. Global Settings Pointer ─── */}
-        <section className='p-4 border border-kr0n-line-soft bg-kr0n-surface/40 flex items-center justify-between font-mono text-xs'>
-          <div>
-            <span className='text-white font-bold block'>Team Access & Organization Membership</span>
-            <span className='text-kr0n-text-secondary text-[11px] mt-0.5 block'>
-              User permissions and workspace role access controls are managed globally across all projects.
-            </span>
-          </div>
-          <Link
-            href='/settings'
-            className='px-3 py-1.5 border border-kr0n-line hover:border-white text-white transition-colors shrink-0'
-          >
-            Global Settings →
-          </Link>
-        </section>
-
-        {/* ─── 4. Danger Zone ─── */}
-        <section className='border border-red-500/30 bg-red-500/[0.03] p-5 space-y-4 font-mono'>
-          <div className='flex items-center gap-2 text-red-400 font-bold uppercase tracking-wider text-xs'>
-            <ShieldAlert size={16} />
-            <span>Danger Zone</span>
+        {/* Row 4: Danger Zone */}
+        <section className='pt-8 grid grid-cols-1 lg:grid-cols-12 gap-8 items-start'>
+          <div className='lg:col-span-4 space-y-1.5 pt-1'>
+            <h2 className='text-base font-medium text-kr0n-error'>Danger zone</h2>
+            <p className='text-[13px] text-kr0n-muted leading-relaxed'>
+              Permanently remove this project and its build configuration from the control plane.
+            </p>
           </div>
 
-          <div className='flex flex-col sm:flex-row sm:items-center justify-between gap-4 pt-2'>
-            <div className='space-y-0.5'>
-              <h3 className='text-sm font-bold text-white'>Delete This Project</h3>
-              <p className='text-xs text-kr0n-text-secondary font-sans leading-relaxed'>
-                Deleting <strong className='text-white'>{project.name}</strong> will remove all registered microservices
-                and release routing domains. Independent persistent storage volumes will remain unlinked.
+          <div className='lg:col-span-8 rounded-[6px] border border-red-500/30 bg-kr0n-black p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4'>
+            <div className='space-y-1'>
+              <div className='text-sm font-medium text-white'>Delete {project.name}</div>
+              <p className='text-xs text-kr0n-muted'>
+                This action cannot be undone and immediately frees the project slug.
               </p>
             </div>
-
             <button
               type='button'
               onClick={() => setShowDeleteModal(true)}
-              className='px-4 py-2 border border-red-500/50 bg-red-500/10 hover:bg-red-500/20 text-red-400 hover:text-red-300 text-xs font-bold uppercase tracking-wider transition-colors shrink-0'
+              className='h-9 px-4 rounded-[6px] border border-red-500/40 hover:border-red-400 text-kr0n-error text-xs font-medium transition-colors duration-150 shrink-0 cursor-pointer'
             >
-              Delete Project
+              Delete project
             </button>
           </div>
         </section>
-
-        {/* Save Footer */}
-        <div className='pt-6 border-t border-kr0n-line flex items-center justify-end gap-3'>
-          <button
-            type='button'
-            disabled={!isDirty}
-            onClick={handleSave}
-            className='clipped-btn inline-flex items-center gap-2 bg-white hover:bg-neutral-200 text-black px-6 py-2.5 text-xs font-mono uppercase tracking-wider font-bold transition-colors disabled:opacity-40'
-          >
-            <Save size={13} />
-            <span>Save Settings</span>
-          </button>
-        </div>
       </div>
 
-      {/* ─── Create Environment Modal ─── */}
-      {showAddEnvModal && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm font-mono text-xs'>
-          <div className='max-w-md w-full border border-kr0n-line bg-kr0n-surface p-6 space-y-4 shadow-2xl'>
-            <h3 className='text-sm font-bold text-white uppercase'>Create Environment</h3>
-            <p className='text-kr0n-text-secondary font-sans'>
-              Isolate service configs, secret variables, and deployment promotion paths.
-            </p>
-            <form onSubmit={handleAddEnv} className='space-y-4'>
-              <div>
-                <label className='block text-kr0n-text-secondary mb-1'>Environment Name</label>
-                <input
-                  type='text'
-                  required
-                  value={newEnvInput}
-                  onChange={(e) => setNewEnvInput(e.target.value)}
-                  placeholder='e.g. preview, dev, canary'
-                  className='w-full bg-kr0n-black border border-kr0n-line px-3 py-2 text-white outline-none focus:border-white'
-                />
-              </div>
-
-              <div className='flex items-center justify-end gap-3 pt-2'>
-                <button
-                  type='button'
-                  onClick={() => setShowAddEnvModal(false)}
-                  className='px-3 py-1.5 border border-kr0n-line text-kr0n-text-secondary hover:text-white'
-                >
-                  Cancel
-                </button>
-                <button
-                  type='submit'
-                  className='clipped-btn bg-white hover:bg-neutral-200 text-black px-4 py-1.5 font-bold uppercase'
-                >
-                  Create
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ─── Delete Project Modal ─── */}
+      {/* Delete Modal */}
       {showDeleteModal && (
-        <div className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75 backdrop-blur-sm font-mono text-xs'>
-          <div className='max-w-md w-full border border-red-500/40 bg-kr0n-surface p-6 space-y-4 shadow-2xl'>
-            <div className='flex items-center gap-2 text-red-400 font-bold uppercase'>
+        <div
+          role='dialog'
+          aria-modal='true'
+          aria-label='Confirm project deletion'
+          onClick={() => {
+            setShowDeleteModal(false);
+            setConfirmName('');
+          }}
+          className='fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/75'
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className='max-w-md w-full rounded-[6px] border border-red-500/35 bg-kr0n-black p-6 space-y-4 shadow-[0_12px_28px_rgba(0,0,0,0.5)]'
+          >
+            <div className='flex items-center gap-2 text-kr0n-error font-semibold text-sm'>
               <AlertTriangle size={16} />
-              <span>Confirm Project Deletion</span>
+              <span>Delete project</span>
             </div>
-            <p className='text-kr0n-text-secondary font-sans leading-relaxed'>
-              This will permanently delete project <strong className='text-white'>{project.name}</strong> ({project.id})
-              and all of its associated microservices.
+            <p className='text-[13px] text-kr0n-text-secondary leading-relaxed'>
+              This permanently removes <strong className='text-white'>{project.name}</strong> (<span className='font-mono text-xs'>{project.id}</span>) from the control plane.
             </p>
             <div className='space-y-1.5'>
-              <label className='block text-kr0n-text-secondary'>
-                Type <strong className='text-white'>{project.name}</strong> to confirm:
+              <label htmlFor='settings-delete-confirm' className='block text-xs text-kr0n-muted'>
+                Type <strong className='font-mono text-white'>{project.name}</strong> to confirm
               </label>
               <input
+                id='settings-delete-confirm'
                 type='text'
                 value={confirmName}
                 onChange={(e) => setConfirmName(e.target.value)}
                 placeholder={project.name}
-                className='w-full bg-kr0n-black border border-kr0n-line px-3 py-2 text-white outline-none focus:border-red-400'
+                className='w-full h-9 rounded-[6px] bg-kr0n-canvas border border-kr0n-line focus:border-kr0n-error px-3 text-sm font-mono text-white outline-none'
               />
             </div>
-            <div className='flex items-center justify-end gap-3 pt-2'>
+            <div className='flex items-center justify-end gap-2.5 pt-2'>
               <button
                 type='button'
                 onClick={() => {
                   setShowDeleteModal(false);
                   setConfirmName('');
                 }}
-                className='px-3 py-1.5 border border-kr0n-line text-kr0n-text-secondary hover:text-white'
+                className='h-9 px-3.5 rounded-[6px] border border-kr0n-line text-xs font-medium text-kr0n-text-secondary hover:text-white cursor-pointer'
               >
                 Cancel
               </button>
               <button
                 type='button'
-                disabled={confirmName !== project.name}
+                disabled={confirmName !== project.name || deleting}
                 onClick={handleDeleteProject}
-                className='clipped-btn bg-red-500 hover:bg-red-400 text-white px-4 py-1.5 font-bold uppercase disabled:opacity-40'
+                className='h-9 px-4 rounded-[6px] bg-kr0n-error hover:opacity-90 text-white text-xs font-medium disabled:opacity-40 cursor-pointer'
               >
-                Permanently Delete Project
+                {deleting ? 'Deleting...' : 'Delete project'}
               </button>
             </div>
           </div>
