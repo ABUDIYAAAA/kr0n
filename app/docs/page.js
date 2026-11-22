@@ -15,7 +15,7 @@ const API_SURFACE = [
   { method: 'POST', path: '/api/v1/orgs/{org_id}/github/installations', desc: 'Link a verified GitHub App installation to an organization.' },
   { method: 'POST', path: '/api/v1/orgs/{org_id}/projects', desc: 'Create a project bound to a GitHub repository, branch, and root directory.' },
   { method: 'PUT', path: '/api/v1/orgs/{org_id}/projects/{project_id}/build-settings', desc: 'Update custom install, build, and output overrides with expected_revision.' },
-  { method: 'GET', path: '/api/v1/orgs/{org_id}/audit-logs', desc: 'Query paginated organization security and administrative events.' },
+  { method: 'GET', path: '/api/v1/orgs/{org_id}/audit', desc: 'Query paginated organization security and administrative events.' },
 ];
 
 export default function DocsHomePage() {

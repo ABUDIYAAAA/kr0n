@@ -37,6 +37,9 @@ import {
   revokeApiToken as apiRevokeApiToken,
   getAuditLogs,
   validatePasswordPolicy,
+  AUDIT_ACTION_OPTIONS,
+  DEFAULT_PERMISSIONS,
+  FALLBACK_ROLES,
 } from '@/lib/auth';
 import {
   useWorkspace,
@@ -54,45 +57,7 @@ const TABS = [
   { id: 'audit', label: 'Audit log' },
 ];
 
-const DEFAULT_PERMISSIONS = [
-  'org:read',
-  'org:update',
-  'member:read',
-  'member:create',
-  'member:update',
-  'member:delete',
-  'project:read',
-  'project:create',
-  'project:update',
-  'project:delete',
-  'service:read',
-  'service:create',
-  'service:update',
-  'service:delete',
-  'deployment:create',
-  'env:read',
-  'env:write',
-  'audit:read',
-  'apitoken:read',
-  'apitoken:create',
-  'apitoken:delete',
-];
-
-const AUDIT_ACTIONS = [
-  { value: '', label: 'All actions' },
-  { value: 'org.created', label: 'org.created' },
-  { value: 'org.updated', label: 'org.updated' },
-  { value: 'member.added', label: 'member.added' },
-  { value: 'member.role_updated', label: 'member.role_updated' },
-  { value: 'member.removed', label: 'member.removed' },
-  { value: 'invite.created', label: 'invite.created' },
-  { value: 'invite.revoked', label: 'invite.revoked' },
-  { value: 'invite.accepted', label: 'invite.accepted' },
-  { value: 'apitoken.created', label: 'apitoken.created' },
-  { value: 'apitoken.revoked', label: 'apitoken.revoked' },
-  { value: 'github.installation.created', label: 'github.installation.created' },
-  { value: 'github.installation.deleted', label: 'github.installation.deleted' },
-];
+const AUDIT_ACTIONS = AUDIT_ACTION_OPTIONS;
 
 const TOKEN_EXPIRY_OPTIONS = [
   { label: '7 days', seconds: 7 * 86400 },
@@ -201,11 +166,7 @@ export default function GlobalSettingsPage() {
   const availableRoleOptions =
     Array.isArray(roles) && roles.length > 0
       ? roles
-      : [
-          { id: 'owner', name: 'Owner', description: 'Full organization ownership', permissions: DEFAULT_PERMISSIONS },
-          { id: 'admin', name: 'Admin', description: 'Manage projects, members, and tokens', permissions: DEFAULT_PERMISSIONS },
-          { id: 'member', name: 'Member', description: 'Read access to organization resources', permissions: ['org:read', 'member:read', 'project:read', 'service:read', 'env:read'] },
-        ];
+      : FALLBACK_ROLES;
 
   const callerRoleObj = availableRoleOptions.find(
     (r) => r.id === (activeOrg?.role_id || 'owner')
